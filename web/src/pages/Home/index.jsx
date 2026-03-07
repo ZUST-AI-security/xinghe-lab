@@ -26,7 +26,7 @@ const Home = () => {
   }, []);
 
   const handleStartExperiment = (algoId) => {
-    navigate(`/attack-lab?algoId=${algoId}`);
+    navigate(`/attack/${algoId}`);
   };
 
   return (
@@ -46,7 +46,7 @@ const Home = () => {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '100px 0' }}>
-          <Spin size="large" tip="加载算法中..." />
+          <Spin size="large" description="加载算法中..." />
         </div>
       ) : algorithms.length > 0 ? (
         <Row gutter={[24, 24]} justify="center">

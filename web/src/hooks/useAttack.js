@@ -65,16 +65,21 @@ export const useAttack = () => {
       let finalParams = { ...params };
 
       // Handle multiple or single image uploads
+      // Only upload if we have actual File/Blob objects
       if (imageFiles) {
-        if (Array.isArray(imageFiles) && imageFiles.length > 0) {
+        if (Array.isArray(imageFiles) && imageFiles.length > 0 && imageFiles[0] instanceof Blob) {
           const uploadRes = await uploadService.uploadImages(imageFiles);
           if (uploadRes.data && uploadRes.data.urls) {
             finalParams.images = uploadRes.data.urls;
           }
-        } else if (imageFiles instanceof File) {
-          const uploadRes = await uploadService.uploadImage(imageFiles);
-          if (uploadRes.data && uploadRes.data.url) {
-            finalParams.image = uploadRes.data.url;
+        } else if (imageFiles instanceof Blob) {
+          // If params already has the correct image URL (set by the component), 
+          // we can skip re-uploading the same file unless it's missing.
+          if (!finalParams.image || typeof finalParams.image !== 'string' || !finalParams.image.startsWith('/uploads/')) {
+            const uploadRes = await uploadService.uploadImage(imageFiles);
+            if (uploadRes.data && uploadRes.data.url) {
+              finalParams.image = uploadRes.data.url;
+            }
           }
         }
       }
@@ -103,6 +108,7 @@ export const useAttack = () => {
   return {
     executeAttack,
     result,
+    setResult,
     loading,
     error,
     progress,

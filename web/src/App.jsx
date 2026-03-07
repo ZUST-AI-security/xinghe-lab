@@ -11,7 +11,7 @@ const { Title } = Typography;
 const App = () => {
   return (
     <Router>
-      <Layout className="layout" style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+      <Layout className="layout" style={{ minHeight: '100vh', background: '#f0f2f5' }}>
         <Header style={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -34,7 +34,7 @@ const App = () => {
               },
               { 
                 key: '/attack-lab', 
-                label: <Link to="/attack-lab"><ExperimentOutlined /> 算法实验台</Link> 
+                label: <Link to="/"><ExperimentOutlined /> 算法实验台</Link> 
               }
             ]}
           />
@@ -43,7 +43,8 @@ const App = () => {
         <Content style={{ minHeight: 'calc(100vh - 128px)' }}>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/attack-lab" element={<AttackLab />} />
+            <Route path="/attack/:algoId" element={<AttackLab />} />
+            <Route path="/attack-lab" element={<Home />} />
           </Routes>
         </Content>
 

@@ -59,6 +59,7 @@ class DetectionAttackService(BaseAttackService):
         adv_count = len(adv_results.boxes)
         
         return {
+            "original_image": f"/{image_path}",
             "original_detection": f"/{orig_detect_filename}",
             "adversarial_detection": f"/{adv_detect_filename}",
             "adversarial_image": f"/{adv_img_path}",

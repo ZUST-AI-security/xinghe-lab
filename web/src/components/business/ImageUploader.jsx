@@ -1,7 +1,13 @@
 import React, { useRef } from 'react';
+import { Card, Typography, Space, theme } from 'antd';
+import { InboxOutlined } from '@ant-design/icons';
+
+const { Text, Paragraph } = Typography;
+const { useToken } = theme;
 
 const ImageUploader = ({ onUpload, preview }) => {
   const fileInputRef = useRef(null);
+  const { token } = useToken();
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -16,32 +22,49 @@ const ImageUploader = ({ onUpload, preview }) => {
 
   return (
     <div 
-      className="border-2 border-dashed border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all cursor-pointer group"
       onClick={() => fileInputRef.current?.click()}
+      style={{
+        border: `2px dashed ${token.colorBorderSecondary}`,
+        borderRadius: 20,
+        padding: 40,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(255,255,255,0.02)',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+        textAlign: 'center'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = token.colorPrimary;
+        e.currentTarget.style.background = `${token.colorPrimary}05`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = token.colorBorderSecondary;
+        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+      }}
     >
       {preview ? (
-        <div className="relative group/preview w-full aspect-square max-h-48 rounded-xl overflow-hidden shadow-2xl">
-          <img src={preview} className="w-full h-full object-cover transition-transform group-hover/preview:scale-110" alt="Preview" />
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center">
-            <span className="text-white text-sm font-bold">更换图片</span>
-          </div>
+        <div style={{ width: '100%', maxWidth: 300, aspectRatio: '1/1', borderRadius: 16, overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
+          <img src={preview} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Preview" />
         </div>
       ) : (
-        <>
-          <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <span className="text-3xl">🖼️</span>
+        <Space direction="vertical" align="center" size={16}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justify: 'center' }}>
+            <InboxOutlined style={{ fontSize: 32, color: token.colorTextQuaternary }} />
           </div>
-          <div className="text-center">
-            <p className="text-sm font-bold text-gray-300">点击或拖拽上传</p>
-            <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest">Supports PNG, JPG up to 5MB</p>
+          <div>
+            <Text strong style={{ fontSize: 16 }}>点击或拖拽上传图片</Text>
+            <Paragraph type="secondary" style={{ fontSize: 12, marginTop: 4 }}>支持 PNG, JPG (最大 5MB)</Paragraph>
           </div>
-        </>
+        </Space>
       )}
       
       <input 
         ref={fileInputRef}
         type="file" 
-        className="hidden" 
+        style={{ display: 'none' }} 
         accept="image/*"
         onChange={handleFileChange}
       />
