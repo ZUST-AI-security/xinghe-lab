@@ -25,29 +25,39 @@ class AttackServices:
 @celery_app.task(name="app.tasks.cv_tasks.process_attack")
 def process_attack(algorithm_id: str, params: Dict[str, Any]):
     """
-    Main entry point for CV attack tasks.
+    Main entry point for CV attack tasks. Supports single or multiple image inputs.
     """
     print(f"Task started: {algorithm_id}")
     
-    # 1. Determine Input Image Path
-    # 'image' comes from upload, 'dataset_sample_url' comes from picker
-    image_url = params.get("image") or params.get("dataset_sample_url")
-    if not image_url:
-        return {"error": "No input image provided"}
-        
+    # 1. Determine Input Image Path(s)
+    image_urls = params.get("images") or params.get("image") or params.get("dataset_sample_url")
+    if not image_urls:
+        return {"error": "No input image(s) provided"}
+    
+    # Ensure image_urls is a list
+    if isinstance(image_urls, str):
+        image_urls = [image_urls]
+    
     # Strip leading slash for local file access
-    image_path = image_url.lstrip("/")
+    image_paths = [url.lstrip("/") for url in image_urls]
 
     try:
         if algorithm_id == "resnet18_cifar10":
             service = AttackServices.get_classification()
-            return service.run_attack(image_path, params)
-        
         elif algorithm_id == "yolov8_attack":
             service = AttackServices.get_detection()
-            return service.run_attack(image_path, params)
-            
-        return {"error": f"Unsupported algorithm: {algorithm_id}"}
+        else:
+            return {"error": f"Unsupported algorithm: {algorithm_id}"}
+
+        # Run attack for each image path
+        results = []
+        for path in image_paths:
+            res = service.run_attack(path, params)
+            results.append(res)
+        
+        # Return single object if only one image, otherwise return list
+        return results if len(results) > 1 else results[0]
+
     except Exception as e:
         import traceback
         return {"error": str(e), "traceback": traceback.format_exc()}

@@ -37,4 +37,4 @@ class TaskResponse(BaseModel):
 class TaskResult(BaseModel):
     task_id: str
     status: str
-    result: Optional[Dict[str, Any]] = None
+    result: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None

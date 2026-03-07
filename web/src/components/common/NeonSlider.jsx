@@ -1,6 +1,6 @@
 import React from 'react';
 import Tooltip from './Tooltip';
-import { FaInfoCircle } from 'react-icons/fa';
+import { InfoCircleOutlined } from '@ant-design/icons';
 
 /**
  * 科技感滑块组件 - 带发光效果和工具提示
@@ -41,7 +41,7 @@ const NeonSlider = ({
           <span className="text-sm text-gray-300">{label}</span>
           {description && (
             <Tooltip content={description}>
-              <FaInfoCircle className="text-gray-500 hover:text-neon-cyan transition-colors cursor-help" />
+              <InfoCircleOutlined className="text-gray-500 hover:text-neon-cyan transition-colors cursor-help" />
             </Tooltip>
           )}
         </div>
