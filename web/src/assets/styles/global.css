@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-space-900 text-gray-200;
+    background-image:
+      radial-gradient(circle at 10% 20%, rgba(0, 229, 255, 0.03) 0%, transparent 30%),
+      radial-gradient(circle at 90% 70%, rgba(139, 92, 246, 0.03) 0%, transparent 30%),
+      linear-gradient(rgba(0, 229, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 229, 255, 0.02) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 50px 50px, 50px 50px;
+  }
+
+  /* 自定义滚动条 - 科技感拉满 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-space-800;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-neon-cyan/20 rounded-full;
+    border: 1px solid rgba(0, 229, 255, 0.1);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-neon-cyan/40;
+  }
+}
+
+@layer components {
+  /* 玻璃态效果通用类 */
+  .glass {
+    @apply bg-space-800/60 backdrop-blur-md border border-space-700/50;
+  }
+
+  /* 霓虹文字效果 */
+  .neon-text {
+    @apply bg-gradient-to-r from-neon-cyan to-neon-blue bg-clip-text text-transparent font-bold;
+  }
+
+  /* 扫描线动画 */
+  .scan-line {
+    @apply relative overflow-hidden;
+  }
+
+  .scan-line::after {
+    content: '';
+    @apply absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent;
+    animation: scan 2s linear infinite;
+  }
+}
