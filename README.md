@@ -59,9 +59,17 @@ xinghe-lab/
 │   └── requirements.txt
 ├── web/                # React 前端
 │   ├── src/
-│   │   ├── components/ # 通用组件
-│   │   ├── pages/      # 页面组件
-│   │   └── App.jsx     # 主路由
+│   │   ├── assets/          # 静态资源
+│   │   │   └── styles/      # 全局样式
+│   │   ├── components/      # UI组件
+│   │   │   ├── common/      # 基础组件 (玻璃卡片、渐变按钮等)
+│   │   │   └── business/    # 业务组件 (算法选择、图片对比等)
+│   │   ├── hooks/           # 自定义Hooks (攻击逻辑封装)
+│   │   ├── pages/           # 页面组件
+│   │   │   └── AttackLab/   # 攻击实验室页面
+│   │   ├── services/        # API服务
+│   │   ├── utils/           # 工具函数
+│   │   └── App.jsx          # 主路由
 │   └── package.json
 └── README.md
 ```
