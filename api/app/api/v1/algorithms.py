@@ -9,22 +9,52 @@ router = APIRouter()
 ALGORITHM_REGISTRY: List[Algorithm] = [
     Algorithm(
         id="resnet18_cifar10",
-        name="ResNet18 对抗攻击 (CIFAR-10)",
-        description="针对 CIFAR-10 数据集的 ResNet18 分类模型进行对抗攻击，支持 FGSM 和 PGD 算法。",
+        name="ResNet50 深度学习攻击实验 (ImageNet)",
+        description="针对 224x224 高分辨率图像的 ResNet50 模型进行攻击。该模型在 ImageNet 数据集上预训练，识别精度极高，能识别 1000 种物体。",
         inputs=[
-            {"name": "source", "type": "select", "label": "输入来源", "options": [
-                {"label": "数据集样本", "value": "dataset"},
-                {"label": "自定义上传", "value": "upload"}
-            ], "default": "dataset"},
-            {"name": "dataset_sample", "type": "dataset_picker", "label": "选择样本", "dataset": "cifar10", "condition": {"source": "dataset"}},
-            {"name": "image", "type": "image_upload", "label": "上传图片", "condition": {"source": "upload"}},
-            {"name": "attack_type", "type": "select", "label": "攻击算法", "options": [
-                {"label": "FGSM", "value": "fgsm"},
-                {"label": "PGD", "value": "pgd"}
-            ], "default": "fgsm"},
-            {"name": "epsilon", "type": "slider", "min": 0, "max": 0.3, "step": 0.01, "default": 0.03, "label": "扰动大小 (Epsilon)"},
-            {"name": "alpha", "type": "slider", "min": 0, "max": 0.1, "step": 0.005, "default": 0.01, "label": "步长 (Alpha)", "condition": {"attack_type": "pgd"}},
-            {"name": "steps", "type": "number", "min": 1, "max": 100, "default": 10, "label": "迭代步数", "condition": {"attack_type": "pgd"}}
+            {
+                "name": "image",
+                "type": "image_upload",
+                "label": "上传待测试图片 (建议 224x224 以上)"
+            },
+            {
+                "name": "attack_type",
+                "type": "select",
+                "label": "攻击算法",
+                "default": "fgsm",
+                "options": [
+                    {"label": "FGSM (快速梯度符号法)", "value": "fgsm"},
+                    {"label": "PGD (投影梯度下降)", "value": "pgd"}
+                ]
+            },
+            {
+                "name": "epsilon",
+                "type": "slider",
+                "label": "扰动大小 (Epsilon)",
+                "default": 0.02,
+                "min": 0.0,
+                "max": 0.1,
+                "step": 0.005
+            },
+            {
+                "name": "alpha",
+                "type": "slider",
+                "label": "步长 (Alpha)",
+                "default": 0.005,
+                "min": 0.0,
+                "max": 0.05,
+                "step": 0.001,
+                "condition": {"attack_type": "pgd"}
+            },
+            {
+                "name": "steps",
+                "type": "number",
+                "label": "迭代步数",
+                "default": 10,
+                "min": 1,
+                "max": 50,
+                "condition": {"attack_type": "pgd"}
+            }
         ],
         outputs=[
             {"name": "original_image", "type": "image", "label": "原始图片"},
@@ -40,12 +70,30 @@ ALGORITHM_REGISTRY: List[Algorithm] = [
         name="YOLOv8 目标检测攻击",
         description="针对 YOLOv8 目标检测模型进行对抗攻击，使其产生漏检或误检。",
         inputs=[
-            {"name": "image", "type": "image_upload", "label": "上传原始图片"},
-            {"name": "attack_type", "type": "select", "label": "攻击目标", "options": [
-                {"label": "隐身攻击 (Untargeted)", "value": "untargeted"},
-                {"label": "误导攻击 (Targeted)", "value": "targeted"}
-            ], "default": "untargeted"},
-            {"name": "epsilon", "type": "slider", "min": 0, "max": 0.1, "step": 0.01, "default": 0.03, "label": "扰动大小"}
+            {
+                "name": "image",
+                "type": "image_upload",
+                "label": "上传原始图片"
+            },
+            {
+                "name": "attack_type",
+                "type": "select",
+                "label": "攻击目标",
+                "default": "untargeted",
+                "options": [
+                    {"label": "非定向攻击 (目标消失)", "value": "untargeted"},
+                    {"label": "定向攻击 (误认为他物)", "value": "targeted"}
+                ]
+            },
+            {
+                "name": "epsilon",
+                "type": "slider",
+                "label": "扰动大小",
+                "default": 0.03,
+                "min": 0.0,
+                "max": 0.1,
+                "step": 0.01
+            }
         ],
         outputs=[
             {"name": "original_detection", "type": "image", "label": "原始检测结果"},

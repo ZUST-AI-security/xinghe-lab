@@ -5,12 +5,14 @@ from pydantic import BaseModel, Field
 
 class InputField(BaseModel):
     name: str
-    type: str  # e.g., "image_upload", "slider", "text", "number"
+    type: str  # e.g., "image_upload", "slider", "text", "number", "select", "dataset_picker"
     label: str
     default: Optional[Any] = None
     min: Optional[float] = None
     max: Optional[float] = None
     step: Optional[float] = None
+    options: Optional[List[Dict[str, Any]]] = None
+    condition: Optional[Dict[str, Any]] = None
 
 class OutputField(BaseModel):
     name: str
@@ -37,4 +39,4 @@ class TaskResponse(BaseModel):
 class TaskResult(BaseModel):
     task_id: str
     status: str
-    result: Optional[Dict[str, Any]] = None
+    result: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None

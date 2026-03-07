@@ -1,9 +1,11 @@
 import React from 'react';
-import Tooltip from './Tooltip';
-import { FaInfoCircle } from 'react-icons/fa';
+import { Slider, Space, Typography, Tooltip as AntTooltip, Flex } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
 
 /**
- * 科技感滑块组件 - 带发光效果和工具提示
+ * 科技感滑块组件 - 已重构为 Ant Design
  */
 const NeonSlider = ({
   label,
@@ -23,82 +25,56 @@ const NeonSlider = ({
   const sliderMin = logarithmic ? toLog(min) : min;
   const sliderMax = logarithmic ? toLog(max) : max;
 
-  const handleChange = (e) => {
-    let val = parseFloat(e.target.value);
+  const handleChange = (val) => {
+    let newVal = val;
     if (logarithmic) {
-      val = fromLog(val);
+      newVal = fromLog(val);
     }
-    onChange(val);
+    onChange(newVal);
   };
 
-  // 计算填充百分比
-  const percentage = ((sliderValue - sliderMin) / (sliderMax - sliderMin)) * 100;
-
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-300">{label}</span>
-          {description && (
-            <Tooltip content={description}>
-              <FaInfoCircle className="text-gray-500 hover:text-neon-cyan transition-colors cursor-help" />
-            </Tooltip>
-          )}
-        </div>
-        <span className="text-sm font-mono text-neon-cyan bg-space-700 px-2 py-1 rounded-lg border border-space-600">
-          {value.toFixed(logarithmic ? 4 : 3)}
-        </span>
-      </div>
+    <div style={{ marginBottom: 16 }}>
+      <Space direction="vertical" size={8} style={{ width: '100%' }}>
+        <Flex justify="space-between" align="center">
+          <Space size={4}>
+            {label && <Text type="secondary" style={{ fontSize: 13 }}>{label}</Text>}
+            {description && (
+              <AntTooltip title={description}>
+                <InfoCircleOutlined style={{ color: 'rgba(0,0,0,0.3)', cursor: 'help' }} />
+              </AntTooltip>
+            )}
+          </Space>
+          <Text 
+            strong 
+            style={{ 
+              fontFamily: 'monospace', 
+              color: '#1890ff',
+              background: 'rgba(24,144,255,0.1)',
+              padding: '2px 8px',
+              borderRadius: 6,
+              fontSize: 12
+            }}
+          >
+            {typeof value === 'number' ? value.toFixed(logarithmic ? 4 : 3) : value}
+          </Text>
+        </Flex>
 
-      <div className="relative py-2">
-        {/* 滑轨背景 */}
-        <div className="absolute top-1/2 left-0 w-full h-1 bg-space-700 rounded-full -translate-y-1/2">
-          {/* 已填充部分 - 霓虹渐变 */}
-          <div
-            className="absolute h-full bg-gradient-to-r from-neon-cyan to-neon-blue rounded-full transition-all duration-100"
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-
-        {/* 滑块 */}
-        <input
-          type="range"
+        <Slider
           min={sliderMin}
           max={sliderMax}
           step={logarithmic ? (sliderMax - sliderMin) / 1000 : step}
           value={sliderValue}
           onChange={handleChange}
-          className="
-            absolute top-1/2 left-0 w-full -translate-y-1/2
-            appearance-none bg-transparent
-            [&::-webkit-slider-thumb]:appearance-none
-            [&::-webkit-slider-thumb]:w-5
-            [&::-webkit-slider-thumb]:h-5
-            [&::-webkit-slider-thumb]:rounded-full
-            [&::-webkit-slider-thumb]:bg-white
-            [&::-webkit-slider-thumb]:cursor-pointer
-            [&::-webkit-slider-thumb]:relative
-            [&::-webkit-slider-thumb]:z-20
-            [&::-webkit-slider-thumb]:shadow-lg
-            [&::-webkit-slider-thumb]:shadow-neon-cyan/50
-            [&::-webkit-slider-thumb]:border-2
-            [&::-webkit-slider-thumb]:border-neon-cyan
-            [&::-webkit-slider-thumb]:hover:scale-125
-            [&::-webkit-slider-thumb]:transition-transform
-            [&::-moz-range-thumb]:w-5
-            [&::-moz-range-thumb]:h-5
-            [&::-moz-range-thumb]:rounded-full
-            [&::-moz-range-thumb]:bg-white
-            [&::-moz-range-thumb]:border-2
-            [&::-moz-range-thumb]:border-neon-cyan
-          "
+          tooltip={{ open: false }}
+          style={{ margin: '8px 0' }}
         />
-      </div>
-
-      <div className="flex justify-between text-xs text-gray-500">
-        <span>{min}</span>
-        <span>{max}</span>
-      </div>
+        
+        <Flex justify="space-between">
+          <Text style={{ fontSize: 10, opacity: 0.3 }}>{min}</Text>
+          <Text style={{ fontSize: 10, opacity: 0.3 }}>{max}</Text>
+        </Flex>
+      </Space>
     </div>
   );
 };

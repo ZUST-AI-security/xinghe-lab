@@ -1,14 +1,8 @@
 import React from 'react';
-import Spinner from './Spinner';
+import { Button } from 'antd';
 
 /**
- * 炫酷渐变按钮 - 带扫光动画
- * @param {Object} props
- * @param {Function} props.onClick - 点击事件
- * @param {boolean} props.disabled - 是否禁用
- * @param {boolean} props.loading - 加载状态
- * @param {React.ReactNode} props.children - 按钮文字
- * @param {string} props.variant - 'primary' | 'secondary' | 'danger'
+ * 炫酷渐变按钮 - 已重构为 Ant Design
  */
 const GradientButton = ({
   onClick,
@@ -16,52 +10,33 @@ const GradientButton = ({
   loading = false,
   children,
   variant = 'primary',
-  className = ''
+  style = {}
 }) => {
-  const variants = {
-    primary: 'from-neon-cyan to-neon-blue',
-    secondary: 'from-neon-purple to-neon-pink',
-    danger: 'from-red-500 to-pink-500'
+  const gradients = {
+    primary: 'linear-gradient(135deg, #1890ff 0%, #001529 100%)',
+    secondary: 'linear-gradient(135deg, #722ed1 0%, #2f54eb 100%)',
+    danger: 'linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%)'
   };
 
   return (
-    <button
+    <Button
+      type="primary"
       onClick={onClick}
-      disabled={disabled || loading}
-      className={`
-        relative group w-full py-3 px-6 rounded-xl font-bold text-white tracking-wide
-        overflow-hidden transition-all duration-300 transform
-        ${disabled
-          ? 'bg-space-700 text-gray-500 cursor-not-allowed'
-          : `bg-gradient-to-r ${variants[variant]} hover:scale-[1.02] active:scale-95`
-        }
-        ${!disabled && 'hover:shadow-neon-cyan'}
-        ${className}
-      `}
+      disabled={disabled}
+      loading={loading}
+      style={{
+        width: '100%',
+        height: 48,
+        borderRadius: 12,
+        fontWeight: 'bold',
+        background: gradients[variant] || gradients.primary,
+        border: 'none',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+        ...style
+      }}
     >
-      {/* 背景扫光动画 */}
-      {!disabled && (
-        <>
-          <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-12" />
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-scan" />
-        </>
-      )}
-
-      {/* 按钮边框发光 */}
-      <div className={`
-        absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300
-        ${!disabled && 'shadow-[0_0_15px_rgba(0,229,255,0.5)]'}
-      `} />
-
-      {/* 内容 */}
-      <span className="relative z-10 flex items-center justify-center gap-2">
-        {loading ? <Spinner /> : children}
-      </span>
-
-      {/* 角落装饰点 */}
-      <div className="absolute top-1 left-1 w-1 h-1 bg-white/30 rounded-full" />
-      <div className="absolute bottom-1 right-1 w-1 h-1 bg-white/30 rounded-full" />
-    </button>
+      {children}
+    </Button>
   );
 };
 
