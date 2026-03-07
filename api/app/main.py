@@ -1,35 +1,45 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.api.v1.endpoints import test_db
+from fastapi.staticfiles import StaticFiles
+from app.api.v1 import algorithms, tasks, datasets, uploads
+from app.core.db import engine, Base
+from app.models import models
+import os
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    description="Xinghe Intelligence Security Lab Platform Backend Service",
-    version="0.1.0",
-)
+# Create DB tables
+Base.metadata.create_all(bind=engine)
 
-# CORS configuration
-origins = [
-    "http://localhost:5173",  # Vite default port
-    "http://localhost:3000",
-]
+app = FastAPI(title="Xinghe Lab AI Platform", version="2.0.0")
 
+# --- Middleware ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(test_db.router, prefix="/api/v1/test", tags=["test"])
+# --- Static Files ---
+os.makedirs("data/samples", exist_ok=True)
+os.makedirs("uploads/original", exist_ok=True)
+os.makedirs("uploads/results", exist_ok=True)
+
+# Mount data for serving dataset samples
+app.mount("/data", StaticFiles(directory="data"), name="data")
+# Mount uploads for serving user images and results
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+# --- Include Routers ---
+app.include_router(algorithms.router, prefix="/api", tags=["Registry"])
+app.include_router(tasks.router, prefix="/api", tags=["Tasks"])
+app.include_router(datasets.router, prefix="/api", tags=["Datasets"])
+app.include_router(uploads.router, prefix="/api", tags=["Uploads"])
 
 @app.get("/")
 async def root():
-    return {"message": f"Welcome to {settings.PROJECT_NAME} API"}
+    return {"message": "Welcome to Xinghe Lab AI Platform API v2"}
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

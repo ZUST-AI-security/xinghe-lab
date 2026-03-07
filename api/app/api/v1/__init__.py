@@ -1,1 +1,1 @@
-# API version 1 module
+# Package for API version 1

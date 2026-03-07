@@ -35,9 +35,15 @@ class Settings(BaseSettings):
         # Default to SQLite if no Postgres server is specified
         return "sqlite:///./sql_app.db"
 
+    # Redis Settings
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
+        extra="ignore" # 允许环境变量中有额外的变量而不报错
     )
 
 settings = Settings()
