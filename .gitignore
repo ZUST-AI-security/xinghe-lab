@@ -1,8 +1,9 @@
-# Dependencies
+# Dependencies (Node.js)
 node_modules/
 .pnp
 .pnp.js
 dist/
+dist-ssr/
 build/
 
 # Python
@@ -18,11 +19,27 @@ instance/
 .coverage
 htmlcov/
 
+# Data and Models
+data/
+/models/
+uploads/
+
+# Database
+*.db
+*.sqlite3
+sql_app.db
+
 # Logs
+logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Local files
+*.local
 
 # OS
 .DS_Store
@@ -33,3 +50,11 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Editor
+!.vscode/extensions.json
