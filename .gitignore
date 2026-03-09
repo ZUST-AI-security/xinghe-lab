@@ -28,6 +28,7 @@ uploads/
 *.db
 *.sqlite3
 sql_app.db
+api\sql_app.db
 
 # Logs
 logs
