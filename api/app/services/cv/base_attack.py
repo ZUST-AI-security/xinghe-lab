@@ -4,6 +4,9 @@ import torchvision.transforms as transforms
 from PIL import Image
 import os
 import numpy as np
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class BaseAttackService:
     """
@@ -48,7 +51,7 @@ class BaseAttackService:
                 
         if not full_path:
             error_msg = f"Image not found. Searched in: {possible_paths}"
-            print(error_msg)
+            logger.error(error_msg)
             raise FileNotFoundError(error_msg)
             
         img = Image.open(full_path).convert('RGB')

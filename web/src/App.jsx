@@ -1,57 +1,27 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { Layout, Typography, Menu, Space } from 'antd';
-import { SafetyCertificateOutlined, ExperimentOutlined, HomeOutlined } from '@ant-design/icons';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import MainLayout from './components/layout/MainLayout';
 import Home from './pages/Home';
+import About from './pages/About';
+import AlgorithmList from './pages/AlgorithmList';
 import AttackLab from './pages/AttackLab';
-
-const { Header, Content, Footer } = Layout;
-const { Title } = Typography;
+import TestPersistence from './pages/TestPersistence';
 
 const App = () => {
   return (
     <Router>
-      <Layout className="layout" style={{ minHeight: '100vh', background: '#f0f2f5' }}>
-        <Header style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          background: '#001529', 
-          padding: '0 20px',
-          justifyContent: 'space-between'
-        }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-            <SafetyCertificateOutlined style={{ color: '#1890ff', fontSize: '24px', marginRight: '10px' }} />
-            <Title level={4} style={{ color: '#fff', margin: 0, whiteSpace: 'nowrap' }}>星河智安</Title>
-          </Link>
-          <Menu 
-            theme="dark" 
-            mode="horizontal" 
-            style={{ flex: 1, justifyContent: 'flex-end', minWidth: 0 }} 
-            items={[
-              { 
-                key: '/', 
-                label: <Link to="/"><HomeOutlined /> 首页</Link> 
-              },
-              { 
-                key: '/attack-lab', 
-                label: <Link to="/"><ExperimentOutlined /> 算法实验台</Link> 
-              }
-            ]}
-          />
-        </Header>
-
-        <Content style={{ minHeight: 'calc(100vh - 128px)' }}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/attack/:algoId" element={<AttackLab />} />
-            <Route path="/attack-lab" element={<Home />} />
-          </Routes>
-        </Content>
-
-        <Footer style={{ textAlign: 'center', color: '#999', padding: '20px 10px' }}>
-          星河智安实验室 ©{new Date().getFullYear()}
-        </Footer>
-      </Layout>
+      <MainLayout>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/algorithms" element={<AlgorithmList />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/test" element={<TestPersistence />} />
+          <Route path="/attack/:algoId" element={<AttackLab />} />
+          
+          {/* Keep compatibility with old links if any */}
+          <Route path="/attack-lab" element={<AlgorithmList />} />
+        </Routes>
+      </MainLayout>
     </Router>
   );
 };

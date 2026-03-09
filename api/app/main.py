@@ -3,11 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.api.v1 import algorithms, tasks, datasets, uploads
 from app.core.db import engine, Base
+from app.core.logging_config import setup_logging, get_logger
 from app.models import models
 import os
 
+# Initialize logging
+setup_logging()
+logger = get_logger(__name__)
+
 # Create DB tables
 Base.metadata.create_all(bind=engine)
+logger.info("Database initialized and tables created.")
 
 app = FastAPI(title="Xinghe Lab AI Platform", version="2.0.0")
 
