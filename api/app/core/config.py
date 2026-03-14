@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     # 应用基础配置
     app_name: str = "星河智安 AI安全攻击可视化平台"
     app_version: str = "1.0.0"
-    debug: bool = False
+    debug: bool = True  # 开发环境默认开启debug
     secret_key: str = "your-secret-key-here-change-in-production"
     
     # 数据库配置
@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     log_file: str = "./logs/app.log"
     
     # CORS配置（开发模式）
-    cors_origins: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://127.0.0.1:40747"]
+    cors_origins: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://127.0.0.1:40747", "http://localhost:3001"]
     
     # 安全配置
     password_min_length: int = 8

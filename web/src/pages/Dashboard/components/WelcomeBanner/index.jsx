@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, Typography, Space, Tag, Row, Col } from 'antd';
 import { ThunderboltOutlined, ClockCircleOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 import { formatGreeting, formatDate } from '../../../../utils/dateUtils';
 import styles from './WelcomeBanner.module.less';
 
@@ -10,7 +10,7 @@ const { Title, Text } = Typography;
 
 const WelcomeBanner = ({ gpuLoad, queueLength }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   
   const greeting = formatGreeting();
   const currentDate = formatDate(new Date());

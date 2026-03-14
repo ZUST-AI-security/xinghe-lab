@@ -189,47 +189,14 @@ python -m venv venv
 # 4. 升级pip
 python -m pip install --upgrade pip
 
-# 5. 安装Python依赖
+# 5. 安装Python依赖 (包含必需的额外依赖)
 pip install -r requirements.txt
+pip install email-validator python-multipart torch torchvision opencv-python pillow celery redis
 
-# 6. 配置环境变量
-copy .env.example .env
-# 使用记事本或VS Code编辑 .env 文件
-notepad .env
-
-# 7. 创建数据库和初始用户
-python -c "
-from app.core.database import engine, Base
-from app.models.user import User
-from app.core.security import get_password_hash
-from sqlalchemy.orm import Session
-
-Base.metadata.create_all(bind=engine)
-db = Session(engine)
-
-# 创建管理员用户
-if not db.query(User).filter(User.username == 'admin').first():
-    admin_user = User(
-        username='admin',
-        email='admin@xinghe.com',
-        full_name='管理员',
-        hashed_password=get_password_hash('admin123'),
-        is_active=True,
-        is_superuser=True
-    )
-    db.add(admin_user)
-    db.commit()
-    print('✅ 管理员用户创建成功')
-else:
-    print('✅ 管理员用户已存在')
-
-db.close()
-"
-
-# 8. 启动后端API服务
+# 6. 启动后端API服务 (内置用户会自动创建)
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 9. 启动异步任务处理 (新开PowerShell窗口)
+# 7. 启动异步任务处理 (新开PowerShell窗口，可选)
 .\venv\Scripts\activate
 celery -A app.workers.celery_app worker --loglevel=info
 ```
@@ -249,47 +216,14 @@ source venv/bin/activate
 # 4. 升级pip
 python -m pip install --upgrade pip
 
-# 5. 安装Python依赖
+# 5. 安装Python依赖 (包含必需的额外依赖)
 pip install -r requirements.txt
+pip install email-validator python-multipart torch torchvision opencv-python pillow celery redis
 
-# 6. 配置环境变量
-cp .env.example .env
-# 使用编辑器修改 .env 文件
-nano .env  # 或 vim .env
-
-# 7. 创建数据库和初始用户
-python -c "
-from app.core.database import engine, Base
-from app.models.user import User
-from app.core.security import get_password_hash
-from sqlalchemy.orm import Session
-
-Base.metadata.create_all(bind=engine)
-db = Session(engine)
-
-# 创建管理员用户
-if not db.query(User).filter(User.username == 'admin').first():
-    admin_user = User(
-        username='admin',
-        email='admin@xinghe.com',
-        full_name='管理员',
-        hashed_password=get_password_hash('admin123'),
-        is_active=True,
-        is_superuser=True
-    )
-    db.add(admin_user)
-    db.commit()
-    print('✅ 管理员用户创建成功')
-else:
-    print('✅ 管理员用户已存在')
-
-db.close()
-"
-
-# 8. 启动后端API服务
+# 6. 启动后端API服务 (内置用户会自动创建)
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 9. 启动异步任务处理 (新开终端)
+# 7. 启动异步任务处理 (新开终端，可选)
 source venv/bin/activate
 celery -A app.workers.celery_app worker --loglevel=info
 ```
@@ -306,13 +240,13 @@ cd web
 node --version  # 应该 >= 16.0.0
 npm --version   # 应该 >= 8.0.0
 
-# 3. 安装Node.js依赖
-npm install
+# 3. 安装Node.js依赖 (解决版本冲突)
+npm install --legacy-peer-deps
 
 # 4. 配置环境变量
-copy .env.example .env
-# 使用记事本或VS Code编辑 .env 文件
-notepad .env
+echo SKIP_PREFLIGHT_CHECK=true > .env
+echo REACT_APP_API_BASE_URL=http://localhost:8000 >> .env
+echo REACT_APP_ENABLE_DEBUG=true >> .env
 
 # 5. 启动前端开发服务器
 npm start
@@ -331,13 +265,13 @@ cd web
 node --version  # 应该 >= 16.0.0
 npm --version   # 应该 >= 8.0.0
 
-# 3. 安装Node.js依赖
-npm install
+# 3. 安装Node.js依赖 (解决版本冲突)
+npm install --legacy-peer-deps
 
 # 4. 配置环境变量
-cp .env.example .env
-# 使用编辑器修改 .env 文件
-nano .env  # 或 vim .env
+echo "SKIP_PREFLIGHT_CHECK=true" > .env
+echo "REACT_APP_API_BASE_URL=http://localhost:8000" >> .env
+echo "REACT_APP_ENABLE_DEBUG=true" >> .env
 
 # 5. 启动前端开发服务器
 npm start
@@ -352,10 +286,12 @@ PORT=3001 npm start
 
 启动成功后，可以通过以下地址访问：
 
-- **前端应用**: http://localhost:3000
+- **前端应用**: http://localhost:3000 (或 http://localhost:3001)
 - **后端API**: http://localhost:8000  
 - **API文档**: http://localhost:8000/docs
 - **任务监控**: http://localhost:5555 (如果启动了Celery)
+
+**注意**: 如果3000端口被占用，前端会自动切换到3001端口
 
 ---
 
@@ -447,8 +383,8 @@ PORT=3001 npm start
 ## 🎯 使用流程
 
 1. **启动服务**：按照上述步骤启动前后端服务
-2. **访问应用**：打开 http://localhost:3000
-3. **用户登录**：使用默认管理员账号登录
+2. **访问应用**：打开 http://localhost:3000 (或 http://localhost:3001)
+3. **用户登录**：使用默认管理员账号登录，或点击"一键填充测试账号"按钮
 4. **浏览主页**：查看平台概况和快速开始
 5. **开始攻击**：点击"图像分类攻击"进入C&W攻击页面
 6. **上传图片**：选择要测试的图片文件
@@ -457,9 +393,79 @@ PORT=3001 npm start
 9. **运行攻击**：点击运行按钮执行攻击
 10. **查看结果**：观察对比滑块、热力图和置信度变化
 
+### 🚀 新增功能
+
+**一键填充测试账号**
+- 登录页面新增"一键填充测试账号"按钮
+- 自动填充用户名：admin，密码：admin123
+- 提高测试和演示效率
+
+**详细调试日志**
+- 前端控制台显示完整的认证流程
+- 实时监控API请求和响应
+- 快速定位登录问题
+
+**自动端口切换**
+- 前端支持3000和3001端口
+- 端口被占用时自动切换
+- 环境变量自动配置
+
 ---
 
 ## 🐛 常见问题
+
+### 🔥 启动阶段常见错误
+
+**Q: ModuleNotFoundError: No module named 'app.models.user'**
+```powershell
+# 解决方案：用户模型已内置，启动后端时会自动创建
+# 如果仍有问题，手动创建：
+cd api\app\models
+echo. > user.py
+# 然后重启后端服务
+```
+
+**Q: ImportError: No module named 'email-validator'**
+```powershell
+# 解决方案：安装缺失依赖
+pip install email-validator python-multipart torch torchvision opencv-python pillow celery redis
+```
+
+**Q: npm ERESOLVE could not resolve dependency conflicts**
+```powershell
+# 解决方案：使用legacy-peer-deps安装
+npm install --legacy-peer-deps
+```
+
+**Q: WebpackError: Invalid options object. Dev Server has been initialized using an options object that does not match the API schema**
+```powershell
+# 解决方案：设置环境变量
+# Windows:
+echo SKIP_PREFLIGHT_CHECK=true > .env
+echo REACT_APP_API_BASE_URL=http://localhost:8000 >> .env
+echo REACT_APP_ENABLE_DEBUG=true >> .env
+
+# Linux/macOS:
+echo "SKIP_PREFLIGHT_CHECK=true" > .env
+echo "REACT_APP_API_BASE_URL=http://localhost:8000" >> .env
+echo "REACT_APP_ENABLE_DEBUG=true" >> .env
+```
+
+**Q: CORS策略阻止请求 / Access-Control-Allow-Origin缺失**
+```powershell
+# 解决方案：确保后端debug模式开启
+# 后端配置文件 api/app/core/config.py 中设置：
+debug: bool = True
+
+# 重启后端服务即可
+```
+
+**Q: 登录失败，状态码401（未授权）**
+```powershell
+# 解决方案：检查token存储顺序
+# 已修复：先存储token到localStorage，再调用getCurrentUser
+# 如果仍有问题，清除浏览器缓存重新登录
+```
 
 ### Windows系统
 
@@ -475,7 +481,7 @@ PORT=3001 npm start
 # 解决方案：以管理员身份运行PowerShell
 # 或使用淘宝镜像
 npm config set registry https://registry.npmmirror.com
-npm install
+npm install --legacy-peer-deps
 ```
 
 **Q: 端口被占用**
@@ -514,6 +520,31 @@ lsof -i :8000
 
 # 结束进程
 kill -9 <进程ID>
+```
+
+### 🔧 调试技巧
+
+**Q: 如何查看详细错误信息**
+```powershell
+# 前端：打开浏览器开发者工具 -> Console标签
+# 后端：查看终端输出，已启用详细日志
+
+# 前端调试模式已启用，会显示：
+# 🔐 发送登录请求: {username: "...", password: "..."}
+# ✅ 登录响应: {access_token: "...", refresh_token: "..."}
+# 🔍 获取当前用户信息...
+# 🎫 当前token: 存在/不存在
+# ✅ 用户信息获取成功: {...}
+```
+
+**Q: 登录后不能跳转到主页**
+```powershell
+# 检查步骤：
+# 1. 确认后端服务运行在 http://localhost:8000
+# 2. 确认前端服务运行在 http://localhost:3000 或 3001
+# 3. 检查浏览器控制台是否有CORS错误
+# 4. 使用"一键填充测试账号"功能测试
+# 5. 查看网络请求是否成功返回token
 ```
 
 ---

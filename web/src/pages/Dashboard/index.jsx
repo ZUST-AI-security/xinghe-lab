@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Row, Col, Card, Typography, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/authStore';
 import TopNav from './components/TopNav';
 import WelcomeBanner from './components/WelcomeBanner';
 import StatCards from './components/StatCards';
@@ -16,7 +16,7 @@ const { Title } = Typography;
 
 const Dashboard = () => {
   const { t, i18n } = useTranslation();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const { 
     stats, 
     recentActivities, 
@@ -54,7 +54,6 @@ const Dashboard = () => {
         <div className={styles.container}>
           {/* 欢迎区域 */}
           <WelcomeBanner 
-            username={user?.username || 'User'} 
             gpuLoad={gpuLoad}
             queueLength={queueLength}
           />

@@ -7,7 +7,17 @@ import { api } from './client';
 
 // 用户登录
 export const login = async (credentials) => {
-  const response = await api.post('/auth/login', credentials);
+  // 后端使用OAuth2PasswordRequestForm，需要表单数据
+  const formData = `username=${encodeURIComponent(credentials.username)}&password=${encodeURIComponent(credentials.password)}`;
+  
+  console.log('🔐 发送登录请求:', credentials);
+  const response = await api.post('/auth/login', formData, {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  });
+  
+  console.log('✅ 登录响应:', response.data);
   return response.data;
 };
 
@@ -25,7 +35,12 @@ export const refreshToken = async (refreshToken) => {
 
 // 获取当前用户信息
 export const getCurrentUser = async () => {
+  console.log('🔍 获取当前用户信息...');
+  const token = localStorage.getItem('access_token');
+  console.log('🎫 当前token:', token ? '存在' : '不存在');
+  
   const response = await api.get('/users/me');
+  console.log('✅ 用户信息获取成功:', response.data);
   return response.data;
 };
 

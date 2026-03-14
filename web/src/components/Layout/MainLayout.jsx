@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Layout, theme } from 'antd';
 import { useAuthStore } from '../../store/authStore';
 import SideMenu from './SideMenu';
+import PropTypes from 'prop-types';
 
 const { Header, Content, Sider } = Layout;
 
@@ -91,6 +92,10 @@ const MainLayout = ({ children }) => {
       </Layout>
     </Layout>
   );
+};
+
+MainLayout.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 export default MainLayout;

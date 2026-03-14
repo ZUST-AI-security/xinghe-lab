@@ -46,6 +46,36 @@ async def lifespan(app: FastAPI):
         create_tables()
         logger.info("✅ 数据库表创建完成")
         
+        # 创建内置测试用户
+        from .core.database import SessionLocal
+        from .models.user import User
+        from .core.security import get_password_hash
+        
+        db = SessionLocal()
+        try:
+            # 检查是否已存在admin用户
+            admin_user = db.query(User).filter(User.username == "admin").first()
+            if not admin_user:
+                # 创建admin用户
+                hashed_password = get_password_hash("admin123")
+                admin_user = User(
+                    username="admin",
+                    email="admin@xinghe.com",
+                    hashed_password=hashed_password,
+                    is_active=True,
+                    is_superuser=True
+                )
+                db.add(admin_user)
+                db.commit()
+                logger.info("✅ 内置admin用户创建成功")
+            else:
+                logger.info("ℹ️ admin用户已存在")
+        except Exception as e:
+            logger.error(f"❌ 创建内置用户失败: {e}")
+            db.rollback()
+        finally:
+            db.close()
+        
         # 导入模型以触发注册
         from .services.model_manager import model_registry
         from .services.attacks import attack_registry

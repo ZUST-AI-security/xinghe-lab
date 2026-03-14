@@ -24,6 +24,10 @@ const useAuthStore = create(
           const response = await loginApi(credentials);
           const { access_token, refresh_token } = response;
 
+          // 先存储token到localStorage
+          localStorage.setItem('access_token', access_token);
+          localStorage.setItem('refresh_token', refresh_token);
+          
           // 获取用户信息
           const user = await getCurrentUser();
           
@@ -37,10 +41,6 @@ const useAuthStore = create(
             loading: false,
             isAuthenticated: true,
           });
-
-          // 存储token到localStorage
-          localStorage.setItem('access_token', access_token);
-          localStorage.setItem('refresh_token', refresh_token);
 
           return { success: true, user };
         } catch (error) {
@@ -57,6 +57,10 @@ const useAuthStore = create(
           const response = await registerApi(userData);
           const { access_token, refresh_token } = response;
 
+          // 先存储token到localStorage
+          localStorage.setItem('access_token', access_token);
+          localStorage.setItem('refresh_token', refresh_token);
+
           // 获取用户信息
           const user = await getCurrentUser();
 
@@ -67,10 +71,6 @@ const useAuthStore = create(
             loading: false,
             isAuthenticated: true,
           });
-
-          // 存储token到localStorage
-          localStorage.setItem('access_token', access_token);
-          localStorage.setItem('refresh_token', refresh_token);
 
           return { success: true, user };
         } catch (error) {
