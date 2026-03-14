@@ -76,7 +76,7 @@ const QuickStartCard = ({
             onClick={handleStart}
             className={styles.button}
           >
-            {buttonText || (isDisabled ? t('quickStart.comingSoon') : t('quickStart.start'))}
+            {buttonText || (isDisabled ? '敬请期待' : '开始实验')}
           </Button>
         </div>
       </div>

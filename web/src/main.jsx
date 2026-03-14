@@ -4,6 +4,7 @@ import { ConfigProvider, theme } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import App from './App.jsx'
 import './assets/styles/global.css'
+import './i18n' // 导入i18n配置
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

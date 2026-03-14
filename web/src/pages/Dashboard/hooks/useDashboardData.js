@@ -4,8 +4,10 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export const useDashboardData = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     algorithms: { count: 4, trend: '+2', trendText: '本月新增' },
@@ -52,7 +54,7 @@ export const useDashboardData = () => {
     },
     {
       id: 5,
-      time: '前天 14:45',
+      time: '昨天 14:45',
       algorithm: 'C&W攻击',
       model: 'ResNet100',
       success: true,

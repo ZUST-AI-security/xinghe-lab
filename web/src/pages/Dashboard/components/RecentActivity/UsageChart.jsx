@@ -61,7 +61,7 @@ const UsageChart = ({ data }) => {
     <Card
       title={
         <Title level={4} className={styles.cardTitle}>
-          📊 {t('recent')} {t('stats.algorithms')}分布
+          📊 算法使用分布
         </Title>
       }
       className={styles.chartCard}

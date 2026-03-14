@@ -27,7 +27,7 @@ const SideMenu = ({ collapsed }) => {
     {
       key: '/dashboard',
       icon: <BarChartOutlined />,
-      label: '仪表盘',
+      label: '主页',
     },
     {
       key: '/attacks',

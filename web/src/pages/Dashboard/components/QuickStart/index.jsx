@@ -12,10 +12,10 @@ const QuickStart = () => {
   const quickStartItems = [
     {
       key: 'classification',
-      title: t('quickStart.classification'),
-      description: t('quickStart.classificationDesc'),
+      title: '图像分类攻击',
+      description: '针对分类模型的对抗样本生成',
       model: 'ResNet100',
-      classes: '1000 classes',
+      classes: '1000类',
       dataset: 'ImageNet',
       background: 'linear-gradient(135deg, rgba(30, 109, 242, 0.1), rgba(30, 109, 242, 0.05))',
       icon: '🖼️',
@@ -24,10 +24,10 @@ const QuickStart = () => {
     },
     {
       key: 'detection',
-      title: t('quickStart.detection'),
-      description: t('quickStart.detectionDesc'),
+      title: '目标检测攻击',
+      description: '针对检测模型的对抗补丁攻击',
       model: 'YOLOv8',
-      classes: '80 classes',
+      classes: '80类',
       dataset: 'COCO',
       background: 'linear-gradient(135deg, rgba(123, 46, 218, 0.1), rgba(123, 46, 218, 0.05))',
       icon: '🎯',

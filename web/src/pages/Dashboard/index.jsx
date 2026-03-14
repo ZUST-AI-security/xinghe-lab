@@ -66,7 +66,7 @@ const Dashboard = () => {
           {/* 快速开始 */}
           <div className={styles.section}>
             <Title level={3} className={styles.sectionTitle}>
-              ⚡ {t('quickStart.title', '快速开始')}
+              ⚡ 快速开始
             </Title>
             <QuickStart />
           </div>
@@ -74,7 +74,7 @@ const Dashboard = () => {
           {/* 近期活动 */}
           <div className={styles.section}>
             <Title level={3} className={styles.sectionTitle}>
-              📊 {t('recent')}
+              📊 近期活动
             </Title>
             <RecentActivity 
               activities={recentActivities}
@@ -86,7 +86,7 @@ const Dashboard = () => {
           {/* 探索更多 */}
           <div className={styles.section}>
             <Title level={3} className={styles.sectionTitle}>
-              🔬 {t('explore')}
+              🔬 探索更多
             </Title>
             <ExploreNav />
           </div>

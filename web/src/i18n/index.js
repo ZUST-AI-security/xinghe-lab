@@ -17,6 +17,9 @@ const resources = {
         online: "在线"
       },
       quickStart: {
+        title: "快速开始",
+        classes: "1000类",
+        classes2: "80类",
         classification: "图像分类攻击",
         detection: "目标检测攻击",
         classificationDesc: "针对分类模型的对抗样本生成",
@@ -38,7 +41,15 @@ const resources = {
       morning: "早上好",
       afternoon: "下午好",
       evening: "晚上好",
-      night: "晚上好"
+      night: "晚上好",
+      high: "高",
+      medium: "中", 
+      low: "低",
+      busy: "繁忙",
+      normal: "正常",
+      researcher: "研究员",
+      profile: "个人设置",
+      logout: "退出登录"
     }
   },
   en: {
@@ -56,6 +67,9 @@ const resources = {
         online: "online"
       },
       quickStart: {
+        title: "Quick Start",
+        classes: "1000 classes",
+        classes2: "80 classes",
         classification: "Image Classification Attack",
         detection: "Object Detection Attack",
         classificationDesc: "Adversarial example generation for classification models",
@@ -77,20 +91,37 @@ const resources = {
       morning: "Good Morning",
       afternoon: "Good Afternoon",
       evening: "Good Evening",
-      night: "Good Night"
+      night: "Good Night",
+      high: "High",
+      medium: "Medium", 
+      low: "Low",
+      busy: "Busy",
+      normal: "Normal",
+      researcher: "Researcher",
+      profile: "Profile Settings",
+      logout: "Logout"
     }
   }
 };
 
+// 初始化i18n - 仅支持中文
 i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: localStorage.getItem('language') || 'zh',
-    fallbackLng: 'en',
+    lng: 'zh', // 强制中文
+    fallbackLng: 'zh',
     interpolation: {
       escapeValue: false
     }
+  })
+  .then(() => {
+    console.log('i18n initialized successfully - Chinese only');
+    // 确保localStorage设置为中文
+    localStorage.setItem('language', 'zh');
+  })
+  .catch(error => {
+    console.error('i18n initialization failed:', error);
   });
 
 export default i18n;

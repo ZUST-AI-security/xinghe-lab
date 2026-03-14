@@ -10,7 +10,7 @@ const StatCards = ({ stats, loading }) => {
   const statItems = [
     {
       key: 'algorithms',
-      title: t('stats.algorithms'),
+      title: '可用算法',
       value: stats.algorithms.count,
       trend: stats.algorithms.trend,
       trendText: stats.algorithms.trendText,
@@ -19,7 +19,7 @@ const StatCards = ({ stats, loading }) => {
     },
     {
       key: 'models',
-      title: t('stats.models'),
+      title: '可用模型',
       value: stats.models.count,
       status: stats.models.status,
       details: stats.models.list,
@@ -28,7 +28,7 @@ const StatCards = ({ stats, loading }) => {
     },
     {
       key: 'runsToday',
-      title: t('stats.runsToday'),
+      title: '今日运行',
       value: stats.runsToday.count,
       growth: stats.runsToday.growth,
       comparison: stats.runsToday.comparison,
@@ -37,7 +37,7 @@ const StatCards = ({ stats, loading }) => {
     },
     {
       key: 'successRate',
-      title: t('stats.successRate'),
+      title: '攻击成功率',
       value: `${Math.round(stats.successRate.rate * 100)}%`,
       best: stats.successRate.best,
       label: stats.successRate.label,

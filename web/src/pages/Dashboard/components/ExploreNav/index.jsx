@@ -10,36 +10,32 @@ const ExploreNav = () => {
   const exploreItems = [
     {
       key: 'algorithms',
-      title: t('algorithms'),
+      title: '算法库',
       description: '查看所有攻击算法详情和参数',
-      descriptionEn: 'Explore all attack algorithms and parameters',
       icon: '🔬',
       color: '#1E6DF2',
       path: '/algorithms'
     },
     {
       key: 'models',
-      title: t('models'),
+      title: '模型库',
       description: '探索可用模型和性能指标',
-      descriptionEn: 'Discover available models and metrics',
       icon: '🤖',
       color: '#7B2EDA',
       path: '/models'
     },
     {
       key: 'docs',
-      title: t('docs'),
+      title: '开发文档',
       description: 'API文档和二次开发指南',
-      descriptionEn: 'API docs and development guide',
       icon: '📚',
       color: '#00B8D9',
       path: '/docs'
     },
     {
       key: 'community',
-      title: t('community'),
+      title: '研究社区',
       description: '论文分享和学术讨论',
-      descriptionEn: 'Paper sharing and discussions',
       icon: '👥',
       color: '#F59E0B',
       path: '/community'

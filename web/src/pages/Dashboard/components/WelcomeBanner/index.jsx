@@ -15,6 +15,17 @@ const WelcomeBanner = ({ gpuLoad, queueLength }) => {
   const greeting = formatGreeting();
   const currentDate = formatDate(new Date());
 
+  const getGpuStatus = (load) => {
+    if (load > 80) return t('high', '高');
+    if (load > 50) return t('medium', '中');
+    return t('low', '低');
+  };
+
+  const getQueueStatus = (queue) => {
+    if (queue > 5) return t('busy', '繁忙');
+    return t('normal', '正常');
+  };
+
   return (
     <Card className={styles.welcomeBanner} bordered={false}>
       <div className={styles.bannerContent}>
@@ -37,7 +48,7 @@ const WelcomeBanner = ({ gpuLoad, queueLength }) => {
                     color={gpuLoad > 80 ? 'error' : gpuLoad > 50 ? 'warning' : 'success'}
                     className={styles.statusTag}
                   >
-                    {gpuLoad > 80 ? '高' : gpuLoad > 50 ? '中' : '低'}
+                    {getGpuStatus(gpuLoad)}
                   </Tag>
                 </div>
               </div>
@@ -53,7 +64,7 @@ const WelcomeBanner = ({ gpuLoad, queueLength }) => {
                     color={queueLength > 5 ? 'warning' : 'default'}
                     className={styles.statusTag}
                   >
-                    {queueLength > 5 ? '繁忙' : '正常'}
+                    {getQueueStatus(queueLength)}
                   </Tag>
                 </div>
               </div>

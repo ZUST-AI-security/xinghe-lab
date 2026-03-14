@@ -5,11 +5,11 @@ import {
   UserOutlined, 
   SettingOutlined, 
   LogoutOutlined,
-  StarOutlined 
+  StarOutlined,
+  GlobalOutlined 
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../../../store/authStore';
-import LanguageSwitch from '../../../../components/Common/LanguageSwitch';
 import styles from './TopNav.module.less';
 
 const { Header } = Layout;
@@ -72,15 +72,19 @@ const TopNav = () => {
         <div className={styles.logo}>
           <StarOutlined className={styles.logoIcon} />
           <span className={styles.logoText}>
-            {i18n.language === 'zh' ? '星河智安' : 'XingHe ZhiAn'}
+            星河智安
           </span>
         </div>
       </div>
 
       <div className={styles.headerRight}>
         <Space size="large">
-          {/* 语言切换 */}
-          <LanguageSwitch />
+          {/* 语言图标（仅显示，无功能） */}
+          <GlobalOutlined 
+            className={styles.icon} 
+            style={{ cursor: 'default' }}
+            title="当前语言：中文"
+          />
           
           {/* 通知中心 */}
           <Dropdown 
