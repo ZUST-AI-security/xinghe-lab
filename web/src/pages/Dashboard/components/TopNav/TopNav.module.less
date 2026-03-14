@@ -1,0 +1,112 @@
+.header {
+  background: var(--bg-secondary, #FFFFFF);
+  border-bottom: 1px solid var(--border-color, #E2E8F0);
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 64px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.logo:hover {
+  transform: translateY(-1px);
+}
+
+.logoIcon {
+  font-size: 24px;
+  background: linear-gradient(135deg, var(--accent-primary, #1E6DF2), var(--accent-secondary, #7B2EDA));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.logoText {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1F36);
+  background: linear-gradient(135deg, var(--accent-primary, #1E6DF2), var(--accent-secondary, #7B2EDA));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.icon {
+  font-size: 18px;
+  color: var(--text-secondary, #4A5568);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.icon:hover {
+  color: var(--accent-primary, #1E6DF2);
+  transform: scale(1.1);
+}
+
+.avatar {
+  background: linear-gradient(135deg, var(--accent-primary, #1E6DF2), var(--accent-secondary, #7B2EDA));
+  border: 2px solid var(--bg-secondary, #FFFFFF);
+  box-shadow: 0 2px 8px rgba(30, 109, 242, 0.2);
+  transition: all 0.3s ease;
+}
+
+.avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(30, 109, 242, 0.3);
+}
+
+.notificationItem {
+  padding: 8px 0;
+  min-width: 200px;
+}
+
+.unread {
+  font-weight: 600;
+  color: var(--accent-primary, #1E6DF2);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .header {
+    padding: 0 16px;
+  }
+  
+  .logoText {
+    font-size: 18px;
+  }
+  
+  .logoIcon {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 0 12px;
+  }
+  
+  .logoText {
+    display: none;
+  }
+}

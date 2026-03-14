@@ -1,0 +1,32 @@
+.languageSwitch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .icon {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  
+  :global(.ant-segmented) {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    
+    :global(.ant-segmented-item) {
+      color: var(--text-secondary);
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        color: var(--accent-primary);
+        background: var(--bg-tertiary);
+      }
+      
+      &.ant-segmented-item-selected {
+        background: var(--accent-primary);
+        color: white;
+        border-color: var(--accent-primary);
+      }
+    }
+  }
+}

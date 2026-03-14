@@ -1,0 +1,30 @@
+.language-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.language-icon {
+  color: var(--text-secondary, #4A5568);
+  font-size: 16px;
+}
+
+.language-switch .ant-segmented {
+  background: var(--bg-tertiary, #F0F2F5);
+  border: 1px solid var(--border-color, #E2E8F0);
+}
+
+.language-switch .ant-segmented-item {
+  color: var(--text-secondary, #4A5568);
+  border-color: var(--border-color, #E2E8F0);
+}
+
+.language-switch .ant-segmented-item-selected {
+  background: var(--accent-primary, #1E6DF2);
+  color: white;
+}
+
+.language-switch .ant-segmented-item:hover:not(.ant-segmented-item-selected) {
+  background: var(--accent-glow, #00B8D9);
+  color: white;
+}

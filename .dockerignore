@@ -1,0 +1,75 @@
+# 星河智安 (XingHe ZhiAn) - Docker忽略文件
+
+# 后端忽略文件
+backend/__pycache__
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+backend/.env
+backend/.venv
+backend/venv/
+backend/ENV/
+backend/env/
+backend/.pytest_cache
+backend/.coverage
+backend/htmlcov/
+backend/tox.ini
+backend/.DS_Store
+backend/.idea
+backend.vscode/
+backend/node_modules/
+
+# 前端忽略文件
+frontend/node_modules
+frontend/build
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.DS_Store
+frontend/.idea
+frontend.vscode/
+
+# Git相关
+.git
+.gitignore
+.gitattributes
+
+# 文档
+README.md
+docs/
+*.md
+
+# 临时文件
+*.tmp
+*.temp
+*.log
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE文件
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# 测试文件
+tests/
+test/
+coverage/
+.nyc_output/
+
+# 缓存文件
+.cache/
+.parcel-cache/
+.eslintcache

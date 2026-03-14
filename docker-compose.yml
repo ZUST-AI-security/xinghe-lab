@@ -1,0 +1,146 @@
+# 星河智安 (XingHe ZhiAn) - Docker Compose配置
+# AI安全攻击可视化平台容器化部署
+
+version: '3.8'
+
+services:
+  # Redis服务 - 用于Celery任务队列和缓存
+  redis:
+    image: redis:7-alpine
+    container_name: xinghe-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - xinghe-network
+
+  # 后端API服务
+  backend:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: xinghe-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=False
+      - DATABASE_URL=sqlite:///./xinghe_zhi_an.db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SECRET_KEY=your-production-secret-key-change-this
+      - JWT_SECRET_KEY=your-jwt-secret-key-change-this
+    volumes:
+      - ./api:/app
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+    depends_on:
+      - redis
+    networks:
+      - xinghe-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker - 处理异步攻击任务
+  celery-worker:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: xinghe-celery-worker
+    restart: unless-stopped
+    environment:
+      - DEBUG=False
+      - DATABASE_URL=sqlite:///./xinghe_zhi_an.db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SECRET_KEY=your-production-secret-key-change-this
+      - JWT_SECRET_KEY=your-jwt-secret-key-change-this
+    volumes:
+      - ./api:/app
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+    depends_on:
+      - redis
+    networks:
+      - xinghe-network
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+
+  # Celery Beat - 定时任务调度
+  celery-beat:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: xinghe-celery-beat
+    restart: unless-stopped
+    environment:
+      - DEBUG=False
+      - DATABASE_URL=sqlite:///./xinghe_zhi_an.db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SECRET_KEY=your-production-secret-key-change-this
+      - JWT_SECRET_KEY=your-jwt-secret-key-change-this
+    volumes:
+      - ./api:/app
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+    depends_on:
+      - redis
+    networks:
+      - xinghe-network
+    command: celery -A app.workers.celery_app beat --loglevel=info
+
+  # 前端React应用
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: xinghe-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:8000
+      - REACT_APP_API_VERSION=v1
+    depends_on:
+      - backend
+    networks:
+      - xinghe-network
+
+  # Flower - Celery监控面板
+  flower:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: xinghe-flower
+    restart: unless-stopped
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+    networks:
+      - xinghe-network
+    command: celery -A app.workers.celery_app flower --port=5555
+
+volumes:
+  redis_data:
+    driver: local
+  backend_data:
+    driver: local
+  backend_logs:
+    driver: local
+
+networks:
+  xinghe-network:
+    driver: bridge

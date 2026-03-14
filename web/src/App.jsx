@@ -1,59 +1,138 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { Layout, Typography, Menu, Space } from 'antd';
-import { SafetyCertificateOutlined, ExperimentOutlined, HomeOutlined } from '@ant-design/icons';
-import Home from './pages/Home';
-import AttackLab from './pages/AttackLab';
+/**
+ * 星河智安 (XingHe ZhiAn) - 主应用组件
+ * AI安全攻击可视化平台的核心应用
+ */
 
-const { Header, Content, Footer } = Layout;
-const { Title } = Typography;
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { Layout, Spin } from 'antd';
+import ErrorBoundary from './components/Common/ErrorBoundary';
+import { useAuthStore } from './store/authStore';
 
-const App = () => {
+// 布局组件
+import MainLayout from './components/Layout/MainLayout';
+
+// 页面组件
+import Login from './pages/Auth/Login';
+import Register from './pages/Auth/Register';
+import Dashboard from './pages/Dashboard';
+import CWAttack from './pages/Attacks/CWAttack';
+
+// API客户端
+import { setupAxiosInterceptors } from './api/client';
+
+const { Content } = Layout;
+
+function App() {
+  const { user, loading, checkAuth, isAuthenticated } = useAuthStore();
+
+  // 应用初始化
+  useEffect(() => {
+    console.log('🚀 App初始化，检查认证状态...');
+    // 设置Axios拦截器
+    setupAxiosInterceptors();
+    
+    // 检查用户认证状态
+    checkAuth();
+  }, [checkAuth]);
+
+  // 显示加载状态
+  if (loading) {
+    console.log('⏳ 显示加载状态...');
+    return (
+      <div className="flex-center full-height">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  console.log('📊 App状态:', { user: user?.username, isAuthenticated, loading });
+
+  // 受保护的路由组件
+  const ProtectedRoute = ({ children }) => {
+    console.log('🛡️ ProtectedRoute检查:', { user: user?.username, isAuthenticated });
+    if (!user || !isAuthenticated) {
+      console.log('🔄 重定向到登录页');
+      return <Navigate to="/login" replace />;
+    }
+    return children;
+  };
+
   return (
-    <Router>
-      <Layout className="layout" style={{ minHeight: '100vh', background: '#f0f2f5' }}>
-        <Header style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          background: '#001529', 
-          padding: '0 20px',
-          justifyContent: 'space-between'
-        }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-            <SafetyCertificateOutlined style={{ color: '#1890ff', fontSize: '24px', marginRight: '10px' }} />
-            <Title level={4} style={{ color: '#fff', margin: 0, whiteSpace: 'nowrap' }}>星河智安</Title>
-          </Link>
-          <Menu 
-            theme="dark" 
-            mode="horizontal" 
-            style={{ flex: 1, justifyContent: 'flex-end', minWidth: 0 }} 
-            items={[
-              { 
-                key: '/', 
-                label: <Link to="/"><HomeOutlined /> 首页</Link> 
-              },
-              { 
-                key: '/attack-lab', 
-                label: <Link to="/"><ExperimentOutlined /> 算法实验台</Link> 
-              }
-            ]}
+    <ErrorBoundary>
+      <Layout className="app-layout">
+        <Routes>
+          {/* 公开路由 */}
+          <Route 
+            path="/login" 
+            element={
+              user && isAuthenticated ? <Navigate to="/" replace /> : <Login />
+            } 
           />
-        </Header>
+          <Route 
+            path="/register" 
+            element={
+              user && isAuthenticated ? <Navigate to="/" replace /> : <Register />
+            } 
+          />
 
-        <Content style={{ minHeight: 'calc(100vh - 128px)' }}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/attack/:algoId" element={<AttackLab />} />
-            <Route path="/attack-lab" element={<Home />} />
-          </Routes>
-        </Content>
-
-        <Footer style={{ textAlign: 'center', color: '#999', padding: '20px 10px' }}>
-          星河智安实验室 ©{new Date().getFullYear()}
-        </Footer>
+          {/* 受保护的路由 */}
+          <Route 
+            path="/*" 
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Content>
+                    <Routes>
+                      {/* 默认路由重定向到Dashboard */}
+                      <Route 
+                        path="/" 
+                        element={<Navigate to="/dashboard" replace />} 
+                      />
+                      
+                      {/* Dashboard主页 */}
+                      <Route 
+                        path="/dashboard" 
+                        element={<Dashboard />} 
+                      />
+                      
+                      {/* 攻击算法页面 */}
+                      <Route 
+                        path="/attacks/cw" 
+                        element={<CWAttack />} 
+                      />
+                      
+                      {/* 其他攻击算法页面（预留） */}
+                      <Route 
+                        path="/attacks/*" 
+                        element={
+                          <div className="content-card">
+                            <h2>功能开发中</h2>
+                            <p>更多攻击算法正在开发中，敬请期待...</p>
+                          </div>
+                        } 
+                      />
+                      
+                      {/* 404页面 */}
+                      <Route 
+                        path="*" 
+                        element={
+                          <div className="content-card text-center">
+                            <h2>页面未找到</h2>
+                            <p>您访问的页面不存在</p>
+                          </div>
+                        } 
+                      />
+                    </Routes>
+                  </Content>
+                </MainLayout>
+              </ProtectedRoute>
+            } 
+          />
+        </Routes>
       </Layout>
-    </Router>
+    </ErrorBoundary>
   );
-};
+}
 
 export default App;

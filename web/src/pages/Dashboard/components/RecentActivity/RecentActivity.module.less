@@ -1,0 +1,115 @@
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.recentActivity {
+  margin: 0;
+}
+
+.timelineCard,
+.chartCard {
+  background: var(--bg-secondary, #FFFFFF);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow, 0 4px 20px rgba(0, 0, 0, 0.02));
+  border: 1px solid var(--border-color, #E2E8F0);
+  height: 100%;
+}
+
+.cardTitle {
+  margin: 0 !important;
+  color: var(--text-primary, #1A1F36);
+  font-weight: 600;
+}
+
+.timeline {
+  padding: 16px 0;
+}
+
+.timelineItem {
+  padding: 8px 0;
+}
+
+.timelineHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.algorithmInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.algorithmName {
+  font-size: 14px;
+  color: var(--text-primary, #1A1F36);
+}
+
+.modelName {
+  font-size: 12px;
+  color: var(--text-tertiary, #718096);
+}
+
+.timestamp {
+  font-size: 12px;
+  color: var(--text-tertiary, #718096);
+  white-space: nowrap;
+}
+
+.imageContainer {
+  margin-top: 8px;
+}
+
+.thumbnail {
+  border: 2px solid var(--border-color, #E2E8F0);
+  border-radius: 8px;
+}
+
+.tooltip {
+  background: var(--bg-primary, #F5F7FA);
+  border: 1px solid var(--border-color, #E2E8F0);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 120px;
+}
+
+.tooltipTitle {
+  font-weight: 600;
+  color: var(--text-primary, #1A1F36);
+  margin-bottom: 4px;
+}
+
+.tooltipValue {
+  color: var(--accent-primary, #1E6DF2);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.tooltipPercent {
+  color: var(--text-secondary, #4A5568);
+  font-size: 12px;
+}
+
+.legendItem {
+  color: var(--text-primary, #1A1F36);
+  font-weight: 500;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .timelineHeader {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  .timestamp {
+    align-self: flex-end;
+  }
+}
