@@ -1,0 +1,23 @@
+# Data and Models
+data/
+uploads/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Database
+*.db
+*.sqlite3
+sql_app.db
+
+# IDEs
+.idea/
+.vscode/
+
+# Environment
+.env
