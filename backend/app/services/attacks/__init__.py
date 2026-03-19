@@ -12,5 +12,7 @@ __all__ = [
     'AttackRegistry', 
     'get_attack_registry',
     'attack_registry',
-    'CWAttack'
+    'CWAttack',
+    'PGDAttack',  # 新增
+
 ]
