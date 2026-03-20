@@ -11,7 +11,7 @@
     "ajv": "^8.18.0",
     "antd": "^5.12.8",
     "axios": "^1.6.2",
-    "fabric": "^5.3.0",
+    "fabric": "^7.2.0",
     "i18next": "^25.8.18",
     "react": "^18.2.0",
     "react-compare-image": "^3.1.0",
@@ -19,7 +19,7 @@
     "react-dropzone": "^14.2.3",
     "react-i18next": "^16.5.8",
     "react-router-dom": "^6.20.1",
-    "react-scripts": "5.0.1",
+    "react-scripts": "^5.0.1",
     "recharts": "^2.15.4",
     "web-vitals": "^2.1.4",
     "zustand": "^4.4.7"
@@ -59,17 +59,5 @@
     "prettier": "^3.1.1"
   },
   "proxy": "http://localhost:8000",
-  "homepage": ".",
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  }
+  "homepage": "."
 }
