@@ -11,7 +11,7 @@ celery_app = Celery(
     "xinghe_zhi_an",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["app.workers.tasks.cw_task"]
+    include=["app.workers.tasks.fgsm_task"]
 )
 
 # Celery配置
@@ -25,7 +25,7 @@ celery_app.conf.update(
     
     # 任务路由
     task_routes={
-        "app.workers.tasks.cw_task.run_cw_attack": {"queue": "attack_tasks"},
+        "app.workers.tasks.fgsm_task.run_fgsm_attack": {"queue": "attack_tasks"},
     },
     
     # 任务优先级

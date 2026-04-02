@@ -34,17 +34,17 @@ async def lifespan(app: FastAPI):
     """
     # 启动时执行
     logger.info("=" * 50)
-    logger.info("🚀 星河智安 AI安全攻击可视化平台启动中...")
-    logger.info(f"📋 应用名称: {settings.app_name}")
-    logger.info(f"🔧 版本: {settings.app_version}")
-    logger.info(f"🌍 环境: {'开发环境' if settings.is_development else '生产环境'}")
-    logger.info(f"💾 数据库: {settings.database_url}")
-    logger.info(f"🔴 Redis: {settings.redis_url}")
+    logger.info(" 星河智安 AI安全攻击可视化平台启动中...")
+    logger.info(f" 应用名称: {settings.app_name}")
+    logger.info(f" 版本: {settings.app_version}")
+    logger.info(f" 环境: {'开发环境' if settings.is_development else '生产环境'}")
+    logger.info(f" 数据库: {settings.database_url}")
+    logger.info(f" Redis: {settings.redis_url}")
     
     try:
         # 创建数据库表
         create_tables()
-        logger.info("✅ 数据库表创建完成")
+        logger.info(" 数据库表创建完成")
         
         # 创建内置测试用户
         from .core.database import SessionLocal
@@ -67,11 +67,11 @@ async def lifespan(app: FastAPI):
                 )
                 db.add(admin_user)
                 db.commit()
-                logger.info("✅ 内置admin用户创建成功")
+                logger.info(" 内置admin用户创建成功")
             else:
-                logger.info("ℹ️ admin用户已存在")
+                logger.info(" admin用户已存在")
         except Exception as e:
-            logger.error(f"❌ 创建内置用户失败: {e}")
+            logger.error(f" 创建内置用户失败: {e}")
             db.rollback()
         finally:
             db.close()
@@ -82,25 +82,25 @@ async def lifespan(app: FastAPI):
         
         # 检查模型注册情况
         model_stats = model_registry.get_stats()
-        logger.info(f"🤖 已注册模型: {model_stats['total_models']} 个")
+        logger.info(f" 已注册模型: {model_stats['total_models']} 个")
         logger.info(f"   - 分类模型: {model_stats['categories'].get('classification', 0)} 个")
         logger.info(f"   - 检测模型: {model_stats['categories'].get('detection', 0)} 个")
         
         # 检查攻击算法注册情况
         attack_stats = attack_registry.get_stats()
-        logger.info(f"⚔️ 已注册攻击算法: {attack_stats['total_attacks']} 个")
+        logger.info(f" 已注册攻击算法: {attack_stats['total_attacks']} 个")
         
-        logger.info("✅ 星河智安平台启动完成!")
+        logger.info(" 星河智安平台启动完成!")
         logger.info("=" * 50)
         
     except Exception as e:
-        logger.error(f"❌ 启动失败: {str(e)}", exc_info=True)
+        logger.error(f" 启动失败: {str(e)}", exc_info=True)
         raise
     
     yield
     
     # 关闭时执行
-    logger.info("🛑 星河智安平台正在关闭...")
+    logger.info(" 星河智安平台正在关闭...")
 
 # 创建FastAPI应用
 app = FastAPI(

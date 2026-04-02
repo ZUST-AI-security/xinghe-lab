@@ -1,16 +1,16 @@
 """
-星河智安 (XingHe ZhiAn) - 攻击算法模块
-包含所有对抗攻击算法的实现
+XingHe ZhiAn - Attack algorithms module.
 """
 
 from .base import BaseAttack
 from .registry import AttackRegistry, get_attack_registry, attack_registry
-from .cw import CWAttack
+from .fgsm import FGSMAttack, CWAttack
 
 __all__ = [
     'BaseAttack',
-    'AttackRegistry', 
+    'AttackRegistry',
     'get_attack_registry',
     'attack_registry',
+    'FGSMAttack',
     'CWAttack'
 ]
