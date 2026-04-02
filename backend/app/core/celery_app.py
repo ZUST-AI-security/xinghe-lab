@@ -1,23 +1,31 @@
+"""
+Canonical Celery application instance.
+
+All task modules and configuration live here. Other modules should
+import `celery_app` from this module.
+"""
 from celery import Celery
-import os
 from app.core.config import settings
 
-# Construct Redis URL from settings
-REDIS_URL = f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}"
-
 celery_app = Celery(
-    "worker",
-    broker=REDIS_URL,
-    backend=REDIS_URL,
+    "xinghe_zhi_an",
+    broker=settings.celery_broker_url,
+    backend=settings.celery_result_backend,
+    include=["app.workers.attack_task"],
 )
 
-# Optional configuration
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    # Look for tasks in app.tasks
-    include=["app.tasks.cv_tasks"]
+    worker_prefetch_multiplier=1,
+    worker_max_tasks_per_child=50,
+    task_acks_late=True,
+    result_expires=3600,
+    task_soft_time_limit=1800,
+    task_time_limit=1900,
+    worker_send_task_events=True,
+    task_send_sent_event=True,
 )

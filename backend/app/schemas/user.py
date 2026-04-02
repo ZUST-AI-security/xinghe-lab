@@ -3,7 +3,7 @@
 定义用户数据的验证和序列化模式
 """
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -17,7 +17,8 @@ class UserCreate(UserBase):
     """用户创建模型"""
     password: str = Field(..., min_length=8, max_length=100, description="密码")
     
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def validate_password(cls, v):
         """密码验证"""
         if len(v) < 8:
@@ -71,7 +72,8 @@ class PasswordChange(BaseModel):
     current_password: str = Field(..., description="当前密码")
     new_password: str = Field(..., min_length=8, max_length=100, description="新密码")
     
-    @validator('new_password')
+    @field_validator('new_password')
+    @classmethod
     def validate_new_password(cls, v):
         """新密码验证"""
         if len(v) < 8:

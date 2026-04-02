@@ -2,7 +2,7 @@
 XingHe ZhiAn - FGSM attack related Pydantic models.
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
@@ -19,7 +19,8 @@ class FGSMAttackRequest(BaseModel):
     model_name: Optional[str] = Field("resnet100_imagenet", description="Model name")
     params: FGSMAttackParams = Field(default_factory=FGSMAttackParams, description="Attack parameters")
 
-    @validator('image')
+    @field_validator('image')
+    @classmethod
     def validate_image(cls, v):
         if not v.startswith('data:image/'):
             raise ValueError('Invalid image format, must start with data:image/')
