@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Layout, Row, Col, Card, Typography, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../store/authStore';
-import TopNav from './components/TopNav';
-import WelcomeBanner from './components/WelcomeBanner';
-import StatCards from './components/StatCards';
-import QuickStart from './components/QuickStart';
-import RecentActivity from './components/RecentActivity';
-import ExploreNav from './components/ExploreNav';
-import { useDashboardData } from './hooks/useDashboardData';
+import TopNav from '../../components/dashboard/TopNav';
+import WelcomeBanner from '../../components/dashboard/WelcomeBanner';
+import StatCards from '../../components/dashboard/StatCards';
+import QuickStart from '../../components/dashboard/QuickStart';
+import RecentActivity from '../../components/dashboard/RecentActivity';
+import ExploreNav from '../../components/dashboard/ExploreNav';
+import { useDashboardData } from './useDashboardData';
 import styles from './Dashboard.module.less';
 
 const { Content } = Layout;

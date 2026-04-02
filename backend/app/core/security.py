@@ -1,4 +1,4 @@
-"""
+﻿"""
 星河智安 (XingHe ZhiAn) - 安全模块
 JWT认证、密码哈希、用户认证相关功能
 """
@@ -12,8 +12,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .database import get_db
-from ..models.user import User
+from ..db.session import get_db
+from ..db.entities import User
 
 # 密码加密上下文
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

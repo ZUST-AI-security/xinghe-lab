@@ -1,4 +1,4 @@
-"""
+﻿"""
 星河智安 (XingHe ZhiAn) - YOLOv8目标检测模型实现
 使用Ultralytics YOLOv8，支持COCO数据集的80类目标检测
 """
@@ -7,12 +7,10 @@ import torch
 import numpy as np
 import cv2
 from typing import Dict, Any, List, Tuple, Optional
-import os
-from pathlib import Path
 
-from ..base import BaseModel, ModelType
-from ..registry import ModelRegistry
-from ...core.config import settings
+from app.services.model_manager.base import BaseModel, ModelType
+from app.services.model_manager.registry import ModelRegistry
+from app.core.config import settings
 
 # 尝试导入ultralytics
 try:
@@ -98,10 +96,11 @@ class YOLOv8Model(BaseModel):
         
         try:
             # 构建模型文件名
-            model_file = f'yolov8{self.model_size}.pt'
+            model_file = f"yolov8{self.model_size}.pt"
+            model_path = settings.get_model_path(model_file)
             
-            # 加载预训练模型
-            model = YOLO(model_file)
+            # 加载预训练模型（权重放在项目根目录 models）
+            model = YOLO(model_path)
             
             print(f"成功加载YOLOv8{self.model_size}模型")
             return model

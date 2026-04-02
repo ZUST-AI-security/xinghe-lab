@@ -29,7 +29,16 @@ def base64_to_image(base64_str: str) -> np.ndarray:
     try:
         # 移除data:image/xxx;base64,前缀
         if ',' in base64_str:
-            base64_str = base64_str.split(',')[1]
+            # 处理带逗号的Base64 (如data:image/png;base64,xxx)
+            parts = base64_str.split(',')
+            if len(parts) > 1:
+                base64_str = parts[1]
+        
+        # 检查并修复Base64填充
+        # Base64字符串长度必须是4的倍数，如果不是则需要填充
+        missing_padding = len(base64_str) % 4
+        if missing_padding:
+            base64_str += '=' * (4 - missing_padding)
         
         # 解码Base64
         image_data = base64.b64decode(base64_str)

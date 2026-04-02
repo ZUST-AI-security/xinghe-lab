@@ -212,6 +212,53 @@ class BaseModel(ABC):
         self.model.train()
         return self
     
+    def parameters(self):
+        """
+        转发到内部PyTorch模型的parameters()方法
+        修复C&W等攻击算法需要访问模型参数的问题
+        
+        Returns:
+            iterator: 模型参数迭代器
+        """
+        return self.model.parameters()
+    
+    def zero_grad(self):
+        """
+        转发到内部PyTorch模型的zero_grad()方法
+        
+        Returns:
+            None
+        """
+        return self.model.zero_grad()
+    
+    def __call__(self, x):
+        """
+        转发到内部PyTorch模型的__call__方法
+        使模型包装类行为像真正的PyTorch模型
+        
+        Args:
+            x: 输入张量
+            
+        Returns:
+            torch.Tensor: 模型输出
+        """
+        return self.model(x)
+    
+    def __getattr__(self, name):
+        """
+        动态转发未定义的属性到内部PyTorch模型
+        确保所有PyTorch模型方法都能被访问
+        
+        Args:
+            name: 属性名
+            
+        Returns:
+            attribute: 内部模型的属性
+        """
+        if hasattr(self.model, name):
+            return getattr(self.model, name)
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+    
     def get_model_info(self) -> Dict[str, Any]:
         """
         获取模型信息

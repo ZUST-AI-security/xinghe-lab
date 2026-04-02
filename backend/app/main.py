@@ -1,4 +1,4 @@
-"""
+﻿"""
 星河智安 (XingHe ZhiAn) - FastAPI主应用入口
 AI安全攻击可视化平台的后端服务
 """
@@ -7,12 +7,13 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import logging
 import time
 from contextlib import asynccontextmanager
 
 from .core.config import settings
-from .core.database import create_tables
+from .db.init_db import init_db
 from .core.exceptions import (
     XingHeException,
     xinghe_exception_handler,
@@ -20,7 +21,7 @@ from .core.exceptions import (
     http_exception_handler,
     general_exception_handler
 )
-from .api.v1.endpoints import auth, models, attacks, users
+from .api.v1.api import api_router
 from .utils.logger import setup_logging
 
 # 设置日志
@@ -40,55 +41,29 @@ async def lifespan(app: FastAPI):
     logger.info(f"🌍 环境: {'开发环境' if settings.is_development else '生产环境'}")
     logger.info(f"💾 数据库: {settings.database_url}")
     logger.info(f"🔴 Redis: {settings.redis_url}")
+    logger.info(f"⚡ Celery: {'启用' if settings.enable_celery else '禁用'}")
     
     try:
-        # 创建数据库表
-        create_tables()
-        logger.info("✅ 数据库表创建完成")
-        
-        # 创建内置测试用户
-        from .core.database import SessionLocal
-        from .models.user import User
-        from .core.security import get_password_hash
-        
-        db = SessionLocal()
-        try:
-            # 检查是否已存在admin用户
-            admin_user = db.query(User).filter(User.username == "admin").first()
-            if not admin_user:
-                # 创建admin用户
-                hashed_password = get_password_hash("admin123")
-                admin_user = User(
-                    username="admin",
-                    email="admin@xinghe.com",
-                    hashed_password=hashed_password,
-                    is_active=True,
-                    is_superuser=True
-                )
-                db.add(admin_user)
-                db.commit()
-                logger.info("✅ 内置admin用户创建成功")
-            else:
-                logger.info("ℹ️ admin用户已存在")
-        except Exception as e:
-            logger.error(f"❌ 创建内置用户失败: {e}")
-            db.rollback()
-        finally:
-            db.close()
+        # 初始化数据库（建表 + 内置用户）
+        init_db()
+        logger.info("✅ 数据库初始化完成")
         
         # 导入模型以触发注册
-        from .core.models import model_registry
-        from .services.attacks import attack_registry
-        
-        # 检查模型注册情况
-        model_stats = model_registry.get_stats()
-        logger.info(f"🤖 已注册模型: {model_stats['total_models']} 个")
-        logger.info(f"   - 分类模型: {model_stats['categories'].get('classification', 0)} 个")
-        logger.info(f"   - 检测模型: {model_stats['categories'].get('detection', 0)} 个")
-        
-        # 检查攻击算法注册情况
-        attack_stats = attack_registry.get_stats()
-        logger.info(f"⚔️ 已注册攻击算法: {attack_stats['total_attacks']} 个")
+        try:
+            from .services.model_manager import model_registry
+            from .services.attacks import attack_registry
+            
+            # 检查模型注册情况
+            model_stats = model_registry.get_stats()
+            logger.info(f"🤖 已注册模型: {model_stats['total_models']} 个")
+            logger.info(f"   - 分类模型: {model_stats['categories'].get('classification', 0)} 个")
+            logger.info(f"   - 检测模型: {model_stats['categories'].get('detection', 0)} 个")
+            
+            # 检查攻击算法注册情况
+            attack_stats = attack_registry.get_stats()
+            logger.info(f"⚔️ 已注册攻击算法: {attack_stats['total_attacks']} 个")
+        except Exception as e:
+            logger.warning(f"⚠️ 模型/攻击注册失败，继续启动: {str(e)}")
         
         logger.info("✅ 星河智安平台启动完成!")
         logger.info("=" * 50)
@@ -132,6 +107,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# 静态文件：上传与结果目录
+app.mount("/uploads", StaticFiles(directory=settings.uploads_dir), name="uploads")
+
 # 添加CORS中间件
 if settings.is_development:
     app.add_middleware(
@@ -163,30 +141,8 @@ async def add_process_time_header(request: Request, call_next):
 app.add_exception_handler(XingHeException, xinghe_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
-# 包含API路由
-app.include_router(
-    auth.router,
-    prefix="/api/v1/auth",
-    tags=["认证"]
-)
-
-app.include_router(
-    models.router,
-    prefix="/api/v1/models",
-    tags=["模型管理"]
-)
-
-app.include_router(
-    attacks.router,
-    prefix="/api/v1/attacks",
-    tags=["攻击算法"]
-)
-
-app.include_router(
-    users.router,
-    prefix="/api/v1/users",
-    tags=["用户管理"]
-)
+# 注册API路由
+app.include_router(api_router, prefix="/api/v1")
 
 # 根路径
 @app.get("/", tags=["系统"])
@@ -208,36 +164,49 @@ async def health_check():
     """
     健康检查接口
     """
+    health_status = {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "services": {}
+    }
+    
     try:
         # 检查数据库连接
-        from .core.database import SessionLocal
+        from .db.session import SessionLocal
         from sqlalchemy import text
         db = SessionLocal()
         db.execute(text("SELECT 1"))
         db.close()
-        
-        # 检查Redis连接
+        health_status["services"]["database"] = "connected"
+    except Exception as e:
+        logger.error(f"数据库连接失败: {str(e)}")
+        health_status["services"]["database"] = f"error: {str(e)}"
+        health_status["status"] = "degraded"
+    
+    try:
+        # 检查Redis连接（可选）
         import redis
         r = redis.from_url(settings.redis_url)
         r.ping()
-        
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "redis": "connected",
-            "timestamp": time.time()
-        }
-        
+        health_status["services"]["redis"] = "connected"
     except Exception as e:
-        logger.error(f"健康检查失败: {str(e)}")
+        logger.warning(f"Redis连接失败（可选服务）: {str(e)}")
+        health_status["services"]["redis"] = f"warning: {str(e)}"
+        # Redis失败不影响整体健康状态，只标记为degraded
+    
+    # 根据服务状态确定HTTP状态码
+    if health_status["services"]["database"].startswith("error"):
         return JSONResponse(
             status_code=503,
-            content={
-                "status": "unhealthy",
-                "error": str(e),
-                "timestamp": time.time()
-            }
+            content=health_status
         )
+    elif health_status["services"]["redis"].startswith("warning"):
+        return JSONResponse(
+            status_code=200,  # 数据库正常，返回200
+            content=health_status
+        )
+    else:
+        return health_status
 
 # 系统信息
 @app.get("/info", tags=["系统"])
@@ -275,7 +244,7 @@ if settings.is_development:
         """
         调试信息（仅开发环境）
         """
-        from .core.models import model_registry
+        from .services.model_manager import model_registry
         from .services.attacks import attack_registry
         
         return {

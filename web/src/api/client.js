@@ -1,19 +1,18 @@
-/**
+﻿/**
  * 星河智安 (XingHe ZhiAn) - API客户端
  * Axios实例配置和请求/响应拦截器
  */
 
 import axios from 'axios';
+import { API_BASE_URL, API_VERSION } from '../config/api';
 import { message } from 'antd';
 
 // API基础配置
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
-const API_VERSION = process.env.REACT_APP_API_VERSION || 'v1';
 
 // 创建Axios实例
 const apiClient = axios.create({
   baseURL: `${API_BASE_URL}/api/${API_VERSION}`,
-  timeout: 30000, // 30秒超时
+  timeout: 120000, // 120秒超时，适应长时间的C&W攻击任务
   headers: {
     'Content-Type': 'application/json',
   },

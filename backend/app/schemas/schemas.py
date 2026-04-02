@@ -1,6 +1,14 @@
 from typing import List, Optional, Union, Any, Dict
 from pydantic import BaseModel, Field
 
+
+class HealthCheck(BaseModel):
+    """健康检查响应模型"""
+    status: str = Field(..., description="系统状态")
+    timestamp: float = Field(..., description="时间戳")
+    services: Dict[str, str] = Field(default_factory=dict, description="各服务状态")
+
+
 # --- Algorithm Registry Schema ---
 
 class InputField(BaseModel):

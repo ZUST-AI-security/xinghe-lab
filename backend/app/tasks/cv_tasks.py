@@ -1,8 +1,10 @@
-from app.core.celery_app import celery_app
-from app.services.cv.classification_attacks import ClassificationAttackService
-from app.services.cv.detection_attacks import DetectionAttackService
-import os
+from ..workers.celery_app import celery_app
+from ..services.cv.classification_attacks import ClassificationAttackService
+from ..services.cv.detection_attacks import DetectionAttackService
+import gc
+import torch
 from typing import Any, Dict
+
 
 # Lazily initialize services within the worker process
 class AttackServices:
@@ -22,25 +24,46 @@ class AttackServices:
             cls._detection = DetectionAttackService()
         return cls._detection
 
+    @classmethod
+    def release_all(cls):
+        """释放任务中加载的模型，避免worker长期占用内存/GPU"""
+        for attr in ("_classification", "_detection"):
+            service = getattr(cls, attr)
+            if service is not None:
+                if hasattr(service, "model"):
+                    service.model = None
+                if hasattr(service, "raw_model"):
+                    service.raw_model = None
+            setattr(cls, attr, None)
+
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            if hasattr(torch.cuda, "ipc_collect"):
+                torch.cuda.ipc_collect()
+
+
 @celery_app.task(name="app.tasks.cv_tasks.process_attack")
 def process_attack(algorithm_id: str, params: Dict[str, Any]):
     """
     Main entry point for CV attack tasks. Supports single or multiple image inputs.
     """
     print(f"Task started: {algorithm_id}")
-    
+
     # 1. Determine Input Image Path(s)
     image_urls = params.get("images") or params.get("image") or params.get("dataset_sample_url")
     if not image_urls:
         return {"error": "No input image(s) provided"}
-    
+
     # Ensure image_urls is a list
     if isinstance(image_urls, str):
         image_urls = [image_urls]
-    
+
     # Strip leading slash for local file access
     image_paths = [url.lstrip("/") for url in image_urls]
 
+    service = None
+    results = None
     try:
         if algorithm_id == "resnet18_cifar10":
             service = AttackServices.get_classification()
@@ -54,10 +77,13 @@ def process_attack(algorithm_id: str, params: Dict[str, Any]):
         for path in image_paths:
             res = service.run_attack(path, params)
             results.append(res)
-        
+
         # Return single object if only one image, otherwise return list
         return results if len(results) > 1 else results[0]
 
     except Exception as e:
         import traceback
         return {"error": str(e), "traceback": traceback.format_exc()}
+    finally:
+        del service, results
+        AttackServices.release_all()

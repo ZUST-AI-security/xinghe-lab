@@ -1,4 +1,4 @@
-"""
+﻿"""
 星河智安 (XingHe ZhiAn) - 认证API路由
 用户注册、登录、token管理
 """
@@ -16,8 +16,8 @@ from ....core.security import (
     get_current_user,
     authenticate_user
 )
-from ....core.database import get_db
-from ....models.user import User
+from ....db.session import get_db
+from ....db.entities import User
 from ....schemas.user import UserCreate, UserResponse, Token
 
 router = APIRouter()

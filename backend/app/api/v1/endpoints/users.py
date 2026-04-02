@@ -1,4 +1,4 @@
-"""
+﻿"""
 星河智安 (XingHe ZhiAn) - 用户管理API端点
 """
 
@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from ....core.database import get_db
+from ....db.session import get_db
 from ....core.security import get_current_user
-from ....models.user import User
+from ....db.entities import User
 from ....schemas.user import UserResponse
 
 router = APIRouter()

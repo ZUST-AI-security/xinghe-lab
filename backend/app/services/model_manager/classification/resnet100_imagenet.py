@@ -1,4 +1,4 @@
-"""
+﻿"""
 星河智安 (XingHe ZhiAn) - ResNet100 ImageNet模型实现
 使用ImageNet预训练权重，支持1000类分类任务
 """
@@ -6,13 +6,11 @@
 import torch
 import torchvision.models as models
 import numpy as np
-import os
-from typing import Dict, Any, Tuple
-from pathlib import Path
+from typing import Dict, Any, Tuple, Optional
 
-from ..base import BaseModel, ModelType
-from ..registry import ModelRegistry
-from ...core.config import settings
+from app.services.model_manager.base import BaseModel, ModelType
+from app.services.model_manager.registry import ModelRegistry
+from app.core.config import settings
 
 # ImageNet类别名称文件路径
 IMAGENET_CLASSES_FILE = settings.imagenet_classes_path
@@ -27,8 +25,8 @@ def load_imagenet_classes():
     """
     # 直接从utils模块获取类别，避免文件依赖
     try:
-        from ....core.utils.imagenet_classes import IMAGENET_CLASSES
-        return [IMAGENET_CLASSES[i] for i in range(1000)]
+        from ....utils.imagenet_classes import IMAGENET_CLASSES
+        return [IMAGENET_CLASSES.get(i, f"class_{i}") for i in range(1000)]
     except ImportError:
         # 如果导入失败，返回默认的前1000个类别名
         return [f"class_{i}" for i in range(1000)]

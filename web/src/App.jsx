@@ -16,7 +16,7 @@ import MainLayout from './components/Layout/MainLayout';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import Dashboard from './pages/Dashboard';
-import CWAttack from './pages/Attacks/CWAttack';
+import CWAttack from './pages/AttackLab';
 
 // API客户端
 import { setupAxiosInterceptors } from './api/client';
@@ -97,6 +97,10 @@ function App() {
                       />
                       
                       {/* 攻击算法页面 */}
+                      <Route 
+                        path="/attack/:algoId" 
+                        element={<CWAttack />} 
+                      />
                       <Route 
                         path="/attacks/cw" 
                         element={<CWAttack />} 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 星河智安 (XingHe ZhiAn) - 攻击算法基类
 适配分类和检测模型，提供统一的攻击算法接口
 """
@@ -8,8 +8,7 @@ import torch
 from typing import Dict, Any, Tuple, Optional, Union
 import logging
 
-from ..model_manager.base import BaseModel
-from ...core.models.base import ModelType
+from app.services.model_manager.base import BaseModel, ModelType
 
 logger = logging.getLogger(__name__)
 
