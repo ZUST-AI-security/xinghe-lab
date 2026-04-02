@@ -13,6 +13,11 @@ except ImportError:
     pass  # 模型文件不存在时忽略
 
 try:
+    from .classification.test_model import *
+except ImportError:
+    pass  # 模型文件不存在时忽略
+
+try:
     from .detection.yolov8 import *
 except ImportError:
     pass  # 模型文件不存在时忽略

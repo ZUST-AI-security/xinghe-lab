@@ -1,93 +1,103 @@
-from pydantic import BaseModel, Field, validator
-from typing import List, Dict, Any, Optional
-from enum import Enum
+"""
+星河智安 (XingHe ZhiAn) - PGD攻击相关Pydantic模型
+定义PGD攻击数据的验证和序列化模式
+"""
 
-class NormType(str, Enum):
-    LINF = "Linf"
-    L2 = "L2"
+from pydantic import BaseModel, Field, validator
+from typing import Optional, Dict, Any, List
+from datetime import datetime
+
 
 class PGDAttackParams(BaseModel):
-    """PGD攻击参数验证模型"""
-    epsilon: float = Field(
-        default=8/255,
-        ge=1/255,
-        le=32/255,
-        description="最大扰动范围"
-    )
-    alpha: float = Field(
-        default=2/255,
-        ge=0.5/255,
-        le=8/255,
-        description="步长"
-    )
-    num_iter: int = Field(
-        default=40,
-        ge=10,
-        le=100,
-        description="迭代次数"
-    )
-    random_start: bool = Field(
-        default=True,
-        description="随机初始化"
-    )
-    targeted: bool = Field(
-        default=False,
-        description="是否为定向攻击"
-    )
-    target_label: Optional[int] = Field(
-        default=None,
-        ge=0,
-        le=999,
-        description="目标标签（定向攻击时使用）"
-    )
-    norm: NormType = Field(
-        default=NormType.LINF,
-        description="范数类型"
-    )
-    confidence_threshold: float = Field(
-        default=0.5,
-        ge=0.0,
-        le=1.0,
-        description="置信度阈值"
-    )
+    """PGD攻击参数模型"""
+    epsilon: float = Field(0.03, ge=0.001, le=0.5, description="最大扰动幅度")
+    alpha: float = Field(0.01, ge=0.0001, le=0.1, description="步长")
+    num_iter: int = Field(40, ge=5, le=200, description="迭代次数")
+    targeted: bool = Field(False, description="是否为定向攻击")
+    random_start: bool = Field(True, description="是否随机初始化")
+    loss_type: str = Field("ce", description="损失函数类型: ce(交叉熵) / dlr(差分逻辑回归)")
+    norm: str = Field("linf", description="扰动范数: linf / l2")
     
-    @validator('alpha')
-    def alpha_must_be_less_than_epsilon(cls, v, values):
-        """验证步长不超过epsilon"""
-        if 'epsilon' in values and v > values['epsilon']:
-            raise ValueError(f'步长(alpha={v})不能大于最大扰动(epsilon={values["epsilon"]})')
+    @validator('loss_type')
+    def validate_loss_type(cls, v):
+        if v not in ['ce', 'dlr']:
+            raise ValueError('loss_type必须是ce或dlr')
         return v
     
-    @validator('num_iter')
-    def validate_iterations(cls, v):
-        """验证迭代次数在合理范围"""
-        if v < 10:
-            raise ValueError('迭代次数至少为10')
-        if v > 100:
-            raise ValueError('迭代次数超过100可能导致超时')
+    @validator('norm')
+    def validate_norm(cls, v):
+        if v not in ['linf', 'l2']:
+            raise ValueError('norm必须是linf或l2')
         return v
 
-class PredictionItem(BaseModel):
-    """预测结果项"""
-    label: str
-    confidence: float
 
-class HistoryItem(BaseModel):
-    """历史记录项"""
-    loss: float
-    perturbation_norm: float
-    iteration: int
+class PGDAttackRequest(BaseModel):
+    """PGD攻击请求模型"""
+    image: str = Field(..., description="Base64编码的图片")
+    model_name: Optional[str] = Field("resnet100_imagenet", description="模型名称")
+    params: PGDAttackParams = Field(default_factory=PGDAttackParams, description="攻击参数")
+    
+    @validator('image')
+    def validate_image(cls, v):
+        """验证图片格式"""
+        if not v.startswith('data:image/'):
+            raise ValueError('图片格式无效，必须是data:image/开头')
+        return v
+
 
 class PGDAttackResponse(BaseModel):
     """PGD攻击响应模型"""
+    original_image: str = Field(..., description="原始图片Base64")
+    adversarial_image: str = Field(..., description="对抗样本Base64")
+    heatmap: str = Field(..., description="热力图Base64")
+    original_probs: List[float] = Field(..., description="原始预测概率")
+    adversarial_probs: List[float] = Field(..., description="对抗样本预测概率")
+    success: bool = Field(..., description="攻击是否成功")
+    time_elapsed: float = Field(..., description="耗时（秒）")
+    metadata: Dict[str, Any] = Field(..., description="附加元数据")
+
+
+class PGDAsyncTaskResponse(BaseModel):
+    """PGD异步任务响应模型"""
+    task_id: str = Field(..., description="任务ID")
+    status: str = Field(..., description="任务状态")
+
+
+class PGDTaskStatusResponse(BaseModel):
+    """PGD任务状态响应模型"""
+    task_id: str = Field(..., description="任务ID")
+    status: str = Field(..., description="任务状态")
+    result: Optional[PGDAttackResponse] = Field(None, description="攻击结果")
+    error: Optional[str] = Field(None, description="错误信息")
+    progress: Optional[float] = Field(None, description="进度百分比")
+    created_at: Optional[datetime] = Field(None, description="创建时间")
+    completed_at: Optional[datetime] = Field(None, description="完成时间")
+
+
+class PGDHistoryResponse(BaseModel):
+    """PGD攻击历史响应模型"""
+    id: int
+    attack_algorithm: str
+    model_name: str
+    model_type: str
+    attack_params: Dict[str, Any]
     success: bool
-    message: str
-    original_image: str  # base64
-    adversarial_image: str  # base64
-    heatmap: str  # base64
-    original_predictions: List[PredictionItem]
-    adversarial_predictions: List[PredictionItem]
-    success_rate: float
-    avg_perturbation_norm: float
     execution_time: float
-    history: Dict[str, List[float]]
+    l2_norm: Optional[float] = None
+    linf_norm: Optional[float] = None
+    success_rate: Optional[float] = None
+    metadata: Optional[Dict[str, Any]] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class PGDHistoryListResponse(BaseModel):
+    """PGD攻击历史列表响应模型"""
+    histories: List[PGDHistoryResponse]
+    total: int
+    page: int
+    size: int
+    pages: int

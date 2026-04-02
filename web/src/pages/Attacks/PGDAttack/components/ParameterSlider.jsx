@@ -1,56 +1,81 @@
+/**
+ * PGD攻击参数滑块组件
+ */
+
 import React from 'react';
-import { Slider, InputNumber, Space, Typography, Tooltip } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { Slider, InputNumber, Row, Col, Tooltip, Typography } from 'antd';
+import { QuestionCircleOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
 const ParameterSlider = ({
   label,
+  description,
   value,
+  onChange,
   min,
   max,
-  step,
-  onChange,
-  tooltip,
-  formatValue = (v) => v,
+  step = 0.01,
   unit = '',
   disabled = false
 }) => {
-  const displayLabel = label.replace('_', ' ').toUpperCase();
-  
+  // 处理科学计数法显示
+  const formatValue = (val) => {
+    if (val < 0.001 && val > 0) {
+      return val.toExponential(2);
+    }
+    return val;
+  };
+
   return (
     <div style={{ marginBottom: 24 }}>
-      <Space style={{ marginBottom: 8 }}>
-        <Text strong>{displayLabel}</Text>
-        {tooltip && (
-          <Tooltip title={tooltip}>
-            <InfoCircleOutlined style={{ color: '#999' }} />
-          </Tooltip>
-        )}
-      </Space>
-      <Space style={{ width: '100%' }}>
-        <Slider
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          style={{ flex: 1 }}
-          tipFormatter={(v) => `${formatValue(v)}${unit}`}
-        />
-        <InputNumber
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          style={{ width: 80 }}
-          formatter={(v) => `${formatValue(v)}${unit}`}
-          parser={(v) => parseFloat(v.replace(unit, '')) / (unit === '/255' ? 1 : 1)}
-        />
-      </Space>
+      <Row align="middle" gutter={8}>
+        <Col flex="auto">
+          <Text strong>
+            {label}
+            {description && (
+              <Tooltip title={description}>
+                <QuestionCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
+              </Tooltip>
+            )}
+          </Text>
+        </Col>
+        <Col>
+          <InputNumber
+            value={value}
+            onChange={onChange}
+            min={min}
+            max={max}
+            step={step}
+            disabled={disabled}
+            style={{ width: 110 }}
+            addonAfter={unit}
+            size="small"
+          />
+        </Col>
+      </Row>
+      
+      <Row>
+        <Col span={24}>
+          <Slider
+            value={value}
+            onChange={onChange}
+            min={min}
+            max={max}
+            step={step}
+            disabled={disabled}
+            tooltip={{ formatter: formatValue }}
+          />
+        </Col>
+      </Row>
+      
+      <Row>
+        <Col span={24}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            范围: [{min}, {max}]
+          </Text>
+        </Col>
+      </Row>
     </div>
   );
 };

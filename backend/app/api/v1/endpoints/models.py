@@ -19,7 +19,7 @@ async def get_available_models():
     获取所有可用模型列表
     """
     try:
-        models = model_registry.get_all_models()
+        models = model_registry.list_models()
         return {
             "models": models,
             "total": len(models)
@@ -66,17 +66,18 @@ async def get_model_stats(current_user: User = Depends(get_current_user)):
     获取模型统计信息（需要认证）
     """
     try:
-        models = model_registry.get_all_models()
+        models = model_registry.list_models()
         stats = {
             "total_models": len(models),
-            "classification_models": len([m for m in models if m.type.value == "classification"]),
-            "detection_models": len([m for m in models if m.type.value == "detection"]),
+            "classification_models": len([m for m in models if m.get('category') == 'classification']),
+            "detection_models": len([m for m in models if m.get('category') == 'detection']),
             "models": [
                 {
-                    "name": m.name,
-                    "display_name": m.display_name,
-                    "type": m.type.value,
-                    "parameters": getattr(m, 'parameters', None)
+                    "name": m.get('name'),
+                    "display_name": m.get('display_name'),
+                    "category": m.get('category'),
+                    "framework": m.get('framework'),
+                    "available": m.get('available', True)
                 }
                 for m in models
             ]

@@ -3,7 +3,7 @@
  * 支持拖拽上传、预览、格式验证
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Upload, message, Image, Progress, Typography } from 'antd';
 import { InboxOutlined, DeleteOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
@@ -33,6 +33,7 @@ const UploadContainer = styled.div`
   .preview-container {
     position: relative;
     display: inline-block;
+    width: 100%;
     
     .delete-btn {
       position: absolute;
@@ -57,28 +58,7 @@ const UploadContainer = styled.div`
   }
 `;
 
-/**
- * @typedef {Object} ImageUploaderProps
- * @property {function} onImageChange - 图片变化回调
- * @property {function} onImageIdChange - 图片ID变化回调
- * @property {boolean} disabled - 是否禁用
- * @property {number} maxSize - 最大文件大小(MB)
- * @property {string[]} acceptTypes - 接受的文件类型
- * @property {string} placeholder - 占位文本
- */
-
-/**
- * 图片上传组件
- * @param {ImageUploaderProps} props
- */
-const ImageUploader = ({
-  onImageChange,
-  onImageIdChange,
-  disabled = false,
-  maxSize = 10,
-  acceptTypes = ['image/jpeg', 'image/png', 'image/webp'],
-  placeholder = '点击或拖拽图片到此区域上传'
-}) => {
+const ImageUploader = forwardRef(({ onImageChange, disabled = false, maxSize = 10 }, ref) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -86,13 +66,12 @@ const ImageUploader = ({
 
   // 验证文件
   const validateFile = (file) => {
-    // 检查文件类型
-    if (!acceptTypes.includes(file.type)) {
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
       message.error('只支持 JPEG、PNG、WebP 格式的图片');
       return false;
     }
 
-    // 检查文件大小
     const isLtMaxSize = file.size / 1024 / 1024 < maxSize;
     if (!isLtMaxSize) {
       message.error(`图片大小不能超过 ${maxSize}MB`);
@@ -102,24 +81,18 @@ const ImageUploader = ({
     return true;
   };
 
-  // 生成预览URL
-  const generatePreview = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setPreviewUrl(e.target.result);
-    };
-    reader.readAsDataURL(file);
+  // 转换为Base64
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
-  // 生成图片ID
-  const generateImageId = (file) => {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 8);
-    return `img_${timestamp}_${random}`;
-  };
-
-  // 处理文件上传
-  const handleUpload = useCallback((file) => {
+  // 处理上传
+  const handleUpload = useCallback(async (file) => {
     if (!validateFile(file)) {
       return false;
     }
@@ -127,78 +100,58 @@ const ImageUploader = ({
     setUploading(true);
     setUploadProgress(0);
 
-    // 模拟上传进度
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + 10;
-      });
+    // 模拟进度
+    const interval = setInterval(() => {
+      setUploadProgress(prev => Math.min(prev + 10, 90));
     }, 100);
 
-    // 模拟上传完成
-    setTimeout(() => {
-      clearInterval(progressInterval);
+    try {
+      // 转换Base64
+      const base64 = await fileToBase64(file);
+      
+      clearInterval(interval);
       setUploadProgress(100);
       
-      // 生成预览
-      generatePreview(file);
-      
-      // 生成图片ID
-      const imageId = generateImageId(file);
-      
-      // 保存文件信息
+      // 设置预览
+      setPreviewUrl(URL.createObjectURL(file));
       setImageFile(file);
       
-      // 回调父组件
+      // 回调
       if (onImageChange) {
-        onImageChange(file);
-      }
-      if (onImageIdChange) {
-        onImageIdChange(imageId);
+        onImageChange(file, base64);
       }
       
-      setUploading(false);
       message.success('图片上传成功');
-    }, 1500);
+    } catch (error) {
+      clearInterval(interval);
+      message.error('图片处理失败');
+    } finally {
+      setTimeout(() => {
+        setUploading(false);
+        setUploadProgress(0);
+      }, 500);
+    }
 
-    return false; // 阻止默认上传行为
-  }, [onImageChange, onImageIdChange, maxSize, acceptTypes]);
+    return false;
+  }, [onImageChange, maxSize]);
 
   // 删除图片
   const handleDelete = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
     setPreviewUrl(null);
     setImageFile(null);
-    setUploadProgress(0);
-    
     if (onImageChange) {
-      onImageChange(null);
+      onImageChange(null, null);
     }
-    if (onImageIdChange) {
-      onImageIdChange(null);
-    }
-    
     message.info('图片已删除');
   };
 
-  // 转换为base64（用于API调用）
-  const getBase64 = useCallback(() => {
-    if (!imageFile) return null;
-    
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = error => reject(error);
-      reader.readAsDataURL(imageFile);
-    });
-  }, [imageFile]);
-
-  // 暴露给父组件的方法
-  React.useImperativeHandle(null, () => ({
-    getBase64,
-    clear: handleDelete
+  // 暴露方法
+  useImperativeHandle(ref, () => ({
+    clear: handleDelete,
+    getFile: () => imageFile
   }));
 
   return (
@@ -209,11 +162,12 @@ const ImageUploader = ({
             src={previewUrl}
             alt="预览图片"
             style={{ 
-              maxWidth: '100%', 
+              width: '100%', 
               maxHeight: 300, 
               objectFit: 'contain',
               borderRadius: 8
             }}
+            preview={false}
           />
           <button 
             className="delete-btn"
@@ -238,13 +192,13 @@ const ImageUploader = ({
           beforeUpload={handleUpload}
           disabled={disabled || uploading}
           showUploadList={false}
-          accept={acceptTypes.join(',')}
+          accept="image/jpeg,image/png,image/jpg,image/webp"
         >
           <p className="ant-upload-drag-icon">
             <InboxOutlined style={{ fontSize: 48, color: '#1890ff' }} />
           </p>
           <p className="ant-upload-text">
-            {placeholder}
+            点击或拖拽图片到此区域上传
           </p>
           <p className="ant-upload-hint">
             支持 JPEG、PNG、WebP 格式，单个文件不超过 {maxSize}MB
@@ -259,13 +213,12 @@ const ImageUploader = ({
             status={uploadProgress === 100 ? 'success' : 'active'}
             size="small"
           />
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            正在上传图片...
-          </Text>
         </div>
       )}
     </UploadContainer>
   );
-};
+});
+
+ImageUploader.displayName = 'ImageUploader';
 
 export default ImageUploader;
