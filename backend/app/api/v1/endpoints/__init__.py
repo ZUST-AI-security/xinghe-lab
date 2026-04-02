@@ -5,5 +5,6 @@
 from .auth import router as auth_router
 from .models import router as models_router
 from .attacks import router as attacks_router
+from .attacks import pgd_router as pgd_attacks_router
 
-__all__ = ["auth_router", "models_router", "attacks_router"]
+__all__ = ["auth_router", "models_router", "attacks_router", "pgd_attacks_router"]

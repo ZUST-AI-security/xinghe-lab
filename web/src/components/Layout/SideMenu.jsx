@@ -49,7 +49,7 @@ const SideMenu = ({ collapsed }) => {
           key: '/attacks/pgd',
           icon: <ExperimentOutlined />,
           label: 'PGD攻击',
-          disabled: true,
+
         },
         {
           key: '/attacks/deepfool',

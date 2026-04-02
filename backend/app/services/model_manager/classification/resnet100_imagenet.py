@@ -96,11 +96,29 @@ class ResNet100ImageNetModel(BaseModel):
         """
         with torch.no_grad():
             logits = self.model(images)
+            return {
+                "logits": logits,
+                "type": "classification"
+            }
+    
+    def predict_with_grad(self, images: torch.Tensor) -> Dict[str, Any]:
+        """
+        模型推理（保留梯度，用于攻击算法）
         
+        Args:
+            images: [batch, 3, 224, 224]
+            
+        Returns:
+            {
+                "logits": tensor [batch, 1000],
+                "type": "classification"
+            }
+        """
+        logits = self.model(images)
         return {
             "logits": logits,
             "type": "classification"
-        }
+        }  
     
     def get_input_shape(self) -> Tuple[int, int, int]:
         """

@@ -21,3 +21,5 @@ sql_app.db
 
 # Environment
 .env
+
+.tests/

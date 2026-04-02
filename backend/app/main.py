@@ -23,6 +23,9 @@ from .core.exceptions import (
 from .api.v1.endpoints import auth, models, attacks, users
 from .utils.logger import setup_logging
 
+# 导入模型管理器以触发模型注册
+from .services.model_manager import model_registry
+
 # 设置日志
 setup_logging()
 logger = logging.getLogger(__name__)
