@@ -24,6 +24,7 @@ const { TabPane } = Tabs;
 
 const PGDAttack = () => {
   const [image, setImage] = useState(null);
+  const [imageId, setImageId] = useState(null);
   const [params, setParams] = useState({
     epsilon: 8/255,
     alpha: 2/255,
@@ -42,6 +43,11 @@ const PGDAttack = () => {
     resetResult();
   };
 
+  const handleImageIdChange = (id) => {
+    setImageId(id);
+    resetResult();
+  };
+
   const handleParamChange = (key, value) => {
     setParams(prev => ({ ...prev, [key]: value }));
     resetResult();
@@ -56,6 +62,8 @@ const PGDAttack = () => {
   };
 
   const handleReset = () => {
+    setImage(null);
+    setImageId(null);
     setParams({
       epsilon: 8/255,
       alpha: 2/255,
@@ -97,8 +105,8 @@ const PGDAttack = () => {
             }
           >
             <ImageUploader 
-              value={image} 
-              onChange={handleImageChange} 
+              onImageChange={handleImageChange}
+              onImageIdChange={handleImageIdChange}
               disabled={loading}
             />
             
