@@ -112,7 +112,7 @@ class FGSMAlgorithm(BaseAlgorithm):
         heatmap = torch.abs(vis_adv - vis_orig).mean(dim=1, keepdim=True)
         heatmap = (heatmap - heatmap.min()) / (heatmap.max() - heatmap.min() + 1e-8)
 
-        perturbation = (vis_adv - vis_orig).view(images.size(0), -1)
+        perturbation = (vis_adv - vis_orig).reshape(images.size(0), -1)
         l2_norm = torch.norm(perturbation, p=2, dim=1)
         linf_norm = torch.norm(perturbation, p=float("inf"), dim=1)
 

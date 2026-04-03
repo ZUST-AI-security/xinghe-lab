@@ -27,6 +27,7 @@ from app.schemas.attacks.cw import (
     CWHistoryListResponse,
 )
 from app.utils.image_utils import base64_to_image, image_to_base64
+from app.utils.attack_response import build_prediction_summary
 from app.core.exceptions import AttackError, ValidationError
 from app.utils.imagenet_classes import search_classes, get_class_by_id, get_popular_classes
 
@@ -73,17 +74,18 @@ async def run_cw_sync(
         if algo_cls is None:
             raise AttackError("C&W algorithm not registered")
 
-        # Fast-demo mode: cap iterations for responsiveness
+        # Keep sync execution bounded, but don't rewrite the objective into a
+        # near-hopeless demo configuration.
         fast_params = {
-            "c": max(request.params.c, 5.0),
+            "c": request.params.c,
             "kappa": request.params.kappa,
-            "lr": max(request.params.lr, 0.05),
-            "max_iter": min(request.params.max_iter, 100),
-            "binary_search_steps": 1,
+            "lr": request.params.lr,
+            "max_iter": min(request.params.max_iter, 500),
+            "binary_search_steps": min(request.params.binary_search_steps, 5),
             "init_const": request.params.init_const,
             "targeted": request.params.targeted,
-            "abort_early": True,
-            "early_stop_iters": 5,
+            "abort_early": request.params.abort_early,
+            "early_stop_iters": request.params.early_stop_iters,
         }
 
         adv_images, metadata = algo_cls().generate(
@@ -95,6 +97,8 @@ async def run_cw_sync(
 
         adv_np = (adv_images[0].cpu().numpy().transpose(1, 2, 0) * 255).astype(np.uint8)
         heatmap_np = metadata["heatmap"][0].cpu().numpy()
+        original_summary = build_prediction_summary(model, metadata["original_probs"])
+        adversarial_summary = build_prediction_summary(model, metadata["adv_probs"])
 
         return CWAttackResponse(
             original_image=request.image,
@@ -106,10 +110,20 @@ async def run_cw_sync(
             time_elapsed=time.time() - start_time,
             metadata={
                 "l2_norm": metadata.get("avg_l2_norm", 0.0),
-                "iterations": len(metadata.get("history", {}).get("losses", [])),
+                "linf_norm": metadata.get("avg_linf_norm", 0.0),
+                "iterations": metadata.get("iterations", len(metadata.get("history", {}).get("losses", []))),
                 "final_c_value": metadata.get("final_c_value", 0),
                 "targeted": metadata.get("targeted", False),
+                "success_rate": metadata.get("success_rate", 0.0),
                 "model_name": request.model_name or "resnet100_imagenet",
+                "original_class_id": metadata.get("original_class_id"),
+                "adversarial_class_id": metadata.get("adversarial_class_id"),
+                "original_top1_confidence": metadata.get("original_top1_confidence"),
+                "adversarial_top1_confidence": metadata.get("adversarial_top1_confidence"),
+                "original_prediction": original_summary["prediction"],
+                "adversarial_prediction": adversarial_summary["prediction"],
+                "original_top5": original_summary["top5"],
+                "adversarial_top5": adversarial_summary["top5"],
             },
         )
 

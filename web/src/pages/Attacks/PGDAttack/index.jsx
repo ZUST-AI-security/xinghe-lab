@@ -29,7 +29,7 @@ const { Title, Paragraph, Text } = Typography;
 const PGDAttack = () => {
   const [imageUrl, setImageUrl] = useState(null);
   const [advancedMode, setAdvancedMode] = useState(false);
-  const [useAsync, setUseAsync] = useState(false);
+  const [useAsync, setUseAsync] = useState(true);
   const [params, setParams] = useState({
     epsilon: 0.03,
     alpha: 0.01,
@@ -239,7 +239,7 @@ const PGDAttack = () => {
 
             <Space size="middle">
               <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAttack} loading={loading} disabled={!imageUrl || isRunning} size="large">
-                {useAsync ? '异步攻击' : '同步攻击'}
+                {useAsync ? '提交异步任务' : '同步执行'}
               </Button>
               {canCancel && (
                 <Button icon={<StopOutlined />} onClick={cancel} danger>

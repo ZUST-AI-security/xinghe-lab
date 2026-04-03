@@ -1,10 +1,11 @@
 """
-ResNet101 pretrained on ImageNet-1K (registered as resnet100_imagenet).
+ResNet152 pretrained on ImageNet-1K (registered as resnet100_imagenet).
 
 Lazy-loading: weights are NOT downloaded/loaded until .load() is called.
 """
 
 import logging
+from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
@@ -12,6 +13,8 @@ import torch
 import torch.nn as nn
 import torchvision.models as tv_models
 
+from app.core.config import settings
+from app.utils.imagenet_classes import IMAGENET_CLASSES, get_class_name
 from app.ml_models.base import BaseModel, ModelType
 
 logger = logging.getLogger(__name__)
@@ -22,11 +25,10 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 
 
 def _get_imagenet_classes():
-    try:
-        from app.utils.imagenet_classes import IMAGENET_CLASSES
-        return [IMAGENET_CLASSES[i] for i in range(1000)]
-    except Exception:
-        return [f"class_{i}" for i in range(1000)]
+    missing = [i for i in range(1000) if i not in IMAGENET_CLASSES]
+    if missing:
+        logger.warning("ImageNet class table is incomplete; missing %d entries", len(missing))
+    return [IMAGENET_CLASSES.get(i, f"Unknown class {i}") for i in range(1000)]
 
 
 # Module-level cache so class-name list is loaded only once per process
@@ -42,21 +44,26 @@ def get_imagenet_names() -> list:
 
 class ResNetImageNetModel(BaseModel):
     model_id = "resnet100_imagenet"
-    display_name = "ResNet100 (ImageNet)"
-    description = "ResNet101 pretrained on ImageNet-1K — 1000-class classification"
+    display_name = "ResNet152 (ImageNet)"
+    description = "ResNet152 pretrained on ImageNet-1K — 1000-class classification"
     model_type = ModelType.CLASSIFICATION
+    WEIGHTS = tv_models.ResNet152_Weights.IMAGENET1K_V2
 
     # Expose for FGSM clamping
     IMAGENET_MEAN = IMAGENET_MEAN
     IMAGENET_STD = IMAGENET_STD
 
     def _load_model(self) -> nn.Module:
+        torch.hub.set_dir(str(Path(settings.model_cache_dir).resolve()))
         try:
-            model = tv_models.resnet101(weights=tv_models.ResNet101_Weights.IMAGENET1K_V1)
-            logger.info("Loaded ResNet101 with IMAGENET1K_V1 weights")
+            model = tv_models.resnet152(weights=self.WEIGHTS)
+            logger.info("Loaded ResNet152 with IMAGENET1K_V2 weights")
         except Exception as e:
-            logger.warning(f"Failed to load pretrained weights: {e}; using random weights")
-            model = tv_models.resnet101(weights=None)
+            cache_dir = Path(settings.model_cache_dir).resolve()
+            raise RuntimeError(
+                "Failed to load pretrained ResNet152 weights. "
+                f"Please ensure the weight download to '{cache_dir}' completes successfully."
+            ) from e
         return model
 
     def predict(self, images: torch.Tensor) -> Dict[str, Any]:
@@ -74,29 +81,13 @@ class ResNetImageNetModel(BaseModel):
         return ModelType.CLASSIFICATION
 
     def preprocess(self, image: np.ndarray) -> torch.Tensor:
-        import cv2
         from PIL import Image
-        from torchvision import transforms
-
-        if len(image.shape) == 2:
-            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-
-        # Resize shortest side to 256, then center-crop 224×224
-        h, w = image.shape[:2]
-        scale = 256 / min(h, w)
-        image = cv2.resize(image, (int(w * scale), int(h * scale)))
-        h2, w2 = image.shape[:2]
-        sh, sw = (h2 - 224) // 2, (w2 - 224) // 2
-        image = image[sh:sh + 224, sw:sw + 224]
 
         if image.dtype != np.uint8:
             image = (image * 255).astype(np.uint8)
-
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
-        ])
-        return transform(Image.fromarray(image)).unsqueeze(0)
+        pil_image = Image.fromarray(image).convert("RGB")
+        transform = self.WEIGHTS.transforms()
+        return transform(pil_image).unsqueeze(0)
 
     def postprocess(self, predictions: Dict[str, Any]) -> Dict[str, Any]:
         logits = predictions["logits"]
@@ -120,14 +111,13 @@ class ResNetImageNetModel(BaseModel):
         }
 
     def get_class_name(self, class_id: int) -> str:
-        names = get_imagenet_names()
-        return names[class_id] if 0 <= class_id < len(names) else f"class_{class_id}"
+        return get_class_name(class_id)
 
     def get_model_info(self) -> Dict[str, Any]:
         info = super().get_model_info()
         info.update({
             "dataset": "ImageNet-1K",
-            "architecture": "ResNet101",
+            "architecture": "ResNet152",
             "pretrained": True,
             "normalization": {"mean": IMAGENET_MEAN, "std": IMAGENET_STD},
         })

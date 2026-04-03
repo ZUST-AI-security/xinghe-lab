@@ -1,11 +1,12 @@
 """
 C&W (Carlini & Wagner) L2 adversarial attack algorithm.
 
-Migrated from services/attacks/cw.py with the following key changes:
+Key design:
 - Model is passed to generate() rather than bound in __init__
-- Uses model._model (raw nn.Module) DIRECTLY inside the loss function so that
-  gradients can flow. The original code called model.predict() which wraps
-  torch.no_grad() — this broke C&W optimization entirely.
+- images arrive as normalized tensors (ImageNet mean/std); we denormalize to
+  [0,1] pixel space first, perform the tanh box-constrained optimization there,
+  then renormalize before feeding raw_model so the model always receives
+  correctly-scaled inputs.
 - No decorator-based registry — registered explicitly in __init__.py
 """
 
@@ -30,6 +31,27 @@ class CWAlgorithm(BaseAlgorithm):
 
     # ------------------------------------------------------------------ helpers
 
+    def _get_normalization(self, model):
+        mean = getattr(model, "IMAGENET_MEAN", None) or getattr(model, "mean", None)
+        std = getattr(model, "IMAGENET_STD", None) or getattr(model, "std", None)
+        if mean is None or std is None:
+            return None, None
+        device = model.device
+        return (
+            torch.tensor(mean, device=device).view(1, 3, 1, 1),
+            torch.tensor(std, device=device).view(1, 3, 1, 1),
+        )
+
+    def _denormalize(self, images: torch.Tensor, mean, std) -> torch.Tensor:
+        if mean is None:
+            return images
+        return torch.clamp(images * std + mean, 0.0, 1.0)
+
+    def _normalize(self, pixels: torch.Tensor, mean, std) -> torch.Tensor:
+        if mean is None:
+            return pixels
+        return (pixels - mean) / std
+
     @staticmethod
     def _arctanh_encode(x: torch.Tensor) -> torch.Tensor:
         """Map [0,1] → tanh space (for box-constrained optimization)."""
@@ -43,16 +65,22 @@ class CWAlgorithm(BaseAlgorithm):
     def _f_loss(
         self,
         raw_model: torch.nn.Module,
-        adv: torch.Tensor,
+        adv_pixels: torch.Tensor,
+        mean,
+        std,
         target_labels: torch.Tensor,
         kappa: float,
+        targeted: bool,
     ) -> torch.Tensor:
-        """f(x') from the C&W paper: max(other - target, -kappa)."""
-        logits = raw_model(adv)
+        """C&W objective. Renormalizes pixel-space adv before model forward."""
+        adv_norm = self._normalize(adv_pixels, mean, std)
+        logits = raw_model(adv_norm)
         target_logit = logits.gather(1, target_labels.unsqueeze(1)).squeeze(1)
         mask = torch.ones_like(logits).scatter_(1, target_labels.unsqueeze(1), 0)
         other_logit = (logits * mask).max(dim=1)[0]
-        return torch.clamp(other_logit - target_logit, min=-kappa)
+        if targeted:
+            return torch.clamp(other_logit - target_logit, min=-kappa)
+        return torch.clamp(target_logit - other_logit, min=-kappa)
 
     # ------------------------------------------------------------------ generate
 
@@ -82,6 +110,11 @@ class CWAlgorithm(BaseAlgorithm):
         labels = labels.to(device)
         batch = images.size(0)
 
+        mean, std = self._get_normalization(model)
+
+        # Work in [0,1] pixel space; renormalize before each model forward
+        pixels = self._denormalize(images, mean, std)
+
         if targeted:
             num_classes = model.get_num_classes() or 1000
             target_labels = torch.randint(0, num_classes, labels.shape, device=device)
@@ -97,23 +130,22 @@ class CWAlgorithm(BaseAlgorithm):
         upper = torch.full((batch,), 1e10, device=device)
         c_cur = torch.full((batch,), init_const, device=device)
 
-        best_adv = images.clone()
+        best_adv_pixels = pixels.clone()
         best_l2 = torch.full((batch,), 1e10, device=device)
 
         history_losses: list = []
-        final_c = init_const
 
         for search_step in range(binary_search_steps):
-            w = self._arctanh_encode(images).detach().requires_grad_(True)
+            w = self._arctanh_encode(pixels).detach().requires_grad_(True)
             optimizer = optim.Adam([w], lr=lr)
             best_loss_iter = torch.full((batch,), float("inf"), device=device)
             no_improve = torch.zeros(batch, device=device)
 
             for iteration in range(max_iter):
                 optimizer.zero_grad()
-                adv = self._tanh_decode(w)
-                l2 = torch.sum((adv - images) ** 2, dim=[1, 2, 3])
-                f = self._f_loss(raw_model, adv, target_labels, kappa)
+                adv_pixels = self._tanh_decode(w)
+                l2 = torch.sum((adv_pixels - pixels) ** 2, dim=[1, 2, 3])
+                f = self._f_loss(raw_model, adv_pixels, mean, std, target_labels, kappa, targeted)
                 loss = (l2 + c_cur * f).mean()
                 loss.backward()
                 optimizer.step()
@@ -132,22 +164,22 @@ class CWAlgorithm(BaseAlgorithm):
 
             # Update best adversarial examples
             with torch.no_grad():
-                adv_final = self._tanh_decode(w)
+                adv_final_pixels = self._tanh_decode(w)
                 l2_final = torch.norm(
-                    (adv_final - images).view(batch, -1), p=2, dim=1
+                    (adv_final_pixels - pixels).reshape(batch, -1), p=2, dim=1
                 )
-                adv_logits = raw_model(adv_final)
+                adv_logits = raw_model(self._normalize(adv_final_pixels, mean, std))
                 adv_pred = adv_logits.argmax(dim=1)
+                orig_logits = raw_model(images)
                 if targeted:
                     success_mask = adv_pred == target_labels
                 else:
-                    orig_logits = raw_model(images)
                     success_mask = adv_pred != orig_logits.argmax(dim=1)
 
                 for i in range(batch):
                     if success_mask[i] and l2_final[i] < best_l2[i]:
                         best_l2[i] = l2_final[i]
-                        best_adv[i] = adv_final[i]
+                        best_adv_pixels[i] = adv_final_pixels[i]
 
             # Binary search update for c
             for i in range(batch):
@@ -164,10 +196,10 @@ class CWAlgorithm(BaseAlgorithm):
 
         final_c = c_cur.mean().item()
 
-        # Build output metadata
+        # Build output metadata — use pixel-space adv for heatmap/output image
         with torch.no_grad():
             orig_logits = raw_model(images)
-            adv_logits = raw_model(best_adv)
+            adv_logits = raw_model(self._normalize(best_adv_pixels, mean, std))
             orig_probs = torch.softmax(orig_logits, dim=1)
             adv_probs = torch.softmax(adv_logits, dim=1)
             orig_pred = orig_logits.argmax(dim=1)
@@ -178,13 +210,18 @@ class CWAlgorithm(BaseAlgorithm):
         else:
             final_success = (adv_pred != orig_pred).float().mean().item()
 
-        heatmap = torch.abs(best_adv - images).mean(dim=1, keepdim=True)
+        original_top1_confidence = orig_probs.max(dim=1)[0].mean().item()
+        adversarial_top1_confidence = adv_probs.max(dim=1)[0].mean().item()
+        original_class = int(orig_pred[0].item())
+        adversarial_class = int(adv_pred[0].item())
+
+        heatmap = torch.abs(best_adv_pixels - pixels).mean(dim=1, keepdim=True)
         heatmap = (heatmap - heatmap.min()) / (heatmap.max() - heatmap.min() + 1e-8)
 
-        perturbation = (best_adv - images).view(batch, -1)
+        perturbation = (best_adv_pixels - pixels).reshape(batch, -1)
         linf_norm = torch.norm(perturbation, p=float("inf"), dim=1)
 
-        return best_adv.detach(), {
+        return best_adv_pixels.detach(), {
             "heatmap": heatmap.cpu(),
             "original_probs": orig_probs.cpu(),
             "adv_probs": adv_probs.cpu(),
@@ -194,6 +231,11 @@ class CWAlgorithm(BaseAlgorithm):
             "targeted": bool(targeted),
             "final_c_value": final_c,
             "iterations": max_iter,
+            "original_class_id": original_class,
+            "adversarial_class_id": adversarial_class,
+            "original_top1_confidence": original_top1_confidence,
+            "adversarial_top1_confidence": adversarial_top1_confidence,
+            "history": {"losses": history_losses},
             "time_elapsed": time.time() - start,
         }
 

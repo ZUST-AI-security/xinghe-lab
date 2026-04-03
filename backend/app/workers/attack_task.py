@@ -19,6 +19,7 @@ import torch
 
 from app.workers.celery_app import celery_app
 from app.utils.image_utils import base64_to_image, image_to_base64
+from app.utils.attack_response import build_prediction_summary
 
 logger = logging.getLogger(__name__)
 
@@ -99,8 +100,11 @@ def run_attack(
         self.update_state(state="PROGRESS", meta={"progress": 90, "status": "Processing results..."})
         adv_np = (adv_images[0].cpu().numpy().transpose(1, 2, 0) * 255).astype("uint8")
         heatmap_np = metadata["heatmap"][0].cpu().numpy()
+        original_summary = build_prediction_summary(model, metadata["original_probs"])
+        adversarial_summary = build_prediction_summary(model, metadata["adv_probs"])
 
         result = {
+            "task_id": self.request.id,
             "original_image": image,
             "adversarial_image": image_to_base64(adv_np),
             "heatmap": image_to_base64(heatmap_np, is_heatmap=True),
@@ -114,7 +118,21 @@ def run_attack(
                 "algorithm": algorithm,
                 "model_name": model_name,
                 "user_id": user_id,
-                **{k: metadata[k] for k in ("epsilon", "targeted", "iterations", "final_c_value")
+                "original_prediction": original_summary["prediction"],
+                "adversarial_prediction": adversarial_summary["prediction"],
+                "original_top5": original_summary["top5"],
+                "adversarial_top5": adversarial_summary["top5"],
+                **{k: metadata[k] for k in (
+                    "epsilon",
+                    "targeted",
+                    "iterations",
+                    "final_c_value",
+                    "success_rate",
+                    "original_class_id",
+                    "adversarial_class_id",
+                    "original_top1_confidence",
+                    "adversarial_top1_confidence",
+                )
                    if k in metadata},
             },
         }
@@ -131,5 +149,4 @@ def run_attack(
             f"Attack '{algorithm}' failed (user={user_id}, model={model_name}): {e}",
             exc_info=True,
         )
-        self.update_state(state="FAILURE", meta={"error": str(e), "progress": 0})
         raise

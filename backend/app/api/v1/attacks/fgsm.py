@@ -27,6 +27,7 @@ from app.schemas.attacks.fgsm import (
     FGSMHistoryListResponse,
 )
 from app.utils.image_utils import base64_to_image, image_to_base64
+from app.utils.attack_response import build_prediction_summary
 from app.core.exceptions import AttackError, ValidationError
 from app.utils.imagenet_classes import search_classes, get_class_by_id, get_popular_classes
 
@@ -87,6 +88,8 @@ async def run_fgsm_sync(
         # Convert outputs
         adv_np = (adv_images[0].cpu().numpy().transpose(1, 2, 0) * 255).astype(np.uint8)
         heatmap_np = metadata["heatmap"][0].cpu().numpy()
+        original_summary = build_prediction_summary(model, metadata["original_probs"])
+        adversarial_summary = build_prediction_summary(model, metadata["adv_probs"])
 
         return FGSMAttackResponse(
             original_image=request.image,
@@ -102,6 +105,10 @@ async def run_fgsm_sync(
                 "epsilon": metadata.get("epsilon", request.params.epsilon),
                 "targeted": metadata.get("targeted", request.params.targeted),
                 "model_name": request.model_name or "resnet100_imagenet",
+                "original_prediction": original_summary["prediction"],
+                "adversarial_prediction": adversarial_summary["prediction"],
+                "original_top5": original_summary["top5"],
+                "adversarial_top5": adversarial_summary["top5"],
             },
         )
 

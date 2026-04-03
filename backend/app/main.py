@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.core.database import create_tables
+from app.core.database import initialize_database, ensure_required_tables
 from app.core.exceptions import (
     XingHeException,
     xinghe_exception_handler,
@@ -33,8 +33,9 @@ async def lifespan(app: FastAPI):
     logger.info(f" 版本: {settings.app_version} | 环境: {'dev' if settings.is_development else 'prod'}")
 
     try:
-        create_tables()
-        logger.info(" 数据库表创建完成")
+        initialize_database()
+        ensure_required_tables("users")
+        logger.info(" 数据库 schema 已就绪")
 
         # Seed default admin user
         from app.core.database import SessionLocal

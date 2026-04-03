@@ -37,25 +37,27 @@ import useCWAttack from './hooks/useCWAttack';
 
 const { Title, Text, Paragraph } = Typography;
 
+const DEFAULT_CW_PARAMS = {
+  c: 0.1,
+  kappa: 0,
+  lr: 0.01,
+  max_iter: 2000,
+  binary_search_steps: 9,
+  init_const: 0.01,
+  targeted: false,
+  abort_early: true,
+  early_stop_iters: 50,
+};
+
 /**
  * C&W攻击页面组件 (改进版)
  */
 const CWAttack = () => {
   const [imageUrl, setImageUrl] = useState(null);
   const [advancedMode, setAdvancedMode] = useState(false);
-  const [useAsync, setUseAsync] = useState(false);
+  const [useAsync, setUseAsync] = useState(true);
   
-  const [params, setParams] = useState({
-    c: 5.0,
-    kappa: 0.0,
-    lr: 0.05,
-    max_iter: 100,
-    binary_search_steps: 1,
-    init_const: 0.01,
-    targeted: false,
-    abort_early: true,
-    early_stop_iters: 5,
-  });
+  const [params, setParams] = useState(DEFAULT_CW_PARAMS);
 
   // 使用自定义Hook
   const {
@@ -148,17 +150,7 @@ const CWAttack = () => {
     {
       name: '默认参数',
       icon: '⚡',
-      params: {
-        c: 0.1,
-        kappa: 0,
-        lr: 0.01,
-        max_iter: 2000,
-        binary_search_steps: 9,
-        init_const: 0.01,
-        targeted: false,
-        abort_early: true,
-        early_stop_iters: 50,
-      },
+      params: DEFAULT_CW_PARAMS,
     },
     {
       name: '激进攻击',
@@ -308,7 +300,7 @@ const CWAttack = () => {
             </Tooltip>
           </Title>
           <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-            针对ImageNet ResNet100模型的C&W攻击，支持参数实时调节和多种范数约束
+            针对ImageNet ResNet152模型的C&W攻击，支持参数实时调节和多种范数约束
           </Paragraph>
         </div>
         
@@ -438,7 +430,7 @@ const CWAttack = () => {
                 disabled={!imageUrl || isRunning}
                 size="large"
               >
-                {useAsync ? '异步攻击' : '同步攻击'}
+                {useAsync ? '提交异步任务' : '同步执行'}
               </Button>
               
               {canCancel && (

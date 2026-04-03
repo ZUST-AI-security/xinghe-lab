@@ -27,6 +27,7 @@ from app.schemas.attacks.pgd import (
     PGDHistoryListResponse,
 )
 from app.utils.image_utils import base64_to_image, image_to_base64
+from app.utils.attack_response import build_prediction_summary
 from app.core.exceptions import AttackError, ValidationError
 from app.utils.imagenet_classes import search_classes, get_class_by_id, get_popular_classes
 
@@ -91,6 +92,8 @@ async def run_pgd_sync(
 
         adv_np = (adv_images[0].cpu().numpy().transpose(1, 2, 0) * 255).astype(np.uint8)
         heatmap_np = metadata["heatmap"][0].cpu().numpy()
+        original_summary = build_prediction_summary(model, metadata["original_probs"])
+        adversarial_summary = build_prediction_summary(model, metadata["adv_probs"])
 
         return PGDAttackResponse(
             original_image=request.image,
@@ -111,6 +114,10 @@ async def run_pgd_sync(
                 "loss_type": metadata.get("loss_type", request.params.loss_type),
                 "targeted": metadata.get("targeted", request.params.targeted),
                 "model_name": request.model_name or "resnet100_imagenet",
+                "original_prediction": original_summary["prediction"],
+                "adversarial_prediction": adversarial_summary["prediction"],
+                "original_top5": original_summary["top5"],
+                "adversarial_top5": adversarial_summary["top5"],
             },
         )
 

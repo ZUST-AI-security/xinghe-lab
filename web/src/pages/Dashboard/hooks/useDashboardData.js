@@ -12,7 +12,7 @@ export const useDashboardData = () => {
     models: { 
       count: 2, 
       status: '在线', 
-      list: ['ResNet100', 'YOLOv8'] 
+      list: ['ResNet152', 'YOLOv8'] 
     },
     runsToday: { count: 128, growth: '+23%', comparison: '较昨日' },
     successRate: { rate: 0.76, best: 'PGD', label: '最佳算法' }
@@ -22,7 +22,7 @@ export const useDashboardData = () => {
       id: 1,
       time: '今天 14:23',
       algorithm: 'C&W攻击',
-      model: 'ResNet100',
+      model: 'ResNet152',
       success: true,
       confidence: 0.85
     },
@@ -38,7 +38,7 @@ export const useDashboardData = () => {
       id: 3,
       time: '昨天 16:30',
       algorithm: 'PGD攻击',
-      model: 'ResNet100',
+      model: 'ResNet152',
       success: true,
       confidence: 0.92
     },
@@ -54,7 +54,7 @@ export const useDashboardData = () => {
       id: 5,
       time: '昨天 14:45',
       algorithm: 'C&W攻击',
-      model: 'ResNet100',
+      model: 'ResNet152',
       success: true,
       confidence: 0.88
     }

@@ -70,23 +70,43 @@ const ResultDisplay = ({
 
   const originalImage = originalImageUrl || result.original_image;
   const metadata = result.metadata || {};
+  const originalPrediction = metadata.original_prediction || null;
+  const adversarialPrediction = metadata.adversarial_prediction || null;
   const originalTopClass = result.original_probs?.length
     ? result.original_probs.indexOf(Math.max(...result.original_probs))
     : null;
   const adversarialTopClass = result.adversarial_probs?.length
     ? result.adversarial_probs.indexOf(Math.max(...result.adversarial_probs))
     : null;
-  const buildTop5 = (probs) => (probs || [])
+  const formatPredictionLabel = (prediction, fallbackClassId) => {
+    if (prediction?.class_name) {
+      return `${prediction.class_name} (#${prediction.class_id})`;
+    }
+    return fallbackClassId !== null ? `${fallbackClassId}` : '-';
+  };
+  const buildTop5 = (probs, top5FromMetadata) => {
+    if (Array.isArray(top5FromMetadata) && top5FromMetadata.length > 0) {
+      return top5FromMetadata.map((item, index) => ({
+        key: `${item.class_id}-${index}`,
+        class: item.class_id,
+        className: item.class_name,
+        probability: Number(((item.confidence || 0) * 100).toFixed(2)),
+      }));
+    }
+
+    return (probs || [])
     .map((probability, index) => ({
       key: index,
       class: index,
+      className: null,
       probability: Number((probability * 100).toFixed(2)),
     }))
     .sort((a, b) => b.probability - a.probability)
     .slice(0, 5);
+  };
 
-  const originalTop5 = buildTop5(result.original_probs);
-  const adversarialTop5 = buildTop5(result.adversarial_probs);
+  const originalTop5 = buildTop5(result.original_probs, metadata.original_top5);
+  const adversarialTop5 = buildTop5(result.adversarial_probs, metadata.adversarial_top5);
 
   const columns = [
     {
@@ -100,8 +120,8 @@ const ResultDisplay = ({
       title: '类别',
       dataIndex: 'class',
       key: 'class',
-      width: 80,
-      render: (classId) => `${classId}`
+      width: 220,
+      render: (classId, record) => record.className || `${classId}`
     },
     {
       title: '置信度',
@@ -161,7 +181,7 @@ const ResultDisplay = ({
                 <div style={{ marginTop: 12 }}>
                   <Statistic
                     title="预测类别"
-                    value={originalTopClass ?? '-'}
+                    value={formatPredictionLabel(originalPrediction, originalTopClass)}
                     valueStyle={{ fontSize: 14, fontWeight: 'bold' }}
                   />
                   <Statistic
@@ -186,7 +206,7 @@ const ResultDisplay = ({
                     <div style={{ marginTop: 12 }}>
                       <Statistic
                         title="预测类别"
-                        value={adversarialTopClass ?? '-'}
+                        value={formatPredictionLabel(adversarialPrediction, adversarialTopClass)}
                         valueStyle={{ fontSize: 14, fontWeight: 'bold' }}
                       />
                       <Statistic
@@ -312,8 +332,11 @@ const ResultDisplay = ({
             <Descriptions.Item label="攻击状态">
               {result.success ? '成功' : '失败'}
             </Descriptions.Item>
+            <Descriptions.Item label="成功率">
+              {metadata.success_rate !== undefined ? `${(metadata.success_rate * 100).toFixed(2)}%` : '-'}
+            </Descriptions.Item>
             <Descriptions.Item label="原始类别">
-              {originalTopClass ?? '-'}
+              {formatPredictionLabel(originalPrediction, originalTopClass)}
             </Descriptions.Item>
             <Descriptions.Item label="原始置信度">
               {originalTopClass !== null ? `${((result.original_probs?.[originalTopClass] || 0) * 100).toFixed(2)}%` : '-'}
@@ -321,13 +344,18 @@ const ResultDisplay = ({
             {adversarialTopClass !== null && (
               <>
                 <Descriptions.Item label="对抗样本类别">
-                  {adversarialTopClass}
+                  {formatPredictionLabel(adversarialPrediction, adversarialTopClass)}
                 </Descriptions.Item>
                 <Descriptions.Item label="对抗样本置信度">
                   {`${((result.adversarial_probs?.[adversarialTopClass] || 0) * 100).toFixed(2)}%`}
                 </Descriptions.Item>
               </>
             )}
+            <Descriptions.Item label="类别变化">
+              {metadata.original_class_id !== undefined && metadata.adversarial_class_id !== undefined
+                ? `${metadata.original_class_id} -> ${metadata.adversarial_class_id}`
+                : '-'}
+            </Descriptions.Item>
             <Descriptions.Item label="扰动范数">
               {metadata.l2_norm?.toFixed?.(4) ?? '-'}
             </Descriptions.Item>

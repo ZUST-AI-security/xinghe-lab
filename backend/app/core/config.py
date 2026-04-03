@@ -56,7 +56,15 @@ class Settings(BaseSettings):
     log_file: str = "./logs/app.log"
     
     # CORS配置（开发模式）
-    cors_origins: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://127.0.0.1:40747", "http://localhost:3001"]
+    cors_origins: List[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:40747",
+    ]
     
     # 安全配置
     password_min_length: int = 8
@@ -72,13 +80,17 @@ class Settings(BaseSettings):
     
     def _ensure_directories(self):
         """确保必要的目录存在"""
+        model_cache_path = Path(self.model_cache_dir).resolve()
         directories = [
-            self.model_cache_dir,
+            model_cache_path,
             Path(self.log_file).parent,
         ]
         
         for directory in directories:
             Path(directory).mkdir(parents=True, exist_ok=True)
+
+        # Keep torchvision / torch hub downloads inside backend\models instead of the user cache.
+        os.environ.setdefault("TORCH_HOME", str(model_cache_path))
     
     @property
     def is_development(self) -> bool:

@@ -5,6 +5,17 @@ const COMPLETED_STATUS = 'completed';
 const FAILED_STATUS = 'failed';
 const RUNNING_STATUSES = new Set(['pending', 'running', 'processing']);
 
+const isTimeoutError = (error) =>
+  error?.code === 'ECONNABORTED' || error?.message?.toLowerCase().includes('timeout');
+
+const getRequestErrorMessage = (requestError, fallbackMessage, options = {}) => {
+  if (options.preferAsync && isTimeoutError(requestError)) {
+    return '同步请求超时，建议切换到异步 submit 模式后通过任务轮询查看进度。';
+  }
+
+  return requestError.response?.data?.detail || requestError.message || fallbackMessage;
+};
+
 const normalizeResult = (response, params) => ({
   ...response,
   params,
@@ -105,7 +116,11 @@ export const useAttackRunner = ({
       setLoading(false);
       setProgress(0);
       setStatus(FAILED_STATUS);
-      setError(requestError.response?.data?.detail || requestError.message || `${attackName}攻击执行失败`);
+      setError(
+        getRequestErrorMessage(requestError, `${attackName}攻击执行失败`, {
+          preferAsync: true,
+        })
+      );
       throw requestError;
     }
   }, [attackName, finishWithResult, runSync, stopPolling]);
@@ -126,7 +141,7 @@ export const useAttackRunner = ({
     } catch (requestError) {
       setLoading(false);
       setStatus(FAILED_STATUS);
-      setError(requestError.response?.data?.detail || requestError.message || `${attackName}任务提交失败`);
+      setError(getRequestErrorMessage(requestError, `${attackName}任务提交失败`));
       throw requestError;
     }
   }, [attackName, pollTask, stopPolling, submitAsync]);

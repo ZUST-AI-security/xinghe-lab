@@ -82,7 +82,7 @@ class PGDAlgorithm(BaseAlgorithm):
     @staticmethod
     def _project_l2(perturbations: torch.Tensor, epsilon: float) -> torch.Tensor:
         batch = perturbations.size(0)
-        norms = torch.norm(perturbations.view(batch, -1), dim=1, keepdim=True)
+        norms = torch.norm(perturbations.reshape(batch, -1), dim=1, keepdim=True)
         norms = norms.view(batch, 1, 1, 1)
         scale = torch.clamp(epsilon / (norms + 1e-8), max=1.0)
         return perturbations * scale
@@ -149,7 +149,7 @@ class PGDAlgorithm(BaseAlgorithm):
                 delta = torch.empty_like(images).uniform_(-epsilon, epsilon)
             else:
                 delta = torch.randn_like(images)
-                norms = torch.norm(delta.view(batch, -1), dim=1, keepdim=True).view(batch, 1, 1, 1)
+                norms = torch.norm(delta.reshape(batch, -1), dim=1, keepdim=True).view(batch, 1, 1, 1)
                 delta = delta / (norms + 1e-8) * epsilon
             adv = torch.clamp(images + delta, lower_bound, upper_bound).detach()
         else:
@@ -179,7 +179,7 @@ class PGDAlgorithm(BaseAlgorithm):
                 if norm == "linf":
                     adv_new = adv + alpha * grad.sign()
                 else:
-                    g_norms = torch.norm(grad.view(batch, -1), dim=1, keepdim=True).view(batch, 1, 1, 1)
+                    g_norms = torch.norm(grad.reshape(batch, -1), dim=1, keepdim=True).view(batch, 1, 1, 1)
                     adv_new = adv + alpha * grad / (g_norms + 1e-8)
 
                 # Project back to epsilon-ball around original images
@@ -199,7 +199,7 @@ class PGDAlgorithm(BaseAlgorithm):
                         best_adv[i] = adv[i]
 
             if step % 10 == 0 or step == num_iter - 1:
-                pert = (adv - images).view(batch, -1)
+                pert = (adv - images).reshape(batch, -1)
                 history["losses"].append(loss_mean.item())
                 history["l2_norms"].append(torch.norm(pert, p=2, dim=1).mean().item())
                 history["linf_norms"].append(torch.norm(pert, p=float("inf"), dim=1).mean().item())
@@ -224,7 +224,7 @@ class PGDAlgorithm(BaseAlgorithm):
         heatmap = torch.abs(vis_adv - vis_orig).mean(dim=1, keepdim=True)
         heatmap = (heatmap - heatmap.min()) / (heatmap.max() - heatmap.min() + 1e-8)
 
-        pert_pixel = (vis_adv - vis_orig).view(batch, -1)
+        pert_pixel = (vis_adv - vis_orig).reshape(batch, -1)
         l2_norm = torch.norm(pert_pixel, p=2, dim=1)
         linf_norm = torch.norm(pert_pixel, p=float("inf"), dim=1)
 
