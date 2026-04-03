@@ -9,8 +9,10 @@ To add a new algorithm:
 from app.algorithms.registry import register
 from app.algorithms.fgsm import FGSMAlgorithm
 from app.algorithms.cw import CWAlgorithm
+from app.algorithms.pgd import PGDAlgorithm
 
 register(FGSMAlgorithm)
 register(CWAlgorithm)
+register(PGDAlgorithm)
 
-__all__ = ["FGSMAlgorithm", "CWAlgorithm", "register"]
+__all__ = ["FGSMAlgorithm", "CWAlgorithm", "PGDAlgorithm", "register"]

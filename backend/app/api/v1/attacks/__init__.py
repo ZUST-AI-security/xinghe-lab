@@ -7,10 +7,11 @@ To add a new algorithm:
 """
 
 from fastapi import APIRouter
-from app.api.v1.attacks import fgsm, cw, tasks
+from app.api.v1.attacks import fgsm, cw, pgd, tasks
 import app.algorithms  # side-effect: registers all algorithms
 
 router = APIRouter()
 router.include_router(fgsm.router)
 router.include_router(cw.router)
+router.include_router(pgd.router)
 router.include_router(tasks.router)
