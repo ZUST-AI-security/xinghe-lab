@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Button, message, Space, Alert, Spin, Tabs, Tag, Tooltip } from 'antd';
+import { Card, Row, Col, Button, message, Space, Alert, Spin, Tabs, Tag, Tooltip, Collapse } from 'antd';
 import { 
   PlayCircleOutlined, 
   SaveOutlined, 
@@ -12,7 +12,9 @@ import {
   SettingOutlined,
   HistoryOutlined,
   ClearOutlined,
-  RocketOutlined
+  RocketOutlined,
+  UpOutlined,
+  DownOutlined
 } from '@ant-design/icons';
 
 import ImageUploader from './PGDAttack/components/ImageUploader';
@@ -23,6 +25,7 @@ import usePGDAttackStore from '../../store/pgdAttackStore';
 import { getAlgorithmParams } from '../../api/attacks/pgd';
 
 const { TabPane } = Tabs;
+const { Panel } = Collapse;
 
 const PGDAttack = () => {
   // 状态管理
@@ -31,6 +34,7 @@ const PGDAttack = () => {
   const [paramSchema, setParamSchema] = useState({});
   const [loadingSchema, setLoadingSchema] = useState(false);
   const [activeTab, setActiveTab] = useState('attack');
+  const [paramsPanelCollapsed, setParamsPanelCollapsed] = useState(false);
   
   // Store状态
   const { 
@@ -154,7 +158,26 @@ const PGDAttack = () => {
     message.info('已清空结果');
   };
 
-  // 渲染参数面板
+  // 渲染参数面板摘要（折叠状态显示）
+  const renderParameterSummary = () => {
+    const keyParams = {
+      epsilon: params.epsilon || 0.03,
+      alpha: params.alpha || 0.01,
+      iterations: params.iterations || 40,
+      norm: params.norm || 'Linf'
+    };
+
+    return (
+      <div style={{ fontSize: 12, color: '#666', marginTop: 8 }}>
+        <Space wrap>
+          <Tag color="blue">ε: {keyParams.epsilon}</Tag>
+          <Tag color="green">α: {keyParams.alpha}</Tag>
+          <Tag color="orange">迭代: {keyParams.iterations}</Tag>
+          <Tag color="purple">{keyParams.norm}</Tag>
+        </Space>
+      </div>
+    );
+  };
   const renderParameterPanel = () => {
     if (loadingSchema) {
       return (
@@ -295,6 +318,28 @@ const PGDAttack = () => {
         </p>
       </div>
 
+      <style>{`
+        .pgd-params-collapse .ant-collapse-ghost > .ant-collapse-item > .ant-collapse-header {
+          padding: 12px 20px !important;
+          background: white !important;
+          border-radius: 8px !important;
+          margin-bottom: 0 !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+        }
+        .pgd-params-collapse .ant-collapse-ghost > .ant-collapse-item > .ant-collapse-content {
+          background: white !important;
+          border-radius: 0 0 8px 8px !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+          border-top: none !important;
+        }
+        .pgd-params-collapse .ant-collapse-ghost > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box {
+          padding: 20px !important;
+        }
+        .pgd-params-collapse .ant-collapse-ghost > .ant-collapse-item:last-child > .ant-collapse-header {
+          border-radius: 8px !important;
+        }
+      `}</style>
+
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab={<span><RocketOutlined />攻击</span>} key="attack">
           <Row gutter={[16, 16]}>
@@ -312,21 +357,45 @@ const PGDAttack = () => {
 
             {/* 右侧：参数调节 */}
             <Col xs={24} lg={14}>
-              <Card 
-                title="2. 调节参数" 
-                bordered={false}
-                extra={
-                  <Button 
-                    size="small" 
-                    onClick={() => setParams(getCurrentTemplateParams())}
-                    disabled={loading}
+              <div className="pgd-params-collapse">
+                <Collapse 
+                  ghost
+                  activeKey={paramsPanelCollapsed ? [] : ['params']}
+                  onChange={(keys) => setParamsPanelCollapsed(keys.length === 0)}
+                >
+                  <Panel 
+                    header={
+                      <div style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 'bold' }}>
+                            <SettingOutlined style={{ marginRight: 8 }} />
+                            2. 调节参数
+                          </span>
+                          <Button 
+                            size="small" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setParams(getCurrentTemplateParams());
+                            }}
+                            disabled={loading}
+                          >
+                            重置
+                          </Button>
+                        </div>
+                        {paramsPanelCollapsed && renderParameterSummary()}
+                      </div>
+                    } 
+                    key="params"
+                    extra={
+                      <span style={{ fontSize: 12, color: '#666' }}>
+                        {paramsPanelCollapsed ? <DownOutlined /> : <UpOutlined />}
+                      </span>
+                    }
                   >
-                    重置
-                  </Button>
-                }
-              >
-                {renderParameterPanel()}
-              </Card>
+                    {renderParameterPanel()}
+                  </Panel>
+                </Collapse>
+              </div>
             </Col>
           </Row>
 
