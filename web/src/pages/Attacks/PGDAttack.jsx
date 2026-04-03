@@ -34,7 +34,7 @@ const PGDAttack = () => {
   const [paramSchema, setParamSchema] = useState({});
   const [loadingSchema, setLoadingSchema] = useState(false);
   const [activeTab, setActiveTab] = useState('attack');
-  const [paramsPanelCollapsed, setParamsPanelCollapsed] = useState(false);
+  const [paramsPanelCollapsed, setParamsPanelCollapsed] = useState(true);
   
   // Store状态
   const { 
