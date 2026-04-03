@@ -22,7 +22,6 @@ const Heatmap = ({
   width = '100%',
   height = 400,
   showControls = true,
-  colormap = 'hot',
 }) => {
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);

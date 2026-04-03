@@ -9,7 +9,7 @@ import { login as loginApi, register as registerApi, getCurrentUser, logout as l
 
 const useAuthStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       // 状态
       user: null,
       token: null,

@@ -10,8 +10,6 @@ const QuickStartCard = ({
   title,
   description,
   model,
-  classes,
-  dataset,
   status = 'available',
   link,
   background,

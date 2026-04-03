@@ -7,8 +7,9 @@ import axios from 'axios';
 import { message } from 'antd';
 
 // API基础配置
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
-const API_VERSION = process.env.REACT_APP_API_VERSION || 'v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
+const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG === 'true';
 
 // 创建Axios实例
 const apiClient = axios.create({
@@ -32,7 +33,7 @@ apiClient.interceptors.request.use(
     config.metadata = { startTime: new Date() };
 
     // 开发环境下打印请求信息
-    if (process.env.REACT_APP_ENABLE_DEBUG === 'true') {
+    if (ENABLE_DEBUG) {
       console.log('🚀 API Request:', {
         method: config.method?.toUpperCase(),
         url: config.url,
@@ -57,7 +58,7 @@ apiClient.interceptors.response.use(
     const duration = endTime - response.config.metadata.startTime;
 
     // 开发环境下打印响应信息
-    if (process.env.REACT_APP_ENABLE_DEBUG === 'true') {
+    if (ENABLE_DEBUG) {
       console.log('✅ API Response:', {
         url: response.config.url,
         status: response.status,
@@ -72,7 +73,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     // 开发环境下打印错误信息
-    if (process.env.REACT_APP_ENABLE_DEBUG === 'true') {
+    if (ENABLE_DEBUG) {
       console.error('❌ API Error:', {
         url: originalRequest?.url,
         status: error.response?.status,

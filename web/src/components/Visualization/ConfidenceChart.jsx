@@ -50,7 +50,7 @@ const ConfidenceChart = ({
       .sort((a, b) => b.original - a.original)
       .slice(0, maxClasses);
 
-    return topClasses.map((item, index) => ({
+    return topClasses.map((item) => ({
       name: `类别 ${item.index}`,
       original: parseFloat((item.original * 100).toFixed(2)),
       adversarial: parseFloat((item.adversarial * 100).toFixed(2)),
