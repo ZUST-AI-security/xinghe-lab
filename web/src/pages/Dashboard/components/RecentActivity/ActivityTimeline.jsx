@@ -1,15 +1,12 @@
 import React from 'react';
 import { Card, Timeline, Avatar, Typography, Space } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
 import { formatRelativeTime } from '../../../../utils/dateUtils';
 import styles from './RecentActivity.module.less';
 
 const { Text, Title } = Typography;
 
 const ActivityTimeline = ({ activities }) => {
-  const { t } = useTranslation();
-
   const timelineItems = activities.map(activity => ({
     key: activity.id,
     dot: activity.success ? (

@@ -3,10 +3,9 @@
  * 动态从后端获取可用模型列表的下拉选择组件
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Select, Space, Tag, Tooltip } from 'antd';
 import { DatabaseOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { getAvailableModels } from '../../api/models';
 import { useModelStore } from '../../store/modelStore';
 
 const { Option } = Select;
@@ -24,11 +23,7 @@ const ModelSelector = ({
   const [loading, setLoading] = useState(false);
   const { fetchModels } = useModelStore();
 
-  useEffect(() => {
-    loadModels();
-  }, []);
-
-  const loadModels = async () => {
+  const loadModels = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchModels();
@@ -58,7 +53,11 @@ const ModelSelector = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchModels, modelType, onChange, showOnly, value]);
+
+  useEffect(() => {
+    loadModels();
+  }, [loadModels]);
 
   // 获取模型类型标签
   const getModelTypeTag = (type) => {

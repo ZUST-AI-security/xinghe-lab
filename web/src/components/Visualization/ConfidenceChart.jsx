@@ -13,13 +13,11 @@ import {
   CartesianGrid, 
   Tooltip as RechartsTooltip,
   Legend, 
-  ResponsiveContainer,
-  Cell
+  ResponsiveContainer
 } from 'recharts';
 import { 
   DownloadOutlined, 
   ExpandOutlined,
-  CompressOutlined,
   InfoCircleOutlined,
   BarChartOutlined
 } from '@ant-design/icons';

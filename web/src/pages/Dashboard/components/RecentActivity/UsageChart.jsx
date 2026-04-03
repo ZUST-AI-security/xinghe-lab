@@ -1,14 +1,11 @@
 import React from 'react';
 import { Card, Typography } from 'antd';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { useTranslation } from 'react-i18next';
 import styles from './RecentActivity.module.less';
 
 const { Title } = Typography;
 
 const UsageChart = ({ data }) => {
-  const { t } = useTranslation();
-
   const RADIAN = Math.PI / 180;
   const renderCustomizedLabel = ({
     cx, cy, midAngle, innerRadius, outerRadius, percent

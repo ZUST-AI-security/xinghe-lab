@@ -29,8 +29,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "lint": "eslint src --ext .js,.jsx",
-    "lint:fix": "eslint src --ext .js,.jsx --fix",
+    "lint": "set ESLINT_USE_FLAT_CONFIG=false&& eslint src --ext .js,.jsx",
+    "lint:fix": "set ESLINT_USE_FLAT_CONFIG=false&& eslint src --ext .js,.jsx --fix",
     "format": "prettier --write src/**/*.{js,jsx,css,md}"
   },
   "eslintConfig": {

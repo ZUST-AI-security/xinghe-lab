@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, Typography, Space, Tag, Row, Col } from 'antd';
-import { ThunderboltOutlined, ClockCircleOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { Card, Typography, Space, Tag } from 'antd';
+import { ThunderboltOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../../../store/authStore';
 import { formatGreeting, formatDate } from '../../../../utils/dateUtils';

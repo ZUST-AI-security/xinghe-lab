@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Typography, theme } from 'antd';
+import { Space, Typography, theme } from 'antd';
 
 const { Text } = Typography;
 const { useToken } = theme;

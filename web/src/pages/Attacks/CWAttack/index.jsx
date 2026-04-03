@@ -3,7 +3,7 @@
  * 完整的参数交互、图像上传、结果展示
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   Row,
@@ -11,28 +11,23 @@ import {
   Button,
   Space,
   Typography,
-  Radio,
   Divider,
   Alert,
   Progress,
-  Select,
   Spin,
   message,
   Tooltip,
   Badge,
   Tag,
-  Switch
+  Switch,
 } from 'antd';
 import {
   PlayCircleOutlined,
   ReloadOutlined,
   StopOutlined,
-  SettingOutlined,
-  ThunderboltOutlined,
   InfoCircleOutlined,
   DownloadOutlined,
   SaveOutlined,
-  ShareAltOutlined
 } from '@ant-design/icons';
 
 import ParameterSlider from './components/ParameterSlider';
@@ -41,34 +36,25 @@ import ResultDisplay from './components/ResultDisplay';
 import useCWAttack from './hooks/useCWAttack';
 
 const { Title, Text, Paragraph } = Typography;
-const { Option } = Select;
 
 /**
  * C&W攻击页面组件 (改进版)
  */
 const CWAttack = () => {
-  // 状态管理
-  const [selectedImage, setSelectedImage] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
-  const [imageId, setImageId] = useState(null);
-  const [classOptions, setClassOptions] = useState([]);
-  const [searching, setSearching] = useState(false);
   const [advancedMode, setAdvancedMode] = useState(false);
   const [useAsync, setUseAsync] = useState(false);
   
-  // 参数状态
   const [params, setParams] = useState({
-    c: 5.0,  // 大幅增大c值，提高攻击效率
+    c: 5.0,
     kappa: 0.0,
-    lr: 0.05,  // 大幅增大学习率，快速收敛
-    max_iter: 100,  // 保持最小允许值
-    norm: '2',
-    binary_search_steps: 1,  // 最小搜索步数
+    lr: 0.05,
+    max_iter: 100,
+    binary_search_steps: 1,
     init_const: 0.01,
-    target_class: undefined,
     targeted: false,
     abort_early: true,
-    early_stop_iters: 5  // 最小早停检查步数
+    early_stop_iters: 5,
   });
 
   // 使用自定义Hook
@@ -85,15 +71,12 @@ const CWAttack = () => {
     reset,
     saveResult,
     exportData,
-    searchClasses,
     isRunning,
     canCancel,
-    canRetry,
     hasResult,
-    isSuccess
+    isSuccess,
   } = useCWAttack();
 
-  // 参数规范
   const paramSpecs = {
     c: {
       label: '权衡系数 c',
@@ -170,13 +153,12 @@ const CWAttack = () => {
         kappa: 0,
         lr: 0.01,
         max_iter: 2000,
-        norm: '2',
         binary_search_steps: 9,
         init_const: 0.01,
         targeted: false,
         abort_early: true,
-        early_stop_iters: 50
-      }
+        early_stop_iters: 50,
+      },
     },
     {
       name: '激进攻击',
@@ -186,13 +168,12 @@ const CWAttack = () => {
         kappa: 10,
         lr: 0.05,
         max_iter: 5000,
-        norm: '2',
         binary_search_steps: 15,
         init_const: 0.1,
         targeted: false,
         abort_early: false,
-        early_stop_iters: 100
-      }
+        early_stop_iters: 100,
+      },
     },
     {
       name: '隐蔽攻击',
@@ -202,13 +183,12 @@ const CWAttack = () => {
         kappa: 0,
         lr: 0.001,
         max_iter: 1000,
-        norm: 'inf',
         binary_search_steps: 5,
         init_const: 0.001,
         targeted: false,
         abort_early: true,
-        early_stop_iters: 25
-      }
+        early_stop_iters: 25,
+      },
     },
     {
       name: '快速测试',
@@ -218,21 +198,20 @@ const CWAttack = () => {
         kappa: 0,
         lr: 0.02,
         max_iter: 500,
-        norm: '2',
         binary_search_steps: 3,
         init_const: 0.1,
         targeted: false,
         abort_early: true,
-        early_stop_iters: 20
-      }
-    }
+        early_stop_iters: 20,
+      },
+    },
   ];
 
-  // 处理图片上传
   const handleImageChange = (file) => {
-    setSelectedImage(file);
-    
-    // 生成预览URL
+    if (!file) {
+      setImageUrl(null);
+      return false;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       setImageUrl(e.target.result);
@@ -242,12 +221,6 @@ const CWAttack = () => {
     return false; // 阻止自动上传
   };
 
-  // 处理图片ID变化
-  const handleImageIdChange = (id) => {
-    setImageId(id);
-  };
-
-  // 处理参数变化
   const handleParamChange = (key, value) => {
     setParams(prev => ({
       ...prev,
@@ -255,92 +228,49 @@ const CWAttack = () => {
     }));
   };
 
-  // 处理范数类型变化
-  const handleNormChange = (e) => {
-    setParams(prev => ({
-      ...prev,
-      norm: e.target.value
-    }));
-  };
-
-  // 处理定向攻击切换
   const handleTargetedChange = (checked) => {
     setParams(prev => ({
       ...prev,
       targeted: checked,
-      target_class: checked ? undefined : prev.target_class
     }));
   };
 
-  // 搜索目标类别
-  const handleSearchClasses = async (query) => {
-    if (!query) {
-      setClassOptions([]);
-      return;
-    }
-    
-    setSearching(true);
-    try {
-      const results = await searchClasses(query, 20);
-      setClassOptions(results);
-    } catch (error) {
-      console.error('Search classes error:', error);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  // 应用预设模板
   const applyPreset = (preset) => {
     setParams(preset.params);
     message.success(`已应用"${preset.name}"模板`);
   };
 
-  // 运行攻击
   const handleRunAttack = () => {
-    if (!imageId) {
+    if (!imageUrl) {
       message.warning('请先上传图片');
       return;
     }
     
     const attackParams = {
-      image_id: imageId,
-      ...params,
-      // 确保target_class正确设置
-      target_class: params.targeted ? params.target_class : undefined
+      image: imageUrl,
+      model_name: 'resnet100_imagenet',
+      params,
     };
 
     if (useAsync) {
       runAttack(attackParams);
     } else {
-      // 同步模式需要传递base64图片
-      const syncParams = {
-        image: imageUrl,
-        ...attackParams
-      };
-      delete syncParams.image_id;
-      runSyncAttack(syncParams);
+      runSyncAttack(attackParams);
     }
   };
 
-  // 重置所有
   const handleReset = () => {
-    setSelectedImage(null);
     setImageUrl(null);
-    setImageId(null);
-    setClassOptions([]);
     setParams(presets[0].params); // 重置为默认参数
     reset();
   };
 
-  // 保存结果
   const handleSaveResult = () => {
     if (result) {
-      saveResult(result);
+      saveResult('CW active flow');
     }
   };
 
-  // 导出数据
   const handleExportData = () => {
     if (result) {
       exportData(result);
@@ -429,7 +359,6 @@ const CWAttack = () => {
               </Text>
               <ImageUploader
                 onImageChange={handleImageChange}
-                onImageIdChange={handleImageIdChange}
                 disabled={isRunning}
                 maxSize={10}
               />
@@ -484,24 +413,6 @@ const CWAttack = () => {
               );
             })}
 
-            {/* 范数类型 */}
-            <div style={{ marginBottom: 24 }}>
-              <Text strong>范数类型</Text>
-              <Radio.Group
-                onChange={handleNormChange}
-                value={params.norm}
-                disabled={isRunning}
-                style={{ marginTop: 8, width: '100%' }}
-              >
-                <Radio.Button value="2">L2 (均方根)</Radio.Button>
-                <Radio.Button value="0">L0 (稀疏)</Radio.Button>
-                <Radio.Button value="inf">Linf (最大值)</Radio.Button>
-              </Radio.Group>
-              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
-                L2范数产生平滑扰动，L0范数产生稀疏扰动，Linf范数限制最大扰动值
-              </Text>
-            </div>
-
             {/* 定向攻击选项 */}
             <div style={{ marginBottom: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -512,34 +423,9 @@ const CWAttack = () => {
                   disabled={isRunning}
                 />
               </div>
-              
-              {params.targeted && (
-                <div>
-                  <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
-                    选择目标类别，攻击将尝试将图片分类为指定类别
-                  </Text>
-                  <Select
-                    showSearch
-                    allowClear
-                    placeholder="搜索并选择目标类别"
-                    value={params.target_class}
-                    onChange={(val) => handleParamChange('target_class', val)}
-                    onSearch={handleSearchClasses}
-                    notFoundContent={searching ? <Spin size="small" /> : '无匹配类别'}
-                    filterOption={false}
-                    disabled={isRunning}
-                    style={{ width: '100%' }}
-                    loading={searching}
-                  >
-                    {classOptions.map(item => (
-                      <Option key={item.id} value={item.id}>
-                        {item.id}: {item.name.substring(0, 60)}
-                        {item.name.length > 60 ? '...' : ''}
-                      </Option>
-                    ))}
-                  </Select>
-                </div>
-              )}
+              <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                当前后端 C&amp;W 定向模式不接收手动目标类别，开启后将按后端算法逻辑选择目标。
+              </Text>
             </div>
 
             {/* 操作按钮 */}
@@ -549,7 +435,7 @@ const CWAttack = () => {
                 icon={<PlayCircleOutlined />}
                 onClick={handleRunAttack}
                 loading={loading}
-                disabled={!imageId || isRunning}
+                disabled={!imageUrl || isRunning}
                 size="large"
               >
                 {useAsync ? '异步攻击' : '同步攻击'}

@@ -3,7 +3,7 @@
  * 应用的主导航菜单
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Menu, Button, Tooltip } from 'antd';
 import {
   MenuFoldOutlined,
@@ -43,13 +43,11 @@ const SideMenu = ({ collapsed }) => {
           key: '/attacks/fgsm',
           icon: <ExperimentOutlined />,
           label: 'FGSM攻击',
-          disabled: true,
         },
         {
           key: '/attacks/pgd',
           icon: <ExperimentOutlined />,
           label: 'PGD攻击',
-          disabled: true,
         },
         {
           key: '/attacks/deepfool',

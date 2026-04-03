@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Card, Typography, Space, theme } from 'antd';
+import { Typography, Space, theme } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
 
 const { Text, Paragraph } = Typography;

@@ -17,6 +17,8 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import Dashboard from './pages/Dashboard';
 import CWAttack from './pages/Attacks/CWAttack';
+import PGDAttack from './pages/Attacks/PGDAttack';
+import FGSMAttack from './pages/Attacks/FGSMAttack';
 
 // API客户端
 import { setupAxiosInterceptors } from './api/client';
@@ -97,12 +99,20 @@ function App() {
                       />
                       
                       {/* 攻击算法页面 */}
-                      <Route 
-                        path="/attacks/cw" 
-                        element={<CWAttack />} 
-                      />
-                      
-                      {/* 其他攻击算法页面（预留） */}
+                       <Route 
+                         path="/attacks/cw" 
+                         element={<CWAttack />} 
+                       />
+                       <Route
+                         path="/attacks/pgd"
+                         element={<PGDAttack />}
+                       />
+                       <Route
+                         path="/attacks/fgsm"
+                         element={<FGSMAttack />}
+                       />
+                       
+                       {/* 其他攻击算法页面（预留） */}
                       <Route 
                         path="/attacks/*" 
                         element={

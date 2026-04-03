@@ -2,7 +2,6 @@ import React from 'react';
 import { Card, Button, Typography, Tag } from 'antd';
 import { PlayCircleOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import styles from './QuickStart.module.less';
 
 const { Title, Text } = Typography;
@@ -20,7 +19,6 @@ const QuickStartCard = ({
   buttonText
 }) => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
   
   const isDisabled = status === 'development';
   

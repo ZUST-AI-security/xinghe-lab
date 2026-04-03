@@ -147,9 +147,9 @@ const Login = () => {
             <Link to="/register" style={{ color: '#1890ff' }}>
               注册账号
             </Link>
-            <a href="#" style={{ color: '#8c8c8c' }}>
+            <span style={{ color: '#8c8c8c' }}>
               忘记密码
-            </a>
+            </span>
           </Space>
         </div>
 

@@ -16,21 +16,18 @@ import {
   Typography,
   Space,
   Button,
-  Table,
-  Progress
+  Table
 } from 'antd';
 import {
-  EyeOutlined,
   DownloadOutlined,
   ShareAltOutlined,
   LineChartOutlined,
-  HeatMapOutlined
 } from '@ant-design/icons';
 import ComparisonSlider from '../../../../components/Visualization/ComparisonSlider';
 import Heatmap from '../../../../components/Visualization/Heatmap';
 import ConfidenceChart from '../../../../components/Visualization/ConfidenceChart';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
 /**
@@ -55,7 +52,6 @@ const ResultDisplay = ({
 }) => {
   const [activeTab, setActiveTab] = useState('1');
 
-  // 如果没有结果，显示空状态
   if (!result) {
     return (
       <Card title="攻击结果" variant="borderless">
@@ -72,30 +68,26 @@ const ResultDisplay = ({
     );
   }
 
-  // 计算置信度变化
-  const confidenceChange = result.adversarial_confidence 
-    ? ((result.adversarial_confidence - result.original_confidence) * 100).toFixed(2)
-    : 0;
+  const originalImage = originalImageUrl || result.original_image;
+  const metadata = result.metadata || {};
+  const originalTopClass = result.original_probs?.length
+    ? result.original_probs.indexOf(Math.max(...result.original_probs))
+    : null;
+  const adversarialTopClass = result.adversarial_probs?.length
+    ? result.adversarial_probs.indexOf(Math.max(...result.adversarial_probs))
+    : null;
+  const buildTop5 = (probs) => (probs || [])
+    .map((probability, index) => ({
+      key: index,
+      class: index,
+      probability: Number((probability * 100).toFixed(2)),
+    }))
+    .sort((a, b) => b.probability - a.probability)
+    .slice(0, 5);
 
-  // 生成Top-5预测数据
-  const getTop5Data = (probs, isOriginal = true) => {
-    if (!probs) return [];
-    
-    return probs
-      .map((prob, index) => ({
-        key: index,
-        class: index,
-        probability: (prob * 100).toFixed(2),
-        isOriginal
-      }))
-      .sort((a, b) => b.probability - a.probability)
-      .slice(0, 5);
-  };
+  const originalTop5 = buildTop5(result.original_probs);
+  const adversarialTop5 = buildTop5(result.adversarial_probs);
 
-  const originalTop5 = getTop5Data(result.original_probs, true);
-  const adversarialTop5 = getTop5Data(result.adversarial_probs, false);
-
-  // 表格列定义
   const columns = [
     {
       title: '排名',
@@ -116,24 +108,10 @@ const ResultDisplay = ({
       dataIndex: 'probability',
       key: 'probability',
       width: 100,
-      render: (prob) => `${prob}%`
-    },
-    {
-      title: '可视化',
-      dataIndex: 'probability',
-      key: 'visual',
-      render: (prob) => (
-        <Progress 
-          percent={parseFloat(prob)} 
-          size="small" 
-          showInfo={false}
-          strokeColor={parseFloat(prob) > 50 ? '#52c41a' : '#1890ff'}
-        />
-      )
+      render: (probability) => `${probability}%`,
     }
   ];
 
-  // 操作按钮
   const actionButtons = (
     <Space>
       <Button 
@@ -173,23 +151,22 @@ const ResultDisplay = ({
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab="对比视图" key="1">
           <Row gutter={[16, 16]}>
-            {/* 原始图片 */}
             <Col span={12}>
               <Card size="small" title="原始图片">
                 <Image
-                  src={originalImageUrl}
+                  src={originalImage}
                   style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }}
                   preview={false}
                 />
                 <div style={{ marginTop: 12 }}>
                   <Statistic
                     title="预测类别"
-                    value={`${result.original_class}: ${result.original_class_name}`}
+                    value={originalTopClass ?? '-'}
                     valueStyle={{ fontSize: 14, fontWeight: 'bold' }}
                   />
                   <Statistic
                     title="置信度"
-                    value={(result.original_confidence * 100).toFixed(2)}
+                    value={originalTopClass !== null ? ((result.original_probs?.[originalTopClass] || 0) * 100).toFixed(2) : '-'}
                     suffix="%"
                     valueStyle={{ fontSize: 14, color: '#1890ff' }}
                   />
@@ -197,7 +174,6 @@ const ResultDisplay = ({
               </Card>
             </Col>
             
-            {/* 对抗样本 */}
             <Col span={12}>
               <Card size="small" title="对抗样本">
                 {result.adversarial_image ? (
@@ -210,19 +186,19 @@ const ResultDisplay = ({
                     <div style={{ marginTop: 12 }}>
                       <Statistic
                         title="预测类别"
-                        value={`${result.adversarial_class}: ${result.adversarial_class_name}`}
+                        value={adversarialTopClass ?? '-'}
                         valueStyle={{ fontSize: 14, fontWeight: 'bold' }}
                       />
                       <Statistic
                         title="置信度"
-                        value={(result.adversarial_confidence * 100).toFixed(2)}
+                        value={adversarialTopClass !== null ? ((result.adversarial_probs?.[adversarialTopClass] || 0) * 100).toFixed(2) : '-'}
                         suffix="%"
                         valueStyle={{ fontSize: 14, color: result.success ? '#52c41a' : '#ff4d4f' }}
                       />
                       <Statistic
                         title="扰动大小"
-                        value={result.perturbation_norm?.toFixed(4)}
-                        suffix={result.perturbation_type}
+                        value={metadata.l2_norm?.toFixed?.(4) ?? metadata.linf_norm?.toFixed?.(4) ?? '-'}
+                        suffix={metadata.linf_norm !== undefined ? 'Linf' : 'L2'}
                         valueStyle={{ fontSize: 12 }}
                       />
                     </div>
@@ -236,16 +212,13 @@ const ResultDisplay = ({
             </Col>
           </Row>
 
-          {/* 对比滑块 */}
           {result.adversarial_image && (
             <Row style={{ marginTop: 16 }}>
               <Col span={24}>
                 <Card size="small" title="对比滑块">
                   <ComparisonSlider
-                    before={originalImageUrl}
-                    after={result.adversarial_image}
-                    beforeLabel="原始图片"
-                    afterLabel="对抗样本"
+                    leftImage={originalImage}
+                    rightImage={result.adversarial_image}
                   />
                 </Card>
               </Col>
@@ -283,10 +256,8 @@ const ResultDisplay = ({
               <Col span={24}>
                 <Card size="small" title="置信度变化图">
                   <ConfidenceChart
-                    original={result.original_probs}
-                    adversarial={result.adversarial_probs}
-                    originalClass={result.original_class}
-                    adversarialClass={result.adversarial_class}
+                    originalProbs={result.original_probs}
+                    adversarialProbs={result.adversarial_probs}
                   />
                 </Card>
               </Col>
@@ -300,8 +271,8 @@ const ResultDisplay = ({
               <Col span={12}>
                 <Card size="small" title="扰动热力图">
                   <Heatmap
-                    data={result.heatmap}
-                    title="C&W攻击扰动分布"
+                    image={result.heatmap}
+                    title="攻击扰动分布"
                   />
                 </Card>
               </Col>
@@ -319,24 +290,13 @@ const ResultDisplay = ({
                     </span>
                   </Descriptions.Item>
                   <Descriptions.Item label="扰动范数">
-                    {result.perturbation_norm?.toFixed(6)} ({result.perturbation_type})
-                  </Descriptions.Item>
-                  <Descriptions.Item label="置信度变化">
-                    <span style={{ 
-                      color: confidenceChange > 0 ? '#ff4d4f' : '#52c41a'
-                    }}>
-                      {confidenceChange > 0 ? '+' : ''}{confidenceChange}%
-                    </span>
+                    {metadata.l2_norm?.toFixed?.(6) ?? '-'} {metadata.linf_norm !== undefined ? `(Linf: ${metadata.linf_norm.toFixed(6)})` : ''}
                   </Descriptions.Item>
                   <Descriptions.Item label="攻击耗时">
                     {result.time_elapsed?.toFixed(2)} 秒
                   </Descriptions.Item>
-                  <Descriptions.Item label="攻击成功率">
-                    <Progress 
-                      percent={result.success ? 100 : 0} 
-                      size="small" 
-                      status={result.success ? 'success' : 'exception'}
-                    />
+                  <Descriptions.Item label="迭代信息">
+                    {metadata.iterations ?? metadata.num_iter ?? '-'}
                   </Descriptions.Item>
                 </Descriptions>
               </Card>
@@ -353,23 +313,23 @@ const ResultDisplay = ({
               {result.success ? '成功' : '失败'}
             </Descriptions.Item>
             <Descriptions.Item label="原始类别">
-              {result.original_class}: {result.original_class_name}
+              {originalTopClass ?? '-'}
             </Descriptions.Item>
             <Descriptions.Item label="原始置信度">
-              {(result.original_confidence * 100).toFixed(2)}%
+              {originalTopClass !== null ? `${((result.original_probs?.[originalTopClass] || 0) * 100).toFixed(2)}%` : '-'}
             </Descriptions.Item>
-            {result.adversarial_class && (
+            {adversarialTopClass !== null && (
               <>
                 <Descriptions.Item label="对抗样本类别">
-                  {result.adversarial_class}: {result.adversarial_class_name}
+                  {adversarialTopClass}
                 </Descriptions.Item>
                 <Descriptions.Item label="对抗样本置信度">
-                  {(result.adversarial_confidence * 100).toFixed(2)}%
+                  {`${((result.adversarial_probs?.[adversarialTopClass] || 0) * 100).toFixed(2)}%`}
                 </Descriptions.Item>
               </>
             )}
             <Descriptions.Item label="扰动范数">
-              {result.perturbation_norm?.toFixed(4)} ({result.perturbation_type})
+              {metadata.l2_norm?.toFixed?.(4) ?? '-'}
             </Descriptions.Item>
             <Descriptions.Item label="攻击耗时">
               {result.time_elapsed?.toFixed(2)} 秒

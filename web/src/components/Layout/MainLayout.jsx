@@ -12,8 +12,8 @@ import PropTypes from 'prop-types';
 const { Header, Content, Sider } = Layout;
 
 const MainLayout = ({ children }) => {
-  const { user, logout } = useAuthStore();
-  const [collapsed, setCollapsed] = useState(false);
+  const { user } = useAuthStore();
+  const [collapsed] = useState(false);
   const {
     token: { colorBgContainer },
   } = theme.useToken();

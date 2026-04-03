@@ -4,12 +4,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 
 export const useDashboardData = () => {
-  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
+  const [stats] = useState({
     algorithms: { count: 4, trend: '+2', trendText: '本月新增' },
     models: { 
       count: 2, 
@@ -19,7 +17,7 @@ export const useDashboardData = () => {
     runsToday: { count: 128, growth: '+23%', comparison: '较昨日' },
     successRate: { rate: 0.76, best: 'PGD', label: '最佳算法' }
   });
-  const [recentActivities, setRecentActivities] = useState([
+  const [recentActivities] = useState([
     {
       id: 1,
       time: '今天 14:23',
@@ -61,7 +59,7 @@ export const useDashboardData = () => {
       confidence: 0.88
     }
   ]);
-  const [algorithmUsage, setAlgorithmUsage] = useState([
+  const [algorithmUsage] = useState([
     { name: 'C&W', value: 35, color: '#1E6DF2' },
     { name: 'FGSM', value: 25, color: '#7B2EDA' },
     { name: 'PGD', value: 30, color: '#00B8D9' },

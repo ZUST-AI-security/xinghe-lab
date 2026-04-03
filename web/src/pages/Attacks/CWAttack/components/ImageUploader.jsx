@@ -6,56 +6,9 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, message, Image, Progress, Typography } from 'antd';
 import { InboxOutlined, DeleteOutlined } from '@ant-design/icons';
-import styled from 'styled-components';
 
 const { Dragger } = Upload;
 const { Text } = Typography;
-
-const UploadContainer = styled.div`
-  .ant-upload-drag {
-    border: 2px dashed #d9d9d9;
-    border-radius: 8px;
-    background: #fafafa;
-    padding: 40px 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.3s;
-    
-    &:hover {
-      border-color: #1890ff;
-    }
-    
-    &.ant-upload-drag-hover {
-      border-color: #1890ff;
-    }
-  }
-  
-  .preview-container {
-    position: relative;
-    display: inline-block;
-    
-    .delete-btn {
-      position: absolute;
-      top: -8px;
-      right: -8px;
-      background: #ff4d4f;
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-      
-      &:hover {
-        background: #ff7875;
-      }
-    }
-  }
-`;
 
 /**
  * @typedef {Object} ImageUploaderProps
@@ -85,7 +38,7 @@ const ImageUploader = ({
   const [imageFile, setImageFile] = useState(null);
 
   // 验证文件
-  const validateFile = (file) => {
+  const validateFile = useCallback((file) => {
     // 检查文件类型
     if (!acceptTypes.includes(file.type)) {
       message.error('只支持 JPEG、PNG、WebP 格式的图片');
@@ -100,7 +53,7 @@ const ImageUploader = ({
     }
 
     return true;
-  };
+  }, [acceptTypes, maxSize]);
 
   // 生成预览URL
   const generatePreview = (file) => {
@@ -109,13 +62,6 @@ const ImageUploader = ({
       setPreviewUrl(e.target.result);
     };
     reader.readAsDataURL(file);
-  };
-
-  // 生成图片ID
-  const generateImageId = (file) => {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 8);
-    return `img_${timestamp}_${random}`;
   };
 
   // 处理文件上传
@@ -146,9 +92,6 @@ const ImageUploader = ({
       // 生成预览
       generatePreview(file);
       
-      // 生成图片ID
-      const imageId = generateImageId(file);
-      
       // 保存文件信息
       setImageFile(file);
       
@@ -157,7 +100,7 @@ const ImageUploader = ({
         onImageChange(file);
       }
       if (onImageIdChange) {
-        onImageIdChange(imageId);
+        onImageIdChange(file.name);
       }
       
       setUploading(false);
@@ -165,7 +108,7 @@ const ImageUploader = ({
     }, 1500);
 
     return false; // 阻止默认上传行为
-  }, [onImageChange, onImageIdChange, maxSize, acceptTypes]);
+  }, [onImageChange, onImageIdChange, validateFile]);
 
   // 删除图片
   const handleDelete = () => {
@@ -183,28 +126,10 @@ const ImageUploader = ({
     message.info('图片已删除');
   };
 
-  // 转换为base64（用于API调用）
-  const getBase64 = useCallback(() => {
-    if (!imageFile) return null;
-    
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = error => reject(error);
-      reader.readAsDataURL(imageFile);
-    });
-  }, [imageFile]);
-
-  // 暴露给父组件的方法
-  React.useImperativeHandle(null, () => ({
-    getBase64,
-    clear: handleDelete
-  }));
-
   return (
-    <UploadContainer>
+    <div>
       {previewUrl ? (
-        <div className="preview-container">
+        <div style={{ position: 'relative', display: 'inline-block' }}>
           <Image
             src={previewUrl}
             alt="预览图片"
@@ -216,9 +141,25 @@ const ImageUploader = ({
             }}
           />
           <button 
-            className="delete-btn"
+            type="button"
             onClick={handleDelete}
             disabled={disabled}
+            style={{
+              position: 'absolute',
+              top: -8,
+              right: -8,
+              background: '#ff4d4f',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '50%',
+              width: 24,
+              height: 24,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10,
+            }}
           >
             <DeleteOutlined />
           </button>
@@ -239,6 +180,12 @@ const ImageUploader = ({
           disabled={disabled || uploading}
           showUploadList={false}
           accept={acceptTypes.join(',')}
+          style={{
+            border: '2px dashed #d9d9d9',
+            borderRadius: 8,
+            background: '#fafafa',
+            padding: '40px 20px',
+          }}
         >
           <p className="ant-upload-drag-icon">
             <InboxOutlined style={{ fontSize: 48, color: '#1890ff' }} />
@@ -264,7 +211,7 @@ const ImageUploader = ({
           </Text>
         </div>
       )}
-    </UploadContainer>
+    </div>
   );
 };
 

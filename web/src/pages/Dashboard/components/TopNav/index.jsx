@@ -8,7 +8,6 @@ import {
   StarOutlined,
   GlobalOutlined 
 } from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../../../store/authStore';
 import styles from './TopNav.module.less';
 
@@ -16,7 +15,6 @@ const { Header } = Layout;
 const { Text } = Typography;
 
 const TopNav = () => {
-  const { t, i18n } = useTranslation();
   const { user, logout } = useAuthStore();
   const [notifications] = useState([
     { id: 1, title: '系统更新', read: false },

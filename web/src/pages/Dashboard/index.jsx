@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Row, Col, Card, Typography, Space } from 'antd';
-import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '../../store/authStore';
+import React, { useEffect } from 'react';
+import { Layout, Typography } from 'antd';
 import TopNav from './components/TopNav';
 import WelcomeBanner from './components/WelcomeBanner';
 import StatCards from './components/StatCards';
@@ -15,8 +13,6 @@ const { Content } = Layout;
 const { Title } = Typography;
 
 const Dashboard = () => {
-  const { t, i18n } = useTranslation();
-  const { user } = useAuthStore();
   const { 
     stats, 
     recentActivities, 

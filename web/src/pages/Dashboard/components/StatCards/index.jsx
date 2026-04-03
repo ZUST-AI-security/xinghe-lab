@@ -1,12 +1,9 @@
 import React from 'react';
 import { Row, Col, Spin } from 'antd';
-import { useTranslation } from 'react-i18next';
 import StatCard from './StatCard';
 import styles from './StatCards.module.less';
 
 const StatCards = ({ stats, loading }) => {
-  const { t } = useTranslation();
-
   const statItems = [
     {
       key: 'algorithms',

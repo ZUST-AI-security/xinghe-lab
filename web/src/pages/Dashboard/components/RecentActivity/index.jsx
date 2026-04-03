@@ -1,13 +1,10 @@
 import React from 'react';
 import { Row, Col, Spin } from 'antd';
-import { useTranslation } from 'react-i18next';
 import ActivityTimeline from './ActivityTimeline';
 import UsageChart from './UsageChart';
 import styles from './RecentActivity.module.less';
 
 const RecentActivity = ({ activities, algorithmUsage, loading }) => {
-  const { t } = useTranslation();
-
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
