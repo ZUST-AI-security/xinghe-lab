@@ -105,6 +105,66 @@ async def get_algorithms():
                         "description": "是否为定向攻击"
                     }
                 ]
+            elif attack_name == 'i-fgsm':
+                # I-FGSM攻击的参数配置
+                inputs = [
+                    {
+                        "name": "image",
+                        "type": "image_upload",
+                        "label": "上传图片",
+                        "required": True,
+                        "description": "请选择要攻击的图片（JPEG/PNG格式）"
+                    },
+                    {
+                        "name": "epsilon",
+                        "type": "slider",
+                        "label": "扰动上限 ε",
+                        "min": 0.01,
+                        "max": 0.3,
+                        "step": 0.01,
+                        "default": 0.03,
+                        "description": "L∞范数扰动上限，控制最大像素变化"
+                    },
+                    {
+                        "name": "alpha",
+                        "type": "slider",
+                        "label": "步长 α",
+                        "min": 0.001,
+                        "max": 0.1,
+                        "step": 0.001,
+                        "default": 0.01,
+                        "description": "每次迭代扰动步长，建议小于 epsilon"
+                    },
+                    {
+                        "name": "num_iterations",
+                        "type": "slider",
+                        "label": "迭代次数",
+                        "min": 1,
+                        "max": 100,
+                        "step": 1,
+                        "default": 40,
+                        "description": "迭代次数，越多效果越稳但耗时增加"
+                    },
+                    {
+                        "name": "targeted",
+                        "type": "select",
+                        "label": "攻击类型",
+                        "options": [
+                            {"label": "非定向攻击", "value": False},
+                            {"label": "定向攻击", "value": True}
+                        ],
+                        "default": False,
+                        "description": "是否为定向攻击"
+                    },
+                    {
+                        "name": "target_label",
+                        "type": "number",
+                        "label": "目标类别ID",
+                        "required": False,
+                        "default": None,
+                        "description": "定向攻击时的目标类别ID，留空则使用原始类别"
+                    }
+                ]
             
             # 构建算法对象
             algorithm = {

@@ -6,6 +6,7 @@
 from .base import BaseAttack
 from .registry import AttackRegistry, get_attack_registry, attack_registry
 from .cw import CWAttack
+from .ifgsm import IFGSMAttack
 
 __all__ = [
     'BaseAttack',
