@@ -16,8 +16,7 @@ import MainLayout from './components/Layout/MainLayout';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import Dashboard from './pages/Dashboard';
-import CWAttack from './pages/AttackLab';
-import IFGSMAttack from './pages/AttackLab'; // I-FGSM攻击页面（预留）
+import AttackLab from './pages/AttackLab';
 
 // API客户端
 import { setupAxiosInterceptors } from './api/client';
@@ -97,24 +96,11 @@ function App() {
                         element={<Dashboard />} 
                       />
                       
-                      {/* 攻击算法页面 */}
+                      {/* 统一攻击算法入口，:algoId 会自动捕捉 url 最后的单词 */}
                       <Route 
-                        path="/attack/:algoId" 
-                        element={<CWAttack />} 
-                      />
-                      <Route 
-                        path="/attacks/cw" 
-                        element={<CWAttack />} 
-                      />
-                      {/* I-FGSM攻击算法页面 */}
-                      <Route 
-                        path="/attack/:algoId" 
-                        element={<IFGSMAttack />} 
-                      />
-                      <Route 
-                        path="/attacks/ifgsm" 
-                        element={<IFGSMAttack />} 
-                      />
+                        path="/attacks/:algoId" 
+                        element={<AttackLab />} 
+                      />   
                       
                       {/* 其他攻击算法页面（预留） */}
                       <Route 

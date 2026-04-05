@@ -2,7 +2,7 @@
 星河智安 (XingHe ZhiAn) - I-FGSM攻击算法实现
 Iterative FGSM (I-FGSM)，改进的快速梯度符号方法
 
-论文: "Explaining and Harnessing Adversarial Examples" (Goodfellow et al., 2015)
+论文: "Adversarial examples in the physical world"
       补充中的迭代版本
 特点: 快速、可控、多参数可调
 """

@@ -191,7 +191,12 @@ const AttackLab = () => {
   // 获取任务状态的函数
   const fetchTaskStatus = useCallback(async (taskId) => {
     try {
-      const response = await cwAttackService.getTaskStatus(taskId);
+      let response;
+      if (currentAlgo === 'ifgsm') {
+        response = await ifgsmAttackService.getTaskStatus(taskId);
+      } else {
+        response = await cwAttackService.getTaskStatus(taskId);
+      }
       const data = response.data || {};
       const { status, result: taskResult, error: taskError } = data;
 
@@ -358,19 +363,36 @@ const AttackLab = () => {
   
   const isDetection = false;
 
-  // 当算法切换时，重置表单和参数
+  // 当算法切换（路由变化）时，重置表单和参数
   useEffect(() => {
-    if (selectedAlgo) {
-      form.setFieldsValue({
-        image: undefined,
-        image_preview: undefined,
-        image_file: undefined
-      });
-      if (setResult) setResult(null); 
-      setInitialPrediction(null); // 重置初始预测
-    }
-  }, [selectedAlgo, form, setResult]);
+    // 1. 清空已上传的图片
+    form.setFieldsValue({
+      image: undefined,
+      image_preview: undefined,
+      image_file: undefined
+    });
 
+    // 2. 核心：动态下发不同算法的默认参数
+    if (currentAlgo === 'cw') {
+      form.setFieldsValue({ c: 0.1, kappa: 0.0, lr: 0.01, max_iter: 100, binary_search_steps: 9 });
+    } else if (currentAlgo === 'ifgsm') {
+      form.setFieldsValue({ eps: 8.0, alpha: 1.0, steps: 10 });
+    }
+
+    // 3. 清空两个 Hook 里的攻击结果和界面上的初始预测
+    cwHook.clearResult();
+    ifgsmHook.clearResult();
+    setInitialPrediction(null);
+
+    // 4. 强行终止可能遗留的轮询任务，防止页面疯狂报错
+    setPollingActive(false);
+    setCurrentTaskId(null);
+    setLocalProgress(0);
+    if (pollTimer.current) {
+      clearTimeout(pollTimer.current);
+      pollTimer.current = null;
+    }
+  }, [currentAlgo, form, cwHook, ifgsmHook]);
   // 模型切换时重新分类（如果有图片预览）
   useEffect(() => {
     const imagePreview = form.getFieldValue('image_preview');
@@ -406,42 +428,59 @@ const AttackLab = () => {
         message.warning('图片较大，攻击实验可能需要较长时间，建议使用较小的图片');
       }
       
+      // 清理之前的轮询计时器 (通用防抖)
+      if (pollTimer.current) {
+        clearTimeout(pollTimer.current);
+        pollTimer.current = null;
+      }
+      setPollingActive(false);
+
       // 第三步：构造符合后端要求的payload结构，确保所有值都执行了Number()转换
-      const validatedParams = {
-        c: Number(otherParams.c || 0.1),
-        kappa: Number(otherParams.kappa || 0.0),
-        lr: Number(otherParams.lr || 0.01),
-        max_iter: Number(otherParams.max_iter || 100),
-        binary_search_steps: Number(otherParams.binary_search_steps || 9),
-        targeted: Boolean(otherParams.targeted || false)
-      };
+      if (currentAlgo === 'ifgsm') {
+        // ------------------ 【分支 A: I-FGSM 攻击】 ------------------
+        const ifgsmParams = {
+          eps: Number(otherParams.eps || 8.0),
+          alpha: Number(otherParams.alpha || 1.0),
+          steps: Number(otherParams.steps || 10),
+          targeted: Boolean(otherParams.targeted || false)
+        };
       
       const payload = {
         image: imageBase64,
         model_name: selectedModel,
-        params: validatedParams,
+        params: ifgsmParams,
         // 添加初始分类数据，确保后端能返回对比结果
         original_class_name: initialPrediction?.class_name,
         original_confidence: initialPrediction?.confidence
       };
       
       // 调试日志 - 确认请求结构正确
-      console.log('提交的完整请求载荷:', payload);
-      console.log('参数类型检查:', {
-        c: typeof validatedParams.c,
-        kappa: typeof validatedParams.kappa,
-        lr: typeof validatedParams.lr,
-        max_iter: typeof validatedParams.max_iter,
-        binary_search_steps: typeof validatedParams.binary_search_steps
-      });
-      
-      // 清理之前的轮询
-      if (pollTimer.current) {
-        clearTimeout(pollTimer.current);
-        pollTimer.current = null;
-      }
-      setPollingActive(false);
-      
+      console.log('提交的I-FGSM请求载荷:', payload);
+
+      // 调用 Hook 里的异步方法，它会自动处理 Loading、错误提示和轮询，极度清爽！
+      await ifgsmHook.runAttackAsync(payload);
+      } else {
+        // ------------------ 【分支 B: C&W 攻击】 ------------------
+        const cwParams = {
+          c: Number(otherParams.c || 0.1),
+          kappa: Number(otherParams.kappa || 0.0),
+          lr: Number(otherParams.lr || 0.01),
+          max_iter: Number(otherParams.max_iter || 100),
+          binary_search_steps: Number(otherParams.binary_search_steps || 9),
+          targeted: Boolean(otherParams.targeted || false),
+          //abort_early: Boolean(otherParams.abort_early !== false),
+          //early_stop_iters: Number(otherParams.early_stop_iters || 50)
+        };
+        
+        const payload = {
+          image: imageBase64,
+          model_name: selectedModel,
+          params: cwParams,
+          original_class_name: initialPrediction?.class_name,
+          original_confidence: initialPrediction?.confidence
+        };
+        
+      console.log('提交 C&W 请求载荷:', payload);
       // 使用异步流程提交C&W攻击任务
       try {
         const taskResponse = await cwAttackService.runAsyncAttack(payload);
@@ -472,12 +511,10 @@ const AttackLab = () => {
           errorMessage = taskError.response?.data?.detail || taskError.message || '提交任务失败';
           message.error(`提交任务失败: ${errorMessage}`);
         }
-        
-        setError(errorMessage);
-      } finally {
-        // 确保loading状态重置，防止按钮被永久禁用
-        setLoading(false);
-      }
+        cwHook.setError(errorMessage);
+        cwHook.setLoading(false); // 失败时必须关闭 loading
+      } 
+    }
     } catch (err) {
       console.error('Validate Failed:', err);
       
@@ -492,17 +529,16 @@ const AttackLab = () => {
       // 显示具体错误信息
       message.error(errorMessage);
       setError(errorMessage);
-    } finally {
-      // 确保loading状态重置，防止按钮被永久禁用
-      setLoading(false);
-    }
+      cwHook.setLoading(false);
+      ifgsmHook.setLoading(false);
+    } 
   };
 
   // 移除 renderFormItem 函数，直接内联渲染
 
   const renderAnalysisReport = () => {
     // 首先检查result是否有效
-    if (!result || !isValidResult(result)) {
+    if (!displayResult || !isValidResult(displayResult)) {
       return (
         <Alert
           message="数据格式错误"
@@ -531,11 +567,11 @@ const AttackLab = () => {
               <Col span={24}>
                 <Space direction="vertical" size={24} style={{ width: '100%' }}>
                   {[
-                    { key: 'original', title: '原始图像', img: result.original_image, label: '无标注', color: 'default' },
-                    { key: 'original_det', title: '原始检测结果', img: result.original_detection, label: '原始状态', color: 'success' },
-                    { key: 'noise', title: '对抗噪声', img: result.noise_image, label: '扰动热力图', color: 'processing' },
-                    { key: 'adv_img', title: '对抗样本', img: result.adversarial_image, label: '攻击后(无框)', color: 'default' },
-                    { key: 'adv_det', title: '对抗检测结果', img: result.adversarial_detection, label: '攻击后状态', color: 'error' }
+                    { key: 'original', title: '原始图像', img: displayResult.original_image, label: '无标注', color: 'default' },
+                    { key: 'original_det', title: '原始检测结果', img: displayResult.original_detection, label: '原始状态', color: 'success' },
+                    { key: 'noise', title: '对抗噪声', img: displayResult.noise_image, label: '扰动热力图', color: 'processing' },
+                    { key: 'adv_img', title: '对抗样本', img: displayResult.adversarial_image, label: '攻击后(无框)', color: 'default' },
+                    { key: 'adv_det', title: '对抗检测结果', img: displayResult.adversarial_detection, label: '攻击后状态', color: 'error' }
                   ].map(item => (
                     <Card 
                       key={item.key}
@@ -576,14 +612,14 @@ const AttackLab = () => {
                     <Col span={8}>
                       <Statistic 
                         title="检测框数量变化" 
-                        value={safeRender(result.detection_count_diff, 0)}
-                        valueStyle={{ color: result.detection_count_diff > 0 ? token.colorError : token.colorSuccess }}
+                        value={safeRender(displayResult.detection_count_diff, 0)}
+                        valueStyle={{ color: displayResult.detection_count_diff > 0 ? token.colorError : token.colorSuccess }}
                       />
                     </Col>
                     <Col span={8}>
                       <Statistic 
                         title="置信度下降" 
-                        value={safeRender(result.confidence_drop, 0)}
+                        value={safeRender(displayResult.confidence_drop, 0)}
                         suffix="%"
                         precision={2}
                         valueStyle={{ color: token.colorWarning }}
@@ -592,7 +628,7 @@ const AttackLab = () => {
                     <Col span={8}>
                       <Statistic 
                         title="攻击成功率" 
-                        value={safeRender(result.attack_success_rate, 0)}
+                        value={safeRender(displayResult.attack_success_rate, 0)}
                         suffix="%"
                         precision={1}
                         valueStyle={{ color: token.colorSuccess }}
@@ -615,7 +651,7 @@ const AttackLab = () => {
           title={
             <Space>
               <CheckCircleFilled style={{ color: token.colorSuccess }} />
-              <Text strong>C&W对抗攻击安全分析报告</Text>
+              <Text strong>{selectedAlgo?.name || '安全分析'} 报告</Text>
               <Tag color="blue">专业级评估</Tag>
             </Space>
           }
@@ -626,39 +662,39 @@ const AttackLab = () => {
               { 
                 key: 'original', 
                 title: '原始图像', 
-                img: result.original_image,
-                class: safeRender(result.original_class),
-                confidence: result.original_prediction?.confidence,
+                img: displayResult.original_image,
+                class: safeRender(displayResult.original_class || displayResult.original_prediction?.class_name || displayResult.metadata?.original_class_name),
+                confidence: displayResult.original_prediction?.confidence || displayResult.metadata?.original_confidence,
                 color: 'success',
                 stats: {
                   label: '原始预测',
-                  value: safeRender(result.original_class),
-                  confidence: result.original_prediction?.confidence
+                  value: safeRender(displayResult.original_class),
+                  confidence: displayResult.original_prediction?.confidence
                 }
               },
               { 
                 key: 'noise', 
                 title: '对抗扰动', 
-                img: result.noise_image, 
+                img: displayResult.noise_image || displayResult.heatmap, 
                 class: '扰动热力图',
                 color: 'processing',
                 stats: {
                   label: 'L2扰动强度',
-                  value: safeRender(result.metadata?.l2_norm?.toFixed(4) || 'N/A'),
+                  value: safeRender(displayResult.metadata?.l2_norm?.toFixed(4) || 'N/A'),
                   confidence: null
                 }
               },
               { 
                 key: 'adversarial', 
                 title: '对抗样本', 
-                img: result.adversarial_image,
-                class: safeRender(result.adversarial_class),
-                confidence: result.adversarial_prediction?.confidence,
+                img: displayResult.adversarial_image,
+                class: safeRender(displayResult.adversarial_class || displayResult.adversarial_prediction?.class_name || displayResult.metadata?.adversarial_class_name),
+                confidence: displayResult.adversarial_prediction?.confidence || displayResult.metadata?.adversarial_confidence, 
                 color: 'error',
                 stats: {
                   label: '对抗预测',
-                  value: safeRender(result.adversarial_class),
-                  confidence: result.adversarial_prediction?.confidence
+                  value: safeRender(displayResult.adversarial_class),
+                  confidence: displayResult.adversarial_prediction?.confidence
                 }
               }
             ].map(item => (
@@ -705,9 +741,9 @@ const AttackLab = () => {
                     </div>
                     
                     {/* 分类信息条 */}
-                    {item.key === 'original' && (
+                    {(item.key === 'original' || item.key === 'adversarial') && (
                       <div style={{ textAlign: 'center', marginTop: 4 }}>
-                        {result.original_prediction?.class_name || initialPrediction?.class_name ? (
+                        {displayResult.original_prediction?.class_name || initialPrediction?.class_name ? (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <Tag 
                               color="blue" 
@@ -717,10 +753,10 @@ const AttackLab = () => {
                                 margin: 0
                               }}
                             >
-                              {safeRender(result.original_prediction?.class_name || initialPrediction?.class_name)}
+                              {safeRender(displayResult.original_prediction?.class_name || initialPrediction?.class_name)}
                             </Tag>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                              ({safeRender(((result.original_prediction?.confidence || initialPrediction?.confidence || 0) * 100).toFixed(2) + '%')})
+                              ({safeRender(((displayResult.original_prediction?.confidence || initialPrediction?.confidence || 0) * 100).toFixed(2) + '%')})
                             </Text>
                           </div>
                         ) : (
@@ -734,7 +770,7 @@ const AttackLab = () => {
                     {/* 对抗图像的分类信息条 */}
                     {item.key === 'adversarial' && (
                       <div style={{ textAlign: 'center', marginTop: 4 }}>
-                        {result.adversarial_prediction?.class_name ? (
+                        {displayResult.adversarial_prediction?.class_name ? (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <Tag 
                               color="orange" 
@@ -744,10 +780,10 @@ const AttackLab = () => {
                                 margin: 0
                               }}
                             >
-                              {safeRender(result.adversarial_prediction.class_name)}
+                              {safeRender(displayResult.adversarial_prediction.class_name)}
                             </Tag>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                              ({safeRender((result.adversarial_prediction.confidence * 100).toFixed(2) + '%')})
+                              ({safeRender((displayResult.adversarial_prediction.confidence * 100).toFixed(2) + '%')})
                             </Text>
                           </div>
                         ) : (
@@ -783,29 +819,29 @@ const AttackLab = () => {
         <Row gutter={16}>
           <Col span={16}>
             <Card size="small" title={<><AreaChartOutlined /> Top-5 分类置信度演变</>}>
-              {result.confidence_chart && result.confidence_chart.labels.length > 0 ? (
-                result.confidence_chart.labels.map((label, idx) => (
+              {displayResult.confidence_chart && displayResult.confidence_chart.labels.length > 0 ? (
+                displayResult.confidence_chart.labels.map((label, idx) => (
                   <div key={label} style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                       <Text strong style={{ fontSize: 12 }}>{safeRender(label)}</Text>
                       <Space size="small">
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                          原始: {safeRender(((result.confidence_chart.original[idx] || 0) * 100).toFixed(1) + '%')}
+                          原始: {safeRender(((displayResult.confidence_chart.original[idx] || 0) * 100).toFixed(1) + '%')}
                         </Text>
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                          对抗: {safeRender(((result.confidence_chart.adversarial[idx] || 0) * 100).toFixed(1) + '%')}
+                          对抗: {safeRender(((displayResult.confidence_chart.adversarial[idx] || 0) * 100).toFixed(1) + '%')}
                         </Text>
                       </Space>
                     </div>
                     <Progress 
-                      percent={safeRender((result.confidence_chart.original[idx] || 0) * 100)} 
+                      percent={safeRender((displayResult.confidence_chart.original[idx] || 0) * 100)} 
                       strokeColor={token.colorSuccess} 
                       showInfo={false} 
                       size="small"
                       style={{ marginBottom: 2 }}
                     />
                     <Progress 
-                      percent={safeRender((result.confidence_chart.adversarial[idx] || 0) * 100)} 
+                      percent={safeRender((displayResult.confidence_chart.adversarial[idx] || 0) * 100)} 
                       strokeColor={token.colorError} 
                       showInfo={false} 
                       size="small"
@@ -823,26 +859,26 @@ const AttackLab = () => {
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Statistic 
                   title="攻击状态" 
-                  value={result.metadata?.success ? '成功' : '失败'} 
+                  value={displayResult.metadata?.success ? '成功' : '失败'} 
                   valueStyle={{ 
-                    color: result.metadata?.success ? token.colorSuccess : token.colorError,
+                    color: displayResult.metadata?.success ? token.colorSuccess : token.colorError,
                     fontSize: 16
                   }}
                 />
                 <Statistic 
                   title="L2扰动强度" 
-                  value={result.metadata?.l2_norm || 0} 
+                  value={displayResult.metadata?.l2_norm || 0} 
                   precision={4}
                   valueStyle={{ fontSize: 16 }}
                 />
                 <Statistic 
                   title="迭代次数" 
-                  value={result.metadata?.iterations || 0} 
+                  value={displayResult.metadata?.iterations || 0} 
                   valueStyle={{ fontSize: 16 }}
                 />
                 <Statistic 
                   title="执行时间" 
-                  value={result.metadata?.time_elapsed || 0} 
+                  value={displayResult.metadata?.time_elapsed || 0} 
                   suffix="秒"
                   precision={2}
                   valueStyle={{ fontSize: 16 }}
@@ -869,7 +905,7 @@ const AttackLab = () => {
       <Breadcrumb style={{ marginBottom: 16 }}>
         <Breadcrumb.Item><Link to="/"><HomeOutlined /> 首页</Link></Breadcrumb.Item>
         <Breadcrumb.Item><Link to="/attacks"><ThunderboltOutlined /> 对抗攻击</Link></Breadcrumb.Item>
-        <Breadcrumb.Item>C&W Attack</Breadcrumb.Item>
+        <Breadcrumb.Item>{currentAlgo === 'ifgsm' ? 'I-FGSM Attack' : 'C&W Attack'}</Breadcrumb.Item>
       </Breadcrumb>
 
       {/* 顶部：紧凑型实验控制 Header */}
@@ -890,11 +926,17 @@ const AttackLab = () => {
           form={form} 
           layout="vertical"
           initialValues={{
-            c: 0.1,
-            kappa: 0.0,
-            lr: 0.01,
-            max_iter: 100,
-            binary_search_steps: 9,
+            ...(currentAlgo === 'ifgsm' ? {
+              eps: 8.0,
+              alpha: 1.0,
+              steps: 10
+            } : {
+              c: 0.1,
+              kappa: 0.0,
+              lr: 0.01,
+              max_iter: 100,
+              binary_search_steps: 9
+            }),
             targeted: false,
             model_name: 'resnet100_imagenet'
           }}
@@ -923,102 +965,182 @@ const AttackLab = () => {
               </Form.Item>
             </Col>
 
-            {/* C&W 核心参数横向平铺 */}
-            <Col xs={12} sm={6} md={4} lg={3}>
-              <Form.Item 
-                label={
-                  <Space size={4}>
-                    <Text strong style={{ fontSize: 13 }}>权衡系数 c</Text>
-                    <Tooltip title="平衡扰动大小和攻击成功率，推荐0.1-10">
-                      <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
-                    </Tooltip>
-                  </Space>
-                }
-                name="c"
-                style={{ marginBottom: 8 }}
-              >
-                <NeonSlider 
-                  min={0.01} 
-                  max={100.0} 
-                  step={0.01} 
-                  label="" 
-                  tooltip={{formatter: (value) => `c: ${value}`}}
-                  style={{ margin: 0 }}
-                />
-              </Form.Item>
-            </Col>
+            {/* 根据算法选择渲染参数 */}
+            {currentAlgo === 'ifgsm' ? (
+              <>
+                {/* I-FGSM 参数 */}
+                <Col xs={12} sm={6} md={4} lg={3}>
+                  <Form.Item 
+                    label={
+                      <Space size={4}>
+                        <Text strong style={{ fontSize: 13 }}>扰动幅度 ε</Text>
+                        <Tooltip title="最大扰动幅度，推荐1-20">
+                          <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
+                        </Tooltip>
+                      </Space>
+                    }
+                    name="eps"
+                    style={{ marginBottom: 8 }}
+                  >
+                    <NeonSlider 
+                      min={0.1} 
+                      max={100.0} 
+                      step={0.1} 
+                      label="" 
+                      tooltip={{formatter: (value) => `ε: ${value}`}}
+                      style={{ margin: 0 }}
+                    />
+                  </Form.Item>
+                </Col>
 
-            <Col xs={12} sm={6} md={4} lg={3}>
-              <Form.Item 
-                label={
-                  <Space size={4}>
-                    <Text strong style={{ fontSize: 13 }}>置信度 κ</Text>
-                    <Tooltip title="控制攻击的置信度，推荐0">
-                      <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
-                    </Tooltip>
-                  </Space>
-                }
-                name="kappa"
-                style={{ marginBottom: 8 }}
-              >
-                <NeonSlider 
-                  min={0.0} 
-                  max={50.0} 
-                  step={1.0} 
-                  label="" 
-                  tooltip={{formatter: (value) => `κ: ${value}`}}
-                  style={{ margin: 0 }}
-                />
-              </Form.Item>
-            </Col>
+                <Col xs={12} sm={6} md={4} lg={3}>
+                  <Form.Item 
+                    label={
+                      <Space size={4}>
+                        <Text strong style={{ fontSize: 13 }}>步长 α</Text>
+                        <Tooltip title="每步的跨度，推荐eps/steps">
+                          <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
+                        </Tooltip>
+                      </Space>
+                    }
+                    name="alpha"
+                    style={{ marginBottom: 8 }}
+                  >
+                    <NeonSlider 
+                      min={0.1} 
+                      max={20.0} 
+                      step={0.1} 
+                      label="" 
+                      tooltip={{formatter: (value) => `α: ${value}`}}
+                      style={{ margin: 0 }}
+                    />
+                  </Form.Item>
+                </Col>
 
-            <Col xs={12} sm={6} md={4} lg={3}>
-              <Form.Item 
-                label={
-                  <Space size={4}>
-                    <Text strong style={{ fontSize: 13 }}>学习率</Text>
-                    <Tooltip title="Adam优化器学习率，推荐0.01">
-                      <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
-                    </Tooltip>
-                  </Space>
-                }
-                name="lr"
-                style={{ marginBottom: 8 }}
-              >
-                <NeonSlider 
-                  min={0.001} 
-                  max={0.1} 
-                  step={0.001} 
-                  label="" 
-                  tooltip={{formatter: (value) => `lr: ${value}`}}
-                  style={{ margin: 0 }}
-                />
-              </Form.Item>
-            </Col>
+                <Col xs={12} sm={6} md={4} lg={3}>
+                  <Form.Item 
+                    label={
+                      <Space size={4}>
+                        <Text strong style={{ fontSize: 13 }}>迭代步数</Text>
+                        <Tooltip title="FGSM循环次数，推荐5-50">
+                          <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
+                        </Tooltip>
+                      </Space>
+                    }
+                    name="steps"
+                    style={{ marginBottom: 8 }}
+                  >
+                    <NeonSlider 
+                      min={1} 
+                      max={100} 
+                      step={1} 
+                      label="" 
+                      tooltip={{formatter: (value) => `steps: ${value}`}}
+                      style={{ margin: 0 }}
+                    />
+                  </Form.Item>
+                </Col>
+              </>
+            ) : (
+              <>
+                {/* C&W 核心参数 */}
+                <Col xs={12} sm={6} md={4} lg={3}>
+                  <Form.Item 
+                    label={
+                      <Space size={4}>
+                        <Text strong style={{ fontSize: 13 }}>权衡系数 c</Text>
+                        <Tooltip title="平衡扰动大小和攻击成功率，推荐0.1-10">
+                          <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
+                        </Tooltip>
+                      </Space>
+                    }
+                    name="c"
+                    style={{ marginBottom: 8 }}
+                  >
+                    <NeonSlider 
+                      min={0.01} 
+                      max={100.0} 
+                      step={0.01} 
+                      label="" 
+                      tooltip={{formatter: (value) => `c: ${value}`}}
+                      style={{ margin: 0 }}
+                    />
+                  </Form.Item>
+                </Col>
 
-            <Col xs={12} sm={6} md={4} lg={3}>
-              <Form.Item 
-                label={
-                  <Space size={4}>
-                    <Text strong style={{ fontSize: 13 }}>迭代次数</Text>
-                    <Tooltip title="每轮二分搜索的迭代次数，推荐100">
-                      <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
-                    </Tooltip>
-                  </Space>
-                }
-                name="max_iter"
-                style={{ marginBottom: 8 }}
-              >
-                <NeonSlider 
-                  min={10} 
-                  max={500} 
-                  step={10} 
-                  label="" 
-                  tooltip={{formatter: (value) => `iter: ${value}`}}
-                  style={{ margin: 0 }}
-                />
-              </Form.Item>
-            </Col>
+                <Col xs={12} sm={6} md={4} lg={3}>
+                  <Form.Item 
+                    label={
+                      <Space size={4}>
+                        <Text strong style={{ fontSize: 13 }}>置信度 κ</Text>
+                        <Tooltip title="控制攻击的置信度，推荐0">
+                          <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
+                        </Tooltip>
+                      </Space>
+                    }
+                    name="kappa"
+                    style={{ marginBottom: 8 }}
+                  >
+                    <NeonSlider 
+                      min={0.0} 
+                      max={50.0} 
+                      step={1.0} 
+                      label="" 
+                      tooltip={{formatter: (value) => `κ: ${value}`}}
+                      style={{ margin: 0 }}
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={12} sm={6} md={4} lg={3}>
+                  <Form.Item 
+                    label={
+                      <Space size={4}>
+                        <Text strong style={{ fontSize: 13 }}>学习率</Text>
+                        <Tooltip title="Adam优化器学习率，推荐0.01">
+                          <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
+                        </Tooltip>
+                      </Space>
+                    }
+                    name="lr"
+                    style={{ marginBottom: 8 }}
+                  >
+                    <NeonSlider 
+                      min={0.001} 
+                      max={0.1} 
+                      step={0.001} 
+                      label="" 
+                      tooltip={{formatter: (value) => `lr: ${value}`}}
+                      style={{ margin: 0 }}
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={12} sm={6} md={4} lg={3}>
+                  <Form.Item 
+                    label={
+                      <Space size={4}>
+                        <Text strong style={{ fontSize: 13 }}>迭代次数</Text>
+                        <Tooltip title="每轮二分搜索的迭代次数，推荐100">
+                          <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
+                        </Tooltip>
+                      </Space>
+                    }
+                    name="max_iter"
+                    style={{ marginBottom: 8 }}
+                  >
+                    <NeonSlider 
+                      min={10} 
+                      max={500} 
+                      step={10} 
+                      label="" 
+                      tooltip={{formatter: (value) => `iter: ${value}`}}
+                      style={{ margin: 0 }}
+                    />
+                  </Form.Item>
+                </Col>
+              </>
+            )}
 
             {/* 图片上传与预览区域 */}
             <Col xs={24} sm={12} md={6} lg={5}>
@@ -1264,17 +1386,17 @@ const AttackLab = () => {
                 block 
                 size="middle"
                 icon={<RocketOutlined />}
-                loading={loading}
-                disabled={loading || (!form.getFieldValue('image_preview') && !form.getFieldValue('image'))}
+                loading={displayLoading}
+                disabled={displayLoading || (!form.getFieldValue('image_preview') && !form.getFieldValue('image'))}
                 onClick={onRun}
                 style={{ 
                   height: 36, 
                   borderRadius: 6, 
                   fontWeight: 'bold',
-                  boxShadow: loading ? 'none' : '0 2px 8px rgba(24, 144, 255, 0.3)'
+                  boxShadow: displayLoading ? 'none' : '0 2px 8px rgba(24, 144, 255, 0.3)'
                 }}
               >
-                {loading ? '实验运行中...' : '运行实验'}
+                {displayLoading ? '实验运行中...' : '运行实验'}
               </Button>
             </Col>
           </Row>
@@ -1357,7 +1479,7 @@ const AttackLab = () => {
       {/* 下方：结果展示大舞台 */}
       <Row gutter={24}>
         <Col span={24}>
-          {loading ? (
+          {displayLoading ? (
             <Card style={{ textAlign: 'center', padding: '80px 0', borderRadius: 12 }}>
               <Spin size="large" tip={
                 pollingActive 
@@ -1381,15 +1503,15 @@ const AttackLab = () => {
                 </Text>
               </div>
             </Card>
-          ) : error ? (
+          ) : displayError ? (
             <Alert
               message="实验执行失败"
               description={
                 <div>
-                  <div>{safeRender(error, '未知错误')}</div>
-                  {error?.response?.data && (
+                  <div>{safeRender(displayError, '未知错误')}</div>
+                  {displayError?.response?.data && (
                     <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-                      <strong>错误详情:</strong> {safeRender(error.response.data)}
+                      <strong>错误详情:</strong> {safeRender(displayError.response.data)}
                     </div>
                   )}
                 </div>
@@ -1403,7 +1525,7 @@ const AttackLab = () => {
                 </Button>
               }
             />
-          ) : result ? (
+          ) : displayResult ? (
             renderAnalysisReport() 
           ) : (
             <Card style={{ 
@@ -1447,7 +1569,7 @@ const AttackLab = () => {
                           在顶部配置攻击参数并上传图片后点击"运行实验"
                         </Text>
                         <div style={{ marginTop: 20 }}>
-                          <Tag color="blue" icon={<SafetyOutlined />} style={{ fontSize: 14, padding: '4px 12px' }}>C&W Attack</Tag>
+                          <Tag color="blue" icon={<SafetyOutlined />} style={{ fontSize: 14, padding: '4px 12px' }}>{selectedAlgo?.name || '攻击算法'}</Tag>
                           <Tag color="green" icon={<TrophyOutlined />} style={{ fontSize: 14, padding: '4px 12px' }}>专业级对抗攻击</Tag>
                         </div>
                       </Space>
