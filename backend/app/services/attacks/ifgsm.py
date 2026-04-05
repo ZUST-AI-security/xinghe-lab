@@ -469,7 +469,7 @@ class IFGSMAttack(BaseAttack):
                 "step": 0.001,
                 "default": 0.01,
                 "label": "步长 α",
-                "description": "每次迭代的扰动大小。推荐为1（或 epsilon/iterations）"
+                "description": "每次迭代的扰动大小。推荐为 epsilon/iterations，例如0.01"
             },
             "num_iterations": {
                 "type": "slider",

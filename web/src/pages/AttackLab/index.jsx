@@ -376,7 +376,7 @@ const AttackLab = () => {
     if (currentAlgo === 'cw') {
       form.setFieldsValue({ c: 0.1, kappa: 0.0, lr: 0.01, max_iter: 100, binary_search_steps: 9 });
     } else if (currentAlgo === 'ifgsm') {
-      form.setFieldsValue({ eps: 8.0, alpha: 1.0, steps: 10 });
+      form.setFieldsValue({ eps: 0.03, alpha: 0.01, steps: 40 });
     }
 
     // 3. 清空两个 Hook 里的攻击结果和界面上的初始预测
@@ -974,7 +974,7 @@ const AttackLab = () => {
                     label={
                       <Space size={4}>
                         <Text strong style={{ fontSize: 13 }}>扰动幅度 ε</Text>
-                        <Tooltip title="最大扰动幅度，推荐1-20">
+                        <Tooltip title="允许修改的最大像素值（L∞范数限制）。推荐数值为0.03（在0-1归一化下）">
                           <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
                         </Tooltip>
                       </Space>
@@ -983,10 +983,11 @@ const AttackLab = () => {
                     style={{ marginBottom: 8 }}
                   >
                     <NeonSlider 
-                      min={0.1} 
-                      max={100.0} 
-                      step={0.1} 
+                      min={0.01} 
+                      max={1.0} 
+                      step={0.01} 
                       label="" 
+                      defaultValue={0.03}
                       tooltip={{formatter: (value) => `ε: ${value}`}}
                       style={{ margin: 0 }}
                     />
@@ -998,7 +999,7 @@ const AttackLab = () => {
                     label={
                       <Space size={4}>
                         <Text strong style={{ fontSize: 13 }}>步长 α</Text>
-                        <Tooltip title="每步的跨度，推荐eps/steps">
+                        <Tooltip title="每次迭代的扰动大小。推荐为 epsilon/iterations，例如0.01">
                           <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
                         </Tooltip>
                       </Space>
@@ -1007,10 +1008,11 @@ const AttackLab = () => {
                     style={{ marginBottom: 8 }}
                   >
                     <NeonSlider 
-                      min={0.1} 
-                      max={20.0} 
-                      step={0.1} 
+                      min={0.0} 
+                      max={10.0} 
+                      step={0.005} 
                       label="" 
+                      defaultValue={0.01}
                       tooltip={{formatter: (value) => `α: ${value}`}}
                       style={{ margin: 0 }}
                     />
@@ -1022,7 +1024,7 @@ const AttackLab = () => {
                     label={
                       <Space size={4}>
                         <Text strong style={{ fontSize: 13 }}>迭代步数</Text>
-                        <Tooltip title="FGSM循环次数，推荐5-50">
+                        <Tooltip title="I-FGSM迭代次数。越多越稳定，但耗时增加。推荐20-40">
                           <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 12 }} />
                         </Tooltip>
                       </Space>
@@ -1035,6 +1037,7 @@ const AttackLab = () => {
                       max={100} 
                       step={1} 
                       label="" 
+                      defaultValue={40}
                       tooltip={{formatter: (value) => `steps: ${value}`}}
                       style={{ margin: 0 }}
                     />
