@@ -460,7 +460,7 @@ class IFGSMAttack(BaseAttack):
                 "step": 0.01,
                 "default": 0.03,
                 "label": "扰动限制 ε",
-                "description": "L∞范数限制，像素最大变化量。推荐0.03-0.1"
+                "description": "允许修改的最大像素值（L∞范数限制）。推荐数值为8（以像素0-255为例）或0.03（在0-1归一化下）"
             },
             "alpha": {
                 "type": "slider",
@@ -469,7 +469,7 @@ class IFGSMAttack(BaseAttack):
                 "step": 0.001,
                 "default": 0.01,
                 "label": "步长 α",
-                "description": "每次迭代的扰动大小。推荐设为 epsilon/iterations"
+                "description": "每次迭代的扰动大小。推荐为1（或 epsilon/iterations）"
             },
             "num_iterations": {
                 "type": "slider",
@@ -478,7 +478,7 @@ class IFGSMAttack(BaseAttack):
                 "step": 1,
                 "default": 40,
                 "label": "迭代次数",
-                "description": "FGSM迭代次数。越多越稳定，但耗时增加"
+                "description": "I-FGSM迭代次数。越多越稳定，但耗时增加"
             },
             "targeted": {
                 "type": "switch",
