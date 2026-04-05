@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { message } from 'antd';
 import { 
   Layout, 
@@ -39,11 +39,12 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons';
 import useCWAttack from '../../hooks/useCWAttack';
+import useIFGSMAttack from '../../hooks/useIFGSMAttack';
 import { algorithmService, uploadService } from '../../services/api';
 import { cwAttackService } from '../../services/api/attack';
-
+import { ifgsmAttackService } from '../../services/api/attack';
 // Custom Components
-import NeonSlider from '../../components/Common/NeonSlider';
+import NeonSlider from '../../components/common/NeonSlider.jsx';
 import ImageUploader from '../../components/Common/ImageUploader';
 
 const { Text } = Typography;
@@ -55,7 +56,23 @@ const AttackLab = () => {
   const { token } = theme.useToken();
   const [form] = Form.useForm();
   
-  const { executeAttack, result, setResult, loading, setLoading, progress, error, setError } = useCWAttack();
+// ================= 核心修改 1：获取路由参数 =================
+  const { algoId } = useParams(); 
+  // 如果 URL 是 /attacks/ifgsm，algoId 就是 'ifgsm'。默认走 'cw'
+  const currentAlgo = algoId || 'cw'; 
+  
+  // ================= 核心修改 2：初始化双引擎 =================
+  const cwHook = useCWAttack();
+  const ifgsmHook = useIFGSMAttack();
+
+  // 动态决定界面上显示谁的状态（管线合一）
+  const displayResult = currentAlgo === 'cw' ? cwHook.result : ifgsmHook.result;
+  const displayLoading = currentAlgo === 'cw' ? cwHook.loading : ifgsmHook.loading;
+  const displayError = currentAlgo === 'cw' ? cwHook.error : ifgsmHook.error;
+  
+  // 动态绑定 setError 和 setResult
+  const setError = currentAlgo === 'cw' ? cwHook.setError : ifgsmHook.setError;
+  const setResult = currentAlgo === 'cw' ? cwHook.setResult : ifgsmHook.setResult;
 
   const [models, setModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState('resnet100_imagenet');
@@ -91,9 +108,13 @@ const AttackLab = () => {
       return false;
     }
     
-    // 检查是否为正常的结果对象（包含必要的字段）
-    const requiredFields = ['original_image', 'adversarial_image', 'noise_image'];
-    return requiredFields.every(field => data[field] !== undefined);
+// 检查是否为正常的结果对象（包含必要的字段）
+    const requiredFields = ['original_image', 'adversarial_image'];
+    const hasBaseFields = requiredFields.every(field => data[field] !== undefined);
+    // 兼容 C&W 的 noise_image 和 I-FGSM 的 heatmap
+    const hasNoiseOrHeatmap = data.noise_image !== undefined || data.heatmap !== undefined;
+    
+    return hasBaseFields && hasNoiseOrHeatmap;
   };
 
   // 安全渲染函数 - 确保只渲染字符串或数字，防御性编程
@@ -317,13 +338,25 @@ const AttackLab = () => {
       });
   }, []);
 
-  const selectedAlgo = useMemo(() => ({ 
-    id: 'cw', 
-    name: 'C&W Attack', 
-    description: 'Carlini & Wagner L2攻击算法，强大的基于优化的对抗攻击方法',
-    type: 'classification'
-  }), []);
-  const isDetection = false; // C&W是分类攻击
+  const selectedAlgo = useMemo(() => {
+    if (currentAlgo === 'ifgsm') {
+      return { 
+        id: 'ifgsm', 
+        name: 'I-FGSM Attack', 
+        description: 'Iterative Fast Gradient Sign Method (迭代快速梯度符号法)', 
+        type: 'classification' 
+      };
+    }
+    // 默认 C&W
+    return { 
+      id: 'cw', 
+      name: 'C&W Attack', 
+      description: 'Carlini & Wagner L2攻击算法，强大的基于优化的对抗攻击方法', 
+      type: 'classification' 
+    };
+  }, [currentAlgo]);
+  
+  const isDetection = false;
 
   // 当算法切换时，重置表单和参数
   useEffect(() => {

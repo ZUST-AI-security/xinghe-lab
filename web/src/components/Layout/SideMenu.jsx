@@ -46,6 +46,12 @@ const SideMenu = ({ collapsed }) => {
           disabled: true,
         },
         {
+          key: '/attacks/ifgsm',
+          icon: <ExperimentOutlined />,
+          label: 'I-FGSM攻击',
+          disabled: true,
+        },
+        {
           key: '/attacks/pgd',
           icon: <ExperimentOutlined />,
           label: 'PGD攻击',
@@ -101,6 +107,9 @@ const SideMenu = ({ collapsed }) => {
     // 精确匹配
     if (pathname === '/attacks/cw') {
       return ['/attacks/cw'];
+    }
+    if (pathname === '/attacks/ifgsm') {
+      return ['/attacks/ifgsm'];
     }
     
     // 模糊匹配
