@@ -14,7 +14,9 @@ import { api } from '../client';
  * @returns {Promise} 攻击结果
  */
 export const runPGDAttack = async (attackRequest) => {
-  const response = await api.post('/attacks/pgd/run', attackRequest);
+  const response = await api.post('/attacks/pgd/run', attackRequest, {
+    timeout: 120000 // PGD攻击单独设置2分钟超时
+  });
   return response.data;
 };
 
@@ -24,7 +26,9 @@ export const runPGDAttack = async (attackRequest) => {
  * @returns {Promise} 任务信息
  */
 export const runPGDAttackAsync = async (attackRequest) => {
-  const response = await api.post('/attacks/pgd/async', attackRequest);
+  const response = await api.post('/attacks/pgd/async', attackRequest, {
+    timeout: 30000 // 异步请求保持30秒超时（只是提交任务）
+  });
   return response.data;
 };
 
@@ -34,7 +38,9 @@ export const runPGDAttackAsync = async (attackRequest) => {
  * @returns {Promise} 任务状态
  */
 export const getTaskStatus = async (taskId) => {
-  const response = await api.get(`/attacks/pgd/task/${taskId}`);
+  const response = await api.get(`/attacks/pgd/task/${taskId}`, {
+    timeout: 10000 // 任务状态查询设置10秒超时
+  });
   return response.data;
 };
 
