@@ -23,7 +23,7 @@ flower==2.0.1
 # AI/ML - PyTorch ecosystem
 torch==2.6.0
 torchvision==0.21.0
-numpy==1.24.4
+numpy>=1.26.0
 pillow==10.1.0
 opencv-python==4.8.1.78
 

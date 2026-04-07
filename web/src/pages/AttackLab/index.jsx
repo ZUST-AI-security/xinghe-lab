@@ -138,7 +138,7 @@ const AttackLab = () => {
     let component = null;
     switch (input.type) {
       case 'select':
-        component = <Select options={input.options} size="large" className="glass-select" />;
+        component = <Select options={input.options} size="large" className="glass-select" style={{ fontSize: '15px' }} />;
         break;
       case 'slider':
         component = (
@@ -151,7 +151,7 @@ const AttackLab = () => {
         );
         break;
       case 'number':
-        component = <InputNumber style={{ width: '100%' }} size="large" className="glass-input" />;
+        component = <InputNumber style={{ width: '100%', fontSize: '15px' }} size="large" className="glass-input" />;
         break;
       case 'image_upload':
         const currentPreview = form.getFieldValue('image_preview');
@@ -183,7 +183,7 @@ const AttackLab = () => {
       <Form.Item 
         key={input.name} 
         name={input.name} 
-        label={<Text strong className="text-[#a0a0b0]" style={{ fontSize: '12px' }}>{input.label}</Text>}
+        label={<Text strong className="text-[#a0a0b0]" style={{ fontSize: '15px' }}>{input.label}</Text>}
         style={{ marginBottom: 24 }}
       >
         {component}
@@ -197,7 +197,7 @@ const AttackLab = () => {
     return (
       <Space direction="vertical" size={24} style={{ width: '100%' }}>
         <GlassCard 
-          title="对抗实验全链路分析报告" 
+          title={<span style={{ fontSize: '18px' }}>对抗实验全链路分析报告</span>} 
           glowColor={result.success !== false ? "cyan" : "purple"}
         >
           {/* 三栏横向对比布局 */}
@@ -205,15 +205,15 @@ const AttackLab = () => {
             {/* 1. 原始状态 */}
             <Col xs={24} md={8}>
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Tag color="cyan" icon={<PictureOutlined />}>原始输入 (Original)</Tag>
-                <div style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)' }}>
+                <Tag color="cyan" icon={<PictureOutlined />} style={{ fontSize: '12px', padding: '4px 10px' }}>原始输入</Tag>
+                <div style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.6)' }}>
                   <Image 
                     src={`${API_BASE_URL}${result.original_image}`} 
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     preview={{ mask: <><EyeOutlined /> 预览</> }}
                   />
-                  <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '4px 8px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '4px', fontSize: '10px', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    CLASS: {safeRender(isDetection ? 'N/A' : result.original_class)}
+                  <div style={{ position: 'absolute', top: '12px', right: '12px', padding: '6px 12px', backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: '6px', fontSize: '12px', color: '#fff', border: '1px solid rgba(0,243,255,0.3)', fontWeight: 'bold' }}>
+                    {safeRender(isDetection ? 'N/A' : result.original_class)}
                   </div>
                 </div>
               </Space>
@@ -224,81 +224,79 @@ const AttackLab = () => {
               <ImageCompare 
                 original={`${API_BASE_URL}${result.original_image}`}
                 adversarial={`${API_BASE_URL}${result.adversarial_image}`}
+                title="图像细节透感分析"
               />
             </Col>
 
             {/* 3. 扰动分析 */}
             <Col xs={24} md={8}>
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Tag color="purple" icon={<AreaChartOutlined />}>攻击扰动 (Perturbation)</Tag>
-                <div style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)' }}>
+                <Tag color="purple" icon={<AreaChartOutlined />} style={{ fontSize: '12px', padding: '4px 10px' }}>攻击扰动图</Tag>
+                <div style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.6)' }}>
                   <Image 
                     src={`${API_BASE_URL}${result.noise_image}`} 
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     preview={{ mask: <><EyeOutlined /> 预览</> }}
                   />
-                  <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(circle at center, rgba(147, 51, 234, 0.1), transparent)' }} />
                 </div>
               </Space>
             </Col>
           </Row>
 
-          <Divider style={{ borderColor: 'rgba(255,255,255,0.05)', margin: '24px 0' }} />
+          <Divider style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '32px 0' }} />
 
-          {/* 指标化统计栏 */}
+          {/* 指标化统计栏 - 巨幕字体 */}
           <Row gutter={24}>
             <Col span={6}>
               <Statistic 
-                title={<Text type="secondary" style={{ fontSize: '11px' }}>扰动预算 (Epsilon)</Text>}
+                title={<Text type="secondary" style={{ fontSize: '14px' }}>扰动预算 (Epsilon)</Text>}
                 value={form.getFieldValue('epsilon') || 0.03}
                 precision={3}
-                valueStyle={{ color: '#00f3ff', fontSize: '18px' }}
-                prefix={<SettingOutlined style={{ fontSize: '12px', marginRight: '8px' }} />}
+                valueStyle={{ color: '#00f3ff', fontSize: '28px', fontWeight: 'bold' }}
               />
             </Col>
             <Col span={6}>
               <Statistic 
-                title={<Text type="secondary" style={{ fontSize: '11px' }}>攻击状态</Text>}
-                value={result.adversarial_class !== result.original_class ? "成功" : "防御中"}
-                valueStyle={{ color: result.adversarial_class !== result.original_class ? token.colorError : token.colorSuccess, fontSize: '18px' }}
-                prefix={result.adversarial_class !== result.original_class ? <RocketOutlined style={{ fontSize: '12px', marginRight: '4px' }} /> : <SafetyOutlined style={{ fontSize: '12px', marginRight: '4px' }} />}
+                title={<Text type="secondary" style={{ fontSize: '14px' }}>攻击状态</Text>}
+                value={result.adversarial_class !== result.original_class ? "SUCCESS" : "FAIL"}
+                valueStyle={{ color: result.adversarial_class !== result.original_class ? '#ff4d4f' : '#52c41a', fontSize: '28px', fontWeight: 'bold' }}
               />
             </Col>
             <Col span={6}>
               <Statistic 
-                title={<Text type="secondary" style={{ fontSize: '11px' }}>置信度偏移</Text>}
+                title={<Text type="secondary" style={{ fontSize: '14px' }}>置信度偏移</Text>}
                 value={result.confidence_chart ? Math.abs((result.confidence_chart.original[0] - result.confidence_chart.adversarial[0]) * 100) : 0}
                 precision={1}
                 suffix="%"
-                valueStyle={{ color: token.colorWarning, fontSize: '18px' }}
+                valueStyle={{ color: '#faad14', fontSize: '28px', fontWeight: 'bold' }}
               />
             </Col>
             <Col span={6}>
               <Statistic 
-                title={<Text type="secondary" style={{ fontSize: '11px' }}>判定分类 (New)</Text>}
+                title={<Text type="secondary" style={{ fontSize: '14px' }}>新判定分类</Text>}
                 value={safeRender(result.adversarial_class)}
-                valueStyle={{ color: '#fff', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                valueStyle={{ color: '#fff', fontSize: '20px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
               />
             </Col>
           </Row>
         </GlassCard>
 
-        {/* 动态演变图表 */}
+        {/* 置信度列表 */}
         {result.confidence_chart && !isDetection && (
-          <GlassCard title="分类置信度演变对比" glowColor="blue">
+          <GlassCard title={<span style={{ fontSize: '16px' }}>置信度动态演变详情</span>} glowColor="blue">
             <Row gutter={[16, 16]}>
               {(result.confidence_chart.labels || []).map((label, idx) => (
-                <Col key={label} span={24} md={12} lg={8}>
-                  <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <Text strong style={{ fontSize: '12px', maxWidth: '100px' }} ellipsis>{label}</Text>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <Text type="secondary" style={{ fontSize: '10px' }}>原: {(result.confidence_chart.original[idx] * 100).toFixed(1)}%</Text>
-                        <Text type="danger" style={{ fontSize: '10px' }}>现: {(result.confidence_chart.adversarial[idx] * 100).toFixed(1)}%</Text>
-                      </div>
+                <Col key={label} span={24} md={12}>
+                  <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <Text strong style={{ fontSize: '15px' }} ellipsis>{label}</Text>
+                      <Space size="large">
+                        <Text type="secondary" style={{ fontSize: '13px' }}>原: {(result.confidence_chart.original[idx] * 100).toFixed(1)}%</Text>
+                        <Text type="danger" style={{ fontSize: '13px', fontWeight: 'bold' }}>现: {(result.confidence_chart.adversarial[idx] * 100).toFixed(1)}%</Text>
+                      </Space>
                     </div>
-                    <Progress percent={result.confidence_chart.original[idx] * 100} size="small" strokeColor="#00f3ff" showInfo={false} style={{ marginBottom: '4px' }} />
-                    <Progress percent={result.confidence_chart.adversarial[idx] * 100} size="small" strokeColor={token.colorError} showInfo={false} />
+                    <Progress percent={result.confidence_chart.original[idx] * 100} size="small" strokeColor="#00f3ff" showInfo={false} style={{ marginBottom: '6px' }} />
+                    <Progress percent={result.confidence_chart.adversarial[idx] * 100} size="small" strokeColor="#ff4d4f" showInfo={false} />
                   </div>
                 </Col>
               ))}
@@ -312,56 +310,56 @@ const AttackLab = () => {
   if (initialLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', background: '#0a0a0f' }}>
-        <Spin size="large" />
-        <Text style={{ marginTop: '24px', color: '#00f3ff' }}>实验室核心模块加载中...</Text>
+        <Spin size="large" tip="系统校准中..." />
       </div>
     );
   }
 
   return (
-    <Content style={{ padding: '24px 50px', background: '#050508', minHeight: '100vh' }}>
+    <Content style={{ padding: '32px 64px', background: '#050508', minHeight: '100vh' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
-        <Space size={16}>
+        <Space size={20}>
           <Button 
-            style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+            style={{ height: '40px', padding: '0 24px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', fontSize: '14px' }}
             icon={<ArrowLeftOutlined />} 
             onClick={() => navigate('/')}
           >
-            返回列表
+            返回监控中心
           </Button>
           <Breadcrumb 
             items={[
-              { title: <Link to="/" style={{ color: 'rgba(255,255,255,0.4)' }}><HomeOutlined /> 首页</Link> },
-              { title: <span style={{ color: '#fff' }}>{selectedAlgo?.name}</span> }
+              { title: <Link to="/" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}><HomeOutlined /> 首页</Link> },
+              { title: <span style={{ color: '#fff', fontSize: '14px' }}>{selectedAlgo?.name}</span> }
             ]}
           />
         </Space>
         
-        <Tag color="cyan" style={{ background: 'rgba(0, 243, 255, 0.1)', color: '#00f3ff', borderColor: 'transparent' }}>实验室模式: 专业对抗</Tag>
+        <Tag color="cyan" style={{ height: '30px', display: 'flex', alignItems: 'center', padding: '0 12px', background: 'rgba(0, 243, 255, 0.1)', color: '#00f3ff', borderColor: 'transparent', fontSize: '12px', fontWeight: 'bold' }}>实验环境: 专业级</Tag>
       </div>
 
-      <Row gutter={[32, 24]}>
-        <Col xs={24} lg={8}>
-          <Space direction="vertical" size={24} style={{ width: '100%' }}>
-            <GlassCard title="算法节点详情" glowColor="blue">
-              <Title level={4} style={{ color: '#00f3ff', margin: 0 }}>{selectedAlgo?.name}</Title>
-              <Paragraph style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', marginTop: '12px', lineHeight: '1.6' }}>
+      <Row gutter={[32, 32]}>
+        {/* 左侧：参数区域 - 宽度保持 10 */}
+        <Col xs={24} lg={10}>
+          <Space direction="vertical" size={32} style={{ width: '100%' }}>
+            <GlassCard title={<span style={{ fontSize: '16px' }}>算法节点引擎状态</span>} glowColor="blue">
+              <Title level={3} style={{ color: '#00f3ff', margin: 0, fontSize: '24px' }}>{selectedAlgo?.name}</Title>
+              <Paragraph style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginTop: '16px', lineHeight: '1.8' }}>
                 {selectedAlgo?.description}
               </Paragraph>
-              <Divider style={{ borderColor: 'rgba(255,255,255,0.05)' }} />
-              <div style={{ fontSize: '10px', color: '#444' }}>
-                INSTANCE_ID: {selectedAlgoId.toUpperCase()}
+              <Divider style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '20px 0' }} />
+              <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold' }}>
+                NODE_HASH: {selectedAlgoId.toUpperCase()}
               </div>
             </GlassCard>
 
-            <GlassCard title="参数配置集">
+            <GlassCard title={<span style={{ fontSize: '16px' }}>超参数精调矩阵</span>}>
               <Form
                 form={form}
                 layout="vertical"
               >
                 {selectedAlgo?.inputs.map(input => renderFormItem(input))}
                 
-                <Divider style={{ borderColor: 'rgba(255,255,255,0.05)' }} />
+                <Divider style={{ borderColor: 'rgba(255,255,255,0.05)', margin: '24px 0' }} />
                 
                 <GradientButton 
                   primary 
@@ -369,34 +367,35 @@ const AttackLab = () => {
                   block 
                   loading={loading}
                   onClick={onRun}
-                  style={{ height: '50px', borderRadius: '8px' }}
+                  style={{ height: '56px', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold' }}
                 >
-                  <ThunderboltOutlined style={{ marginRight: '8px' }} /> 运行对抗实验
+                  <ThunderboltOutlined style={{ marginRight: '10px' }} /> 启动对抗引擎
                 </GradientButton>
               </Form>
             </GlassCard>
           </Space>
         </Col>
 
-        <Col xs={24} lg={16}>
+        {/* 右侧：结果展示 - 宽度保持 14 */}
+        <Col xs={24} lg={14}>
           {loading && (
-            <GlassCard className="text-center" glowColor="cyan" style={{ marginBottom: '24px', padding: '60px 0' }}>
-              <Spin indicator={<LoadingOutlined style={{ fontSize: 24, color: '#00f3ff' }} spin />} />
+            <GlassCard className="text-center" glowColor="cyan" style={{ marginBottom: '32px', padding: '60px 0' }}>
+              <Spin indicator={<LoadingOutlined style={{ fontSize: 32, color: '#00f3ff' }} spin />} />
               <div style={{ marginTop: '24px' }}>
-                <Text style={{ color: '#00f3ff', fontSize: '14px' }}>正在计算深度梯度扰动: {progress}%</Text>
-                <Progress percent={progress} status="active" showInfo={false} strokeColor="#00f3ff" style={{ width: '200px', margin: '16px auto 0' }} />
+                <Text style={{ color: '#00f3ff', fontSize: '16px', fontWeight: 'bold' }}>计算深度梯度演变: {progress}%</Text>
+                <Progress percent={progress} status="active" showInfo={false} strokeColor="#00f3ff" style={{ width: '260px', margin: '20px auto 0', height: '8px' }} />
               </div>
             </GlassCard>
           )}
 
           {result ? renderAnalysisReport() : !loading && (
-            <div style={{ height: '100%', minHeight: '600px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '16px' }}>
+            <div style={{ height: '100%', minHeight: '450px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(255,255,255,0.08)', borderRadius: '24px', background: 'rgba(255,255,255,0.01)' }}>
               <Empty
-                image={<PictureOutlined style={{ fontSize: 64, color: 'rgba(255,255,255,0.03)' }} />}
+                image={<PictureOutlined style={{ fontSize: 80, color: 'rgba(255,255,255,0.03)' }} />}
                 description={
-                  <Space direction="vertical" align="center" size={0}>
-                    <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: '16px' }}>等待实验指令</Text>
-                    <Text style={{ color: 'rgba(255,255,255,0.1)', fontSize: '12px' }}>在此配置参数并运行以查对对抗样本生成的具体细节。</Text>
+                  <Space direction="vertical" align="center" size={8}>
+                    <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: '18px', fontWeight: 'bold' }}>监控阵列待命</Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.12)', fontSize: '14px', textAlign: 'center', maxWidth: '300px' }}>配置实验参数后点击启动。系统将展示全链路对抗评估报告。</Text>
                   </Space>
                 }
               />
