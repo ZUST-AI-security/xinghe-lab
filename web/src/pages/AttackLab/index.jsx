@@ -56,7 +56,7 @@ const { Content } = Layout;
 const API_BASE_URL = 'http://localhost:8000';
 
 const AttackLab = () => {
-  const { algoId } = useParams();
+  const { algoId = 'fgsm' } = useParams();
   const navigate = useNavigate();
   const { token } = theme.useToken();
   const [form] = Form.useForm();
@@ -348,7 +348,7 @@ const AttackLab = () => {
               </Paragraph>
               <Divider style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '20px 0' }} />
               <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold' }}>
-                NODE_HASH: {selectedAlgoId.toUpperCase()}
+                NODE_HASH: {(selectedAlgoId || 'FGSM').toUpperCase()}
               </div>
             </GlassCard>
 

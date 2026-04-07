@@ -103,7 +103,7 @@ function App() {
                         element={<CWAttack />} 
                       />
                       <Route 
-                        path="/attacks/fgsm" 
+                        path="/attacks/:algoId" 
                         element={<AttackLab />} 
                       />
                       
