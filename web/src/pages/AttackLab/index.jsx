@@ -44,11 +44,11 @@ import { useAttack } from '../../hooks/useAttack';
 import { algorithmService, datasetService, uploadService } from '../../services/api';
 
 // Custom Components
-import NeonSlider from '../../components/common/NeonSlider';
-import ImageUploader from '../../components/business/ImageUploader';
-import ImageCompare from '../../components/common/ImageCompare';
-import GlassCard from '../../components/common/GlassCard';
-import GradientButton from '../../components/common/GradientButton';
+import NeonSlider from '../../components/Common/NeonSlider';
+import ImageUploader from '../../components/Common/ImageUploader';
+import ImageCompare from '../../components/Common/ImageCompare';
+import GlassCard from '../../components/Common/GlassCard';
+import GradientButton from '../../components/Common/GradientButton';
 
 const { Title, Text, Paragraph } = Typography;
 const { Content } = Layout;
