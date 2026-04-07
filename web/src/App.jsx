@@ -101,6 +101,10 @@ function App() {
                         path="/attacks/cw" 
                         element={<CWAttack />} 
                       />
+                      <Route 
+                        path="/attacks/fgsm" 
+                        element={<CWAttack />} 
+                      />
                       
                       {/* 其他攻击算法页面（预留） */}
                       <Route 

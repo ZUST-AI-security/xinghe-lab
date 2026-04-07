@@ -43,7 +43,6 @@ const SideMenu = ({ collapsed }) => {
           key: '/attacks/fgsm',
           icon: <ExperimentOutlined />,
           label: 'FGSM攻击',
-          disabled: true,
         },
         {
           key: '/attacks/pgd',

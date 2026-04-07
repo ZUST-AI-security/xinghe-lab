@@ -25,11 +25,26 @@ async def submit_task(task_data: TaskSubmit, db: Session = Depends(get_db)):
     algorithm_id = task_data.algorithm_id
     params = task_data.params
     
+    # Determine which Celery task to run
+    if algorithm_id == "fgsm":
+        task_name = "app.workers.tasks.fgsm_task.run_fgsm_attack"
+        # Extract params for FGSM
+        task_args = [
+            params.get("image"),
+            params,
+            params.get("model_name", "resnet100_imagenet"),
+            1  # Default user_id for now
+        ]
+    elif algorithm_id == "resnet18_cifar10" or algorithm_id == "yolov8_attack":
+        task_name = "app.tasks.cv_tasks.process_attack"
+        task_args = [algorithm_id, params]
+    else:
+        # Fallback to old dynamic behavior or error
+        task_name = "app.tasks.cv_tasks.process_attack"
+        task_args = [algorithm_id, params]
+    
     # Send task to Celery
-    task = celery_app.send_task(
-        "app.tasks.cv_tasks.process_attack",
-        args=[algorithm_id, params]
-    )
+    task = celery_app.send_task(task_name, args=task_args)
     
     # Save to DB record
     db_task = TaskRecord(

@@ -102,6 +102,55 @@ ALGORITHM_REGISTRY: List[Algorithm] = [
             {"name": "noise_image", "type": "image", "label": "扰动噪声 (放大)"},
             {"name": "detection_count_diff", "type": "text", "label": "检测数量变化"}
         ]
+    ),
+    Algorithm(
+        id="fgsm",
+        name="FGSM 快速梯度符号攻击",
+        description="Fast Gradient Sign Method (FGSM) 是一种简单高效的对抗攻击算法，通过计算损失函数相对于输入图片的梯度来生成扰动。",
+        inputs=[
+            {
+                "name": "image",
+                "type": "image_upload",
+                "label": "上传图片"
+            },
+            {
+                "name": "model_name",
+                "type": "select",
+                "label": "目标模型",
+                "default": "resnet100_imagenet",
+                "options": [
+                    {"label": "ResNet100 (ImageNet)", "value": "resnet100_imagenet"},
+                    {"label": "YOLOv8 (COCO)", "value": "yolov8_attack"}
+                ]
+            },
+            {
+                "name": "epsilon",
+                "type": "slider",
+                "label": "扰动大小 (Epsilon)",
+                "default": 0.03,
+                "min": 0.0,
+                "max": 0.2,
+                "step": 0.005
+            },
+            {
+                "name": "targeted",
+                "type": "select",
+                "label": "攻击方式",
+                "default": False,
+                "options": [
+                    {"label": "非定向攻击", "value": False},
+                    {"label": "定向攻击 (随机标签)", "value": True}
+                ]
+            }
+        ],
+        outputs=[
+            {"name": "original_image", "type": "image", "label": "原始图像"},
+            {"name": "adversarial_image", "type": "image", "label": "对抗样本"},
+            {"name": "noise_image", "type": "image", "label": "扰动热力图"},
+            {"name": "original_class", "type": "text", "label": "原始预测"},
+            {"name": "adversarial_class", "type": "text", "label": "攻击后预测"},
+            {"name": "confidence_chart", "type": "chart", "label": "置信度变化"}
+        ]
     )
 ]
 

@@ -184,5 +184,3 @@ class FGSMAttack(BaseAttack):
         }
 
 
-# Backward-compatible alias
-CWAttack = FGSMAttack
