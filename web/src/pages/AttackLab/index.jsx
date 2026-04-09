@@ -77,6 +77,15 @@ const AttackLab = () => {
     return typeof value === 'object' ? JSON.stringify(value).substring(0, 50) : value;
   };
 
+  // 安全获取图片 URL (避免对已有的 base64 重复添加 API 前缀)
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('http')) {
+      return url;
+    }
+    return `${API_BASE_URL}${url}`;
+  };
+
   // 初始化：获取算法列表并匹配当前算法
   useEffect(() => {
     algorithmService.getAlgorithms()
@@ -208,7 +217,7 @@ const AttackLab = () => {
                 <Tag color="cyan" icon={<PictureOutlined />} style={{ fontSize: '12px', padding: '4px 10px' }}>原始输入</Tag>
                 <div style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.6)' }}>
                   <Image 
-                    src={`${API_BASE_URL}${result.original_image}`} 
+                    src={getImageUrl(result.original_image)} 
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     preview={{ mask: <><EyeOutlined /> 预览</> }}
                   />
@@ -222,8 +231,8 @@ const AttackLab = () => {
             {/* 2. 交互式对比 (Core upgrade) */}
             <Col xs={24} md={8}>
               <ImageCompare 
-                original={`${API_BASE_URL}${result.original_image}`}
-                adversarial={`${API_BASE_URL}${result.adversarial_image}`}
+                original={getImageUrl(result.original_image)}
+                adversarial={getImageUrl(result.adversarial_image)}
                 title="图像细节透感分析"
               />
             </Col>
@@ -234,7 +243,7 @@ const AttackLab = () => {
                 <Tag color="purple" icon={<AreaChartOutlined />} style={{ fontSize: '12px', padding: '4px 10px' }}>攻击扰动图</Tag>
                 <div style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.6)' }}>
                   <Image 
-                    src={`${API_BASE_URL}${result.noise_image}`} 
+                    src={getImageUrl(result.noise_image)} 
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     preview={{ mask: <><EyeOutlined /> 预览</> }}
                   />

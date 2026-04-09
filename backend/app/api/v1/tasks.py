@@ -2,10 +2,11 @@ from fastapi import APIRouter, HTTPException, Depends
 from celery.result import AsyncResult
 from app.schemas.schemas import TaskSubmit, TaskResponse, TaskResult
 from app.core.celery_app import celery_app
-from app.core.db import SessionLocal
+from app.core.database import SessionLocal
 from app.models.models import TaskRecord
 from sqlalchemy.orm import Session
 from typing import Any, Dict, List
+import time
 
 router = APIRouter()
 
@@ -43,20 +44,42 @@ async def submit_task(task_data: TaskSubmit, db: Session = Depends(get_db)):
         task_name = "app.tasks.cv_tasks.process_attack"
         task_args = [algorithm_id, params]
     
-    # Send task to Celery
-    task = celery_app.send_task(task_name, args=task_args)
+    # Send task to Celery or run Sync (FGSM is fast)
+    try:
+        if algorithm_id == "fgsm":
+            from app.workers.tasks.fgsm_task import run_fgsm_attack
+            # 同步执行 (FGSM 比较快，可以满足同步请求)
+            result = run_fgsm_attack(*task_args)
+            status = "SUCCESS"
+            task_id_val = f"sync_{int(time.time())}"
+        else:
+            task = celery_app.send_task(task_name, args=task_args)
+            task_id_val = task.id
+            status = "PENDING"
+            result = None
+    except Exception as e:
+        # Fallback to sync if celery fails
+        if algorithm_id == "fgsm":
+            from app.workers.tasks.fgsm_task import run_fgsm_attack
+            result = run_fgsm_attack(*task_args)
+            status = "SUCCESS"
+            task_id_val = f"sync_{int(time.time())}"
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to submit task: {str(e)}")
     
     # Save to DB record
     db_task = TaskRecord(
-        task_id=task.id,
+        task_id=task_id_val,
         algorithm_id=algorithm_id,
         params=params,
-        status="PENDING"
+        status=status,
+        result=result if status == "SUCCESS" else None
     )
     db.add(db_task)
     db.commit()
     
-    return TaskResponse(task_id=task.id, status="PENDING")
+    return TaskResponse(task_id=task_id_val, status=status)
+
 
 @router.get("/tasks", response_model=List[Dict[str, Any]])
 async def list_tasks(limit: int = 50, db: Session = Depends(get_db)):

@@ -21,6 +21,7 @@ from .core.exceptions import (
     general_exception_handler
 )
 from .api.v1.endpoints import auth, models, attacks, users
+from .api.v1 import algorithms, tasks
 from .utils.logger import setup_logging
 
 # 设置日志
@@ -186,6 +187,19 @@ app.include_router(
     users.router,
     prefix="/api/v1/users",
     tags=["用户管理"]
+)
+
+# 注册算法和任务路由 (Fix 404)
+app.include_router(
+    algorithms.router,
+    prefix="/api/v1",
+    tags=["算法列表"]
+)
+
+app.include_router(
+    tasks.router,
+    prefix="/api/v1",
+    tags=["任务管理"]
 )
 
 # 根路径

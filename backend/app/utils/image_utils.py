@@ -13,43 +13,61 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def base64_to_image(base64_str: str) -> np.ndarray:
+def base64_to_image(image_input: str) -> np.ndarray:
     """
-    Base64字符串转换为numpy数组
+    图像输入转换为numpy数组 (支持Base64字符串或本地文件路径)
     
     Args:
-        base64_str: Base64编码的图片字符串
+        image_input: Base64编码的图片字符串 或 图片文件路径
         
     Returns:
         np.ndarray: RGB格式的图像数组 [H, W, C]
         
     Raises:
-        ValueError: 无效的Base64格式
+        ValueError: 无效的格式或文件不存在
     """
     try:
-        # 移除data:image/xxx;base64,前缀
-        if ',' in base64_str:
-            base64_str = base64_str.split(',')[1]
+        # 1. 检查是否为本地路径 (兼容前端传来的 /uploads/... 格式)
+        if isinstance(image_input, str) and (image_input.startswith('/uploads/') or image_input.startswith('uploads/')):
+            import os
+            # 获取当前文件所在位置的绝对路径，推导项目根目录
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            backend_dir = os.path.abspath(os.path.join(current_dir, "../../.."))
+            
+            relative_path = image_input.lstrip('/')
+            file_path = os.path.join(backend_dir, relative_path)
+            
+            if not os.path.exists(file_path):
+                logger.error(f"文件不存在: {file_path}")
+                raise ValueError(f"图片文件不存在: {file_path}")
+                
+            image = Image.open(file_path)
+            logger.info(f"成功从文件加载图片: {file_path}")
         
-        # 解码Base64
-        image_data = base64.b64decode(base64_str)
+        # 2. 否则按 Base64 处理
+        else:
+            base64_str = image_input
+            # 移除 data:image/xxx;base64, 前缀
+            if ',' in base64_str:
+                base64_str = base64_str.split(',')[1]
+            
+            # 解码 Base64
+            image_data = base64.b64decode(base64_str)
+            image = Image.open(io.BytesIO(image_data))
+            logger.debug("成功从 Base64 解码图片")
         
-        # 转换为PIL Image
-        image = Image.open(io.BytesIO(image_data))
-        
-        # 转换为RGB格式
+        # 统一转换为 RGB 格式
         if image.mode != 'RGB':
             image = image.convert('RGB')
         
-        # 转换为numpy数组
+        # 转换为 numpy 数组
         image_array = np.array(image)
-        
-        logger.debug(f"成功解码图片，尺寸: {image_array.shape}")
         return image_array
         
     except Exception as e:
-        logger.error(f"Base64解码失败: {str(e)}")
-        raise ValueError(f"无效的图片Base64格式: {str(e)}")
+        logger.error(f"图片解码失败: {str(e)}")
+        raise ValueError(f"无效的图片输入: {str(e)}")
+
 
 def image_to_base64(image: np.ndarray, 
                     format: str = 'JPEG', 
