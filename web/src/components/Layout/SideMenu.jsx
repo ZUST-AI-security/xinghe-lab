@@ -26,8 +26,10 @@ import { useAuthStore } from '../../store/authStore';
 const SideMenu = ({ collapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
-    const user = useAuthStore((state) => state.user);
-    const isAdmin = user?.role === 'admin';
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.role === 'admin';
+
+  const menuItems = [
     {
       key: '/dashboard',
       icon: <BarChartOutlined />,
