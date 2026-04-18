@@ -19,6 +19,15 @@ import Dashboard from './pages/Dashboard';
 import CWAttack from './pages/Attacks/CWAttack';
 import PGDAttack from './pages/Attacks/PGDAttack';
 import FGSMAttack from './pages/Attacks/FGSMAttack';
+import IFGSMAttack from './pages/Attacks/IFGSMAttack';
+import DeepFoolAttack from './pages/Attacks/DeepFoolAttack';
+
+// 管理后台页面
+import AdminDashboard from './pages/Admin/AdminDashboard';
+import UserManagement from './pages/Admin/UserManagement';
+import AttackHistory from './pages/Admin/AttackHistory';
+import SystemLogs from './pages/Admin/SystemLogs';
+import SystemConfig from './pages/Admin/SystemConfig';
 
 // API客户端
 import { setupAxiosInterceptors } from './api/client';
@@ -111,8 +120,23 @@ function App() {
                          path="/attacks/fgsm"
                          element={<FGSMAttack />}
                        />
-                       
-                       {/* 其他攻击算法页面（预留） */}
+                        <Route
+                          path="/attacks/ifgsm"
+                          element={<IFGSMAttack />}
+                        />
+                        <Route
+                          path="/attacks/deepfool"
+                          element={<DeepFoolAttack />}
+                        />
+
+                        {/* 管理后台页面 */}
+                        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                        <Route path="/admin/users" element={<UserManagement />} />
+                        <Route path="/admin/attack-history" element={<AttackHistory />} />
+                        <Route path="/admin/logs" element={<SystemLogs />} />
+                        <Route path="/admin/config" element={<SystemConfig />} />
+
+                        {/* 其他页面 */}
                       <Route 
                         path="/attacks/*" 
                         element={

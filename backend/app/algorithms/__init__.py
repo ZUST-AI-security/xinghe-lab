@@ -10,9 +10,16 @@ from app.algorithms.registry import register
 from app.algorithms.fgsm import FGSMAlgorithm
 from app.algorithms.cw import CWAlgorithm
 from app.algorithms.pgd import PGDAlgorithm
+from app.algorithms.ifgsm import IFGSMAlgorithm
+from app.algorithms.deepfool import DeepFoolAlgorithm
 
 register(FGSMAlgorithm)
 register(CWAlgorithm)
 register(PGDAlgorithm)
+register(IFGSMAlgorithm)
+register(DeepFoolAlgorithm)
 
-__all__ = ["FGSMAlgorithm", "CWAlgorithm", "PGDAlgorithm", "register"]
+__all__ = [
+    "FGSMAlgorithm", "CWAlgorithm", "PGDAlgorithm",
+    "IFGSMAlgorithm", "DeepFoolAlgorithm", "register",
+]

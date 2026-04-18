@@ -23,7 +23,7 @@ security = HTTPBearer()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    验证密码
+    验证密码（bcrypt）
     
     Args:
         plain_password: 明文密码
@@ -32,13 +32,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         bool: 密码是否正确
     """
-    # 简单哈希验证
-    import hashlib
-    return hashlib.sha256(plain_password.encode()).hexdigest() == hashed_password
+    return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
     """
-    生成密码哈希
+    生成密码哈希（bcrypt）
     
     Args:
         password: 明文密码
@@ -46,9 +44,7 @@ def get_password_hash(password: str) -> str:
     Returns:
         str: 哈希后的密码
     """
-    # 简单哈希
-    import hashlib
-    return hashlib.sha256(password.encode()).hexdigest()
+    return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
@@ -213,6 +209,37 @@ async def get_current_active_user(
         raise HTTPException(status_code=400, detail="用户账户未激活")
     
     return current_user
+
+
+def require_role(*allowed_roles: str):
+    """
+    角色权限依赖工厂，用于限制端点只允许特定角色访问。
+
+    用法::
+
+        @router.get("/admin-only", dependencies=[Depends(require_role("admin"))])
+    """
+    async def _check(current_user: User = Depends(get_current_active_user)) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"需要以下角色之一: {', '.join(allowed_roles)}",
+            )
+        return current_user
+    return _check
+
+
+async def get_current_admin_user(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """获取当前管理员用户，非 admin 角色返回 403。"""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限",
+        )
+    return current_user
+
 
 def create_user_tokens(user: User) -> dict:
     """

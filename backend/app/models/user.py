@@ -13,6 +13,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
+    role = Column(String(20), nullable=False, default="user", server_default="user")
     avatar_url = Column(String(255), nullable=True)
     bio = Column(Text, nullable=True)
     last_login_at = Column(DateTime(timezone=True), nullable=True)

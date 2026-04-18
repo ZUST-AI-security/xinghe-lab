@@ -15,15 +15,19 @@ import {
   SafetyOutlined,
   ExperimentOutlined,
   DatabaseOutlined,
+  TeamOutlined,
+  DashboardOutlined,
+  FileTextOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
 
 const SideMenu = ({ collapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
-
-  // 菜单项配置
-  const menuItems = [
+    const user = useAuthStore((state) => state.user);
+    const isAdmin = user?.role === 'admin';
     {
       key: '/dashboard',
       icon: <BarChartOutlined />,
@@ -50,10 +54,14 @@ const SideMenu = ({ collapsed }) => {
           label: 'PGD攻击',
         },
         {
+          key: '/attacks/ifgsm',
+          icon: <ExperimentOutlined />,
+          label: 'I-FGSM攻击',
+        },
+        {
           key: '/attacks/deepfool',
           icon: <ExperimentOutlined />,
           label: 'DeepFool攻击',
-          disabled: true,
         },
       ],
     },
@@ -79,12 +87,38 @@ const SideMenu = ({ collapsed }) => {
       icon: <HistoryOutlined />,
       label: '攻击历史',
     },
-    {
-      key: '/settings',
-      icon: <SettingOutlined />,
-      label: '系统设置',
-      disabled: true,
-    },
+    ...(isAdmin ? [{
+      key: '/admin',
+      icon: <ToolOutlined />,
+      label: '系统管理',
+      children: [
+        {
+          key: '/admin/dashboard',
+          icon: <DashboardOutlined />,
+          label: '系统概览',
+        },
+        {
+          key: '/admin/users',
+          icon: <TeamOutlined />,
+          label: '用户管理',
+        },
+        {
+          key: '/admin/attack-history',
+          icon: <HistoryOutlined />,
+          label: '任务历史',
+        },
+        {
+          key: '/admin/logs',
+          icon: <FileTextOutlined />,
+          label: '系统日志',
+        },
+        {
+          key: '/admin/config',
+          icon: <SettingOutlined />,
+          label: '系统配置',
+        },
+      ],
+    }] : []),
   ];
 
   // 处理菜单点击

@@ -4,7 +4,7 @@
 """
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 
 class UserBase(BaseModel):
@@ -38,6 +38,13 @@ class UserUpdate(BaseModel):
     bio: Optional[str] = Field(None, max_length=500, description="个人简介")
     avatar_url: Optional[str] = Field(None, max_length=255, description="头像URL")
 
+class AdminUserUpdate(BaseModel):
+    """管理员更新用户模型"""
+    email: Optional[EmailStr] = Field(None, description="邮箱地址")
+    full_name: Optional[str] = Field(None, max_length=100, description="全名")
+    role: Optional[Literal["admin", "user", "viewer"]] = Field(None, description="用户角色")
+    is_active: Optional[bool] = Field(None, description="是否激活")
+
 class UserLogin(BaseModel):
     """用户登录模型"""
     username: str = Field(..., description="用户名或邮箱")
@@ -48,6 +55,7 @@ class UserResponse(UserBase):
     id: int
     is_active: bool
     is_superuser: bool
+    role: str = Field("user", description="用户角色: admin/user/viewer")
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
     created_at: datetime
@@ -55,6 +63,14 @@ class UserResponse(UserBase):
     
     class Config:
         from_attributes = True
+
+class UserListResponse(BaseModel):
+    """用户列表分页响应"""
+    items: list[UserResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
 
 class Token(BaseModel):
     """令牌模型"""

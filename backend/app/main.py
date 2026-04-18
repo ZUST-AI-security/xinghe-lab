@@ -51,6 +51,7 @@ async def lifespan(app: FastAPI):
                     hashed_password=get_password_hash("admin123"),
                     is_active=True,
                     is_superuser=True,
+                    role="admin",
                 ))
                 db.commit()
                 logger.info(" 内置 admin 用户创建成功")
@@ -84,7 +85,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="AI安全攻击可视化平台 — FGSM / C&W attacks on ResNet & YOLOv8",
+    description=(
+        "星河智安 AI 安全攻击可视化平台 API\n\n"
+        "浙江科技大学 · 大数据与智能安全实验室（星河智安实验室）\n\n"
+        "支持的攻击算法: FGSM, I-FGSM, PGD, C&W, DeepFool\n"
+        "支持的模型: ResNet (ImageNet), YOLOv8 (COCO)"
+    ),
+    contact={"name": "星河智安实验室", "url": "https://lab.rjmart.cn/10366/AISecurityLab"},
     docs_url="/docs" if settings.is_development else None,
     redoc_url="/redoc" if settings.is_development else None,
     lifespan=lifespan,
@@ -113,13 +120,14 @@ app.add_exception_handler(Exception, general_exception_handler)
 
 # ── API routes ──────────────────────────────────────────────────────────────
 
-from app.api.v1 import auth, users, models  # noqa: E402
+from app.api.v1 import auth, users, models, admin  # noqa: E402
 from app.api.v1.attacks import router as attacks_router  # noqa: E402
 
 app.include_router(auth.router,       prefix="/api/v1/auth",    tags=["认证"])
 app.include_router(users.router,      prefix="/api/v1/users",   tags=["用户管理"])
 app.include_router(models.router,     prefix="/api/v1/models",  tags=["模型管理"])
-app.include_router(attacks_router,    prefix="/api/v1/attacks", tags=["攻击算法"])
+app.include_router(attacks_router,    prefix="/api/v1/attacks",  tags=["攻击算法"])
+app.include_router(admin.router,      prefix="/api/v1/admin",   tags=["系统管理"])
 
 # ── System endpoints ─────────────────────────────────────────────────────────
 

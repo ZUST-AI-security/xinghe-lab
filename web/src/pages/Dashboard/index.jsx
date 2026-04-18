@@ -6,6 +6,7 @@ import StatCards from './components/StatCards';
 import QuickStart from './components/QuickStart';
 import RecentActivity from './components/RecentActivity';
 import ExploreNav from './components/ExploreNav';
+import LabInfo from './components/LabInfo';
 import { useDashboardData } from './hooks/useDashboardData';
 import styles from './Dashboard.module.less';
 
@@ -85,6 +86,14 @@ const Dashboard = () => {
               🔬 探索更多
             </Title>
             <ExploreNav />
+          </div>
+
+          {/* 实验室信息 */}
+          <div className={styles.section}>
+            <Title level={3} className={styles.sectionTitle}>
+              🏛️ 关于实验室
+            </Title>
+            <LabInfo />
           </div>
         </div>
       </Content>
