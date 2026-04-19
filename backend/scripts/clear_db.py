@@ -29,19 +29,41 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Override DATABASE_URL for this run only",
     )
+    parser.add_argument(
+        "--use-config-url",
+        action="store_true",
+        help="Use DATABASE_URL from environment/.env instead of preferring local sqlite file",
+    )
     return parser.parse_args()
 
 
-def _load_db_runtime(database_url: str | None):
+def _resolve_database_url(database_url: str | None, use_config_url: bool) -> str | None:
     if database_url:
-        os.environ["DATABASE_URL"] = database_url
+        return database_url
+
+    if use_config_url:
+        return None
+
+    backend_root = Path(__file__).resolve().parent.parent
+    local_sqlite = backend_root / "xinghe_zhi_an.db"
+    if local_sqlite.exists():
+        return "sqlite:///./xinghe_zhi_an.db"
+
+    return None
+
+
+def _load_db_runtime(database_url: str | None, use_config_url: bool):
+    resolved_url = _resolve_database_url(database_url, use_config_url)
+
+    if resolved_url:
+        os.environ["DATABASE_URL"] = resolved_url
 
     _bootstrap_path()
 
     from app.core.database import Base, SessionLocal, engine  # pylint: disable=import-outside-toplevel
     import app.models  # noqa: F401  # pylint: disable=import-outside-toplevel,unused-import
 
-    return Base, SessionLocal, engine
+    return Base, SessionLocal, engine, resolved_url
 
 
 def _existing_table_names(engine) -> set[str]:
@@ -73,7 +95,7 @@ def _clear_generic(session, metadata_tables) -> None:
 
 def main() -> None:
     args = _parse_args()
-    Base, SessionLocal, engine = _load_db_runtime(args.database_url)
+    Base, SessionLocal, engine, resolved_url = _load_db_runtime(args.database_url, args.use_config_url)
     existing_names = _existing_table_names(engine)
     metadata_tables = [t for t in Base.metadata.sorted_tables if t.name in existing_names]
 
@@ -95,6 +117,10 @@ def main() -> None:
         after = _table_counts(db, metadata_tables)
 
         print(f"Database dialect: {dialect}")
+        if resolved_url:
+            print(f"Database URL in use: {resolved_url}")
+        else:
+            print("Database URL in use: from config (.env/environment)")
         print("Rows before clear:")
         for name, count in before.items():
             print(f"  - {name}: {count}")
