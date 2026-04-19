@@ -93,6 +93,7 @@ app = FastAPI(
         "支持的攻击算法: FGSM, I-FGSM, PGD, C&W, DeepFool\n"
         "支持的模型: ResNet (ImageNet), YOLOv8 (COCO)"
     ),
+    contact={"name": "星河智安实验室", "url": "https://lab.rjmart.cn/10366/AISecurityLab"},
     docs_url="/docs" if settings.is_development else None,
     redoc_url="/redoc" if settings.is_development else None,
     lifespan=lifespan,

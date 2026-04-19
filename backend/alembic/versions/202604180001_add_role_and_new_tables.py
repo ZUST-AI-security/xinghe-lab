@@ -18,16 +18,16 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # 用户表增�?role 字段
+    # 用户表增加 role 字段
     with op.batch_alter_table("users") as batch_op:
         batch_op.add_column(
             sa.Column("role", sa.String(length=20), nullable=False, server_default="user")
         )
 
-    # 将现�?superuser 标记�?admin 角色
-    op.execute("UPDATE users SET role = 'admin' WHERE is_superuser = true")
+    # 将现有 superuser 标记为 admin 角色
+    op.execute("UPDATE users SET role = 'admin' WHERE is_superuser = 1 OR is_superuser = true")
 
-    # 创建 attack_history �?
+    # 创建 attack_history 表
     op.create_table(
         "attack_history",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
@@ -45,7 +45,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
 
-    # 创建 system_config �?
+    # 创建 system_config 表
     op.create_table(
         "system_config",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),

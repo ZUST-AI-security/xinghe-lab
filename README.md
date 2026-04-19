@@ -1,218 +1,193 @@
-# 星河智安 (XingHe ZhiAn) - AI安全攻击可视化平台
+# 星河智安 AI 安全攻击可视化平台
 
-## 📁 项目结构
+> **浙江科技大学 · 大数据与智能安全实验室**
+> XingHe ZhiAn — AI Security Attack Visualization Platform
 
-```
-xinghe-lab/
-├── web/                     # 前端项目 (React + Ant Design)
-│   ├── src/
-│   │   ├── api/            # API接口调用
-│   │   │   └── attacks/    # 攻击算法API
-│   │   │       └── fgsm.js   # FGSM攻击API
-│   │   ├── pages/          # 页面组件
-│   │   │   └── Attacks/    # 攻击页面
-│   │   │       └── FGSMAttack/ # FGSM攻击模块
-│   │   │           ├── index.jsx
-│   │   │           ├── components/
-│   │   │           └── hooks/
-│   │   ├── api/client.js   # HTTP客户端配置
-│   │   ├── App.jsx         # 主应用组件
-│   │   └── index.js        # 应用入口
-│   ├── package.json        # 前端依赖配置
-│   └── .env                # 环境变量配置
-│
-├── backend/                 # 后端项目 (Python + FastAPI)
-│   ├── app/
-│   │   ├── api/v1/         # API路由
-│   │   │   └── endpoints/attacks/
-│   │   │       └── fgsm.py   # FGSM攻击API端点
-│   │   ├── core/           # 核心配置
-│   │   │   ├── models/     # AI模型管理
-│   │   │   │   └── resnet/ # ResNet模型
-│   │   │   └── config.py   # 应用配置
-│   │   ├── services/       # 业务逻辑
-│   │   │   └── attacks/    # 攻击算法服务
-│   │   │       ├── fgsm.py   # FGSM攻击实现
-│   │   │       ├── base.py # 攻击算法基类
-│   │   │       └── registry.py # 攻击算法注册
-│   │   ├── schemas/        # 数据验证
-│   │   │   └── attacks/fgsm.py # FGSM数据验证
-│   │   ├── utils/          # 工具函数
-│   │   │   └── image_utils.py # 图片处理工具
-│   │   └── main.py         # 应用入口
-│   ├── requirements.txt    # 后端依赖配置
-│   └── venv/               # Python虚拟环境
-│
-├── README.md               # 项目说明文档
-└── 开发团队成员算法开发规范（必看）.md # 开发指南
-```
-
-## 🚀 快速启动
-
-### 📋 系统要求
-
-**通用要求：**
-- Python 3.8+ (推荐 3.11)
-- Node.js 16+ (推荐 18)
-- [可选推荐] [uv 包管理器](https://github.com/astral-sh/uv) 
+本平台为浙江科技大学大数据与智能安全实验室（星河智安实验室）自主研发的对抗攻击可视化与交互实验系统，支持主流对抗样本攻击算法在深度学习分类模型上的演示与分析。
 
 ---
 
-### 🌟 推荐启动方式 (基于 uv)
+## 功能概览
 
-在系统中已安装 `uv` 包管理器时推荐使用以下快捷指令。
+| 功能模块 | 说明 |
+|----------|------|
+| **攻击算法** | FGSM、I-FGSM、PGD、C&W、DeepFool，支持同步/异步执行 |
+| **模型管理** | ResNet-101/152 (ImageNet)；YOLO 检测模型（预留） |
+| **可视化** | 原始图/对抗图对比、扰动热力图、Top-5 概率柱状图 |
+| **用户系统** | JWT 认证、角色权限（admin/user）、注册/登录 |
+| **管理后台** | 系统概览、用户管理、攻击历史、系统日志、系统配置 |
+| **异步任务** | Celery + Redis 异步攻击队列，前端轮询进度 |
 
-#### 后端与队列服务 (Windows / Linux)
+---
+
+## 技术栈
+
+### 后端
+- Python 3.10+、FastAPI、Uvicorn
+- PyTorch 2.6（CPU/GPU）
+- SQLAlchemy 2.0 + Alembic（SQLite / PostgreSQL）
+- Celery 5 + Redis（异步任务）
+- Pydantic v2、python-jose (JWT)、passlib (bcrypt)
+
+### 前端
+- React 18、Vite 5
+- Ant Design 5
+- Zustand（状态管理）
+- react-router-dom v6、Axios
+
+---
+
+## 项目结构
+
+```text
+xinghe-lab/
+├── backend/                 # FastAPI 后端
+│   ├── app/
+│   │   ├── main.py          # 应用入口 & 路由挂载
+│   │   ├── algorithms/      # 攻击算法（FGSM/I-FGSM/PGD/CW/DeepFool）
+│   │   ├── api/v1/          # REST API 路由
+│   │   ├── core/            # 配置、数据库、安全
+│   │   ├── ml_models/       # ML 模型注册与加载
+│   │   ├── models/          # ORM 模型
+│   │   ├── schemas/         # Pydantic schema
+│   │   ├── utils/           # 工具函数
+│   │   └── workers/         # Celery 异步任务
+│   ├── alembic/             # 数据库迁移
+│   ├── models/checkpoints/  # 模型权重文件
+│   └── requirements.txt
+├── web/                     # React 前端
+│   ├── src/
+│   │   ├── api/             # API 客户端
+│   │   ├── components/      # 通用组件 & 布局
+│   │   ├── pages/           # 页面
+│   │   ├── store/           # Zustand 状态管理
+│   │   └── hooks/           # 自定义 Hooks
+│   └── package.json
+└── README.md
+```
+
+---
+
+## 快速启动
+
+### 系统要求
+- Python 3.10+（推荐 3.11）
+- Node.js 18+
+- 可选推荐: [uv 包管理器](https://github.com/astral-sh/uv)
+
+### 推荐启动方式（uv）
+
+#### 后端与队列服务（Windows / Linux）
 ```bash
-# 1. 进入后端目录
 cd backend
-
-# 2. 从锁文件同步并安装依赖
 uv sync
-
-# 3. 数据库配置与迁移 (需确保已在 .env 中正确配置 PostgreSQL URL)
 uv run alembic upgrade head
-
-# 4. 启动后端服务
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-*如果你希望使用完整的异步攻防任务处理逻辑和速率限制，请确保本地 `Redis` 已启动。并使用 `uv` 开启后台协程队列:*
+如需异步任务，请确保 Redis 可用，并在新终端启动：
 ```bash
-# = 新开终端，进入 backend =
-# 启动 Celery Worker
+cd backend
 uv run celery -A app.core.celery_app worker --loglevel=info -P solo
-
-# 启动 Celery Beat 定时清理服务 (定期自动清理历史图片防止爆盘)
 uv run celery -A app.core.celery_app beat --loglevel=info
 ```
 
 #### 前端启动
 ```bash
-# 1. 新开终端，进入前端目录
 cd web
-
-# 2. 安装依赖并启动
 npm install --legacy-peer-deps
 npm run dev
 ```
 
----
+### 传统启动方式（venv + pip）
 
-### 💻 传统启动方式 (基于 venv 和 pip)
-
-如果您未安装 `uv`，可使用传统的虚拟环境建立指令。
-
-#### Windows 传统启动
+#### Windows
 ```powershell
-# 后端与数据库初始化
 cd backend
-python -m venv venv
-.\venv\Scripts\activate
+python -m venv .venv
+.\.venv\Scripts\activate
 pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# 另外开启终端，利用同一虚拟环境启动队列
-.\venv\Scripts\activate
-celery -A app.core.celery_app worker --loglevel=info -P solo
 ```
 
-#### Linux/macOS 传统启动
+#### Linux/macOS
 ```bash
-# 后端与数据库初始化
 cd backend
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# 新开终端，同样激活环境并启动队列
-source venv/bin/activate
-celery -A app.core.celery_app worker --loglevel=info &
-celery -A app.core.celery_app beat --loglevel=info &
 ```
-
-*(前端传统启动步骤与上方 `基于 uv` 中的前端安装描述一致。)*
 
 ---
 
-## 🌐 访问地址
+## API 文档
 
-启动成功后，可以通过以下地址访问：
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+- 健康检查: http://localhost:8000/health
 
-- **前端应用**: http://localhost:5173  (或通过控制台提示的本地开发 URL)
-- **后端API**: http://localhost:8000
-- **API文档**: http://localhost:8000/docs
-- **攻击实验室**: http://localhost:5173/attacks/fgsm
+### 访问地址
+- 前端应用: http://localhost:5173
+- 后端 API: http://localhost:8000
+- 攻击实验室: http://localhost:5173/attacks/fgsm
 
-## 🔑 默认账号
+### 主要端点
 
-- 用户名：`admin`
-- 密码：`admin123`
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | /api/v1/auth/login | 登录 |
+| POST | /api/v1/auth/register | 注册 |
+| GET | /api/v1/users/me | 当前用户 |
+| GET | /api/v1/users/ | 用户列表（管理员） |
+| POST | /api/v1/attacks/fgsm/run | FGSM 同步攻击 |
+| POST | /api/v1/attacks/ifgsm/run | I-FGSM 同步攻击 |
+| POST | /api/v1/attacks/pgd/run | PGD 同步攻击 |
+| POST | /api/v1/attacks/cw/run | C&W 同步攻击 |
+| POST | /api/v1/attacks/deepfool/run | DeepFool 同步攻击 |
+| POST | /api/v1/attacks/{algo}/submit | 异步提交 |
+| GET | /api/v1/admin/dashboard | 系统概览 |
 
-## 🛠️ 开发调试
+---
+
+## 攻击算法
+
+| 算法 | 类型 | 范数 | 特点 |
+|------|------|------|------|
+| FGSM | 单步 | Linf | 最快速的梯度攻击 |
+| I-FGSM | 迭代 | Linf | FGSM 迭代版，攻击更精细 |
+| PGD | 迭代 | Linf | 带投影梯度下降，最强 Linf |
+| C&W | 优化 | L2 | 基于优化，绕过防御能力强 |
+| DeepFool | 几何 | L2 | 最小扰动，寻找最近决策边界 |
+
+---
+
+## 默认账号
+
+| 角色 | 用户名 | 密码 |
+|------|--------|------|
+| 管理员 | admin | admin123 |
+
+> 生产部署后请立即修改默认密码。
+
+---
+
+## 开发调试
 
 ### 后端调试
-
 ```bash
-# 查看后端日志
 cd backend
-.\venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/macOS
-
-# 测试API健康状态
 curl http://localhost:8000/health
-
-# 测试FGSM参数schema
 curl http://localhost:8000/api/v1/attacks/fgsm/params/schema
 ```
 
 ### 前端调试
-
 - 打开浏览器开发者工具 (F12)
-- 查看Console和Network标签
-- 检查API请求响应状态
-- 验证图片上传和参数传递
+- 查看 Console 和 Network 标签
+- 检查 API 请求与响应
 
 ---
 
-## 📚 技术栈
-
-**前端技术**:
-- React 18 + Ant Design
-- Axios + Zustand状态管理
-- JavaScript ES6+ + JSX
-
-**后端技术**:
-- Python 3.11 + FastAPI
-- PyTorch + ResNet100
-- SQLAlchemy + Pydantic
-
-**攻击算法**:
-- Carlini & Wagner L2攻击
-- ImageNet预训练模型
-- Adam优化器 + 二分搜索
-
----
-
-## 📝 开发规范
-
-详细的开发指南请参考：`开发团队成员算法开发规范（必看）.md`
-
-该文档包含：
-- 完整的开发步骤
-- 关键错误解决方案
-- 性能优化经验
-- 开发检查清单
-
----
-
-<div align="center">
-
-**让AI安全研究更简单、更直观**
-
-Made with ❤️ by 星河智安团队
-
-</div>
+实验室主页: https://lab.rjmart.cn/10366/AISecurityLab

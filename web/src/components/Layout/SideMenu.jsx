@@ -29,7 +29,6 @@ const SideMenu = ({ collapsed }) => {
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
 
-  // 菜单项配置
   const menuItems = [
     {
       key: '/dashboard',

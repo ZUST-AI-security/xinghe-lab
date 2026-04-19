@@ -19,6 +19,7 @@ ENV/
 *.sqlite
 sql_app.db
 xinghe_zhi_an.db
+*.pth
 
 # IDEs
 .idea/

@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, message, Divider, Space } from 'antd';
-import { UserOutlined, LockOutlined, ThunderboltOutlined, ExperimentOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 
@@ -29,15 +29,6 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // 一键填充测试账号
-  const handleFillTestAccount = () => {
-    form.setFieldsValue({
-      username: 'admin',
-      password: 'admin123'
-    });
-    message.info('已填充测试账号信息');
   };
 
   return (
@@ -121,22 +112,6 @@ const Login = () => {
             </Button>
           </Form.Item>
 
-          <Form.Item>
-            <Button
-              type="default"
-              onClick={handleFillTestAccount}
-              block
-              icon={<ExperimentOutlined />}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                border: '1px dashed #d9d9d9',
-                background: '#fafafa',
-              }}
-            >
-              一键填充测试账号
-            </Button>
-          </Form.Item>
         </Form>
 
         <Divider style={{ margin: '24px 0' }} />
@@ -153,24 +128,6 @@ const Login = () => {
           </Space>
         </div>
 
-        {/* 演示账号提示 */}
-        <div style={{
-          marginTop: '24px',
-          padding: '16px',
-          background: '#f6ffed',
-          border: '1px solid #b7eb8f',
-          borderRadius: '8px',
-          fontSize: '12px',
-          color: '#52c41a',
-        }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
-            <ThunderboltOutlined /> 演示账号
-          </div>
-          <div>管理员: admin (密码: admin123)</div>
-          <div style={{ marginTop: '4px', fontSize: '11px', color: '#8c8c8c' }}>
-            💡 点击上方"一键填充测试账号"按钮可快速填充
-          </div>
-        </div>
       </Card>
     </div>
   );

@@ -15,6 +15,7 @@ class User(Base):
     role = Column(String(20), default="user", nullable=False)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
+    role = Column(String(20), nullable=False, default="user", server_default="user")
     avatar_url = Column(String(255), nullable=True)
     
     tasks = relationship("TaskRecord", back_populates="user", cascade="all, delete-orphan")

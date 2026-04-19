@@ -1,6 +1,6 @@
 """
 星河智安 (XingHe ZhiAn) - 数据库配置
-使用SQLAlchemy进行数据库管理
+支持 SQLite（开发）和 PostgreSQL（生产）
 """
 
 import logging
@@ -16,21 +16,19 @@ logger = logging.getLogger(__name__)
 
 # 创建数据库引擎
 if settings.database_url.startswith("sqlite"):
-    # SQLite特殊配置
     engine = create_engine(
         settings.database_url,
-        connect_args={
-            "check_same_thread": False,
-            "timeout": 20
-        },
+        connect_args={"check_same_thread": False, "timeout": 20},
         poolclass=StaticPool,
-        echo=settings.debug
+        echo=settings.debug,
     )
 else:
-    # 其他数据库配置
     engine = create_engine(
         settings.database_url,
-        echo=settings.debug
+        pool_size=10,
+        max_overflow=20,
+        pool_pre_ping=True,
+        echo=settings.debug,
     )
 
 # 创建会话工厂
