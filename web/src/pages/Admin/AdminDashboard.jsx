@@ -6,7 +6,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons';
-import { getAdminDashboard } from '../../../api/admin';
+import { getAdminDashboard } from '../../api/admin';
 
 const { Title } = Typography;
 

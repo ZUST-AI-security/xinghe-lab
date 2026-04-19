@@ -3,9 +3,9 @@
  * AI安全攻击可视化平台的核心应用
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Layout, Spin } from 'antd';
+import { Layout, Spin, message } from 'antd';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import { useAuthStore } from './store/authStore';
 
@@ -19,6 +19,17 @@ import Dashboard from './pages/Dashboard';
 import CWAttack from './pages/Attacks/CWAttack';
 import PGDAttack from './pages/Attacks/PGDAttack';
 import FGSMAttack from './pages/Attacks/FGSMAttack';
+import IFGSMAttack from './pages/Attacks/IFGSMAttack';
+import DeepFoolAttack from './pages/Attacks/DeepFoolAttack';
+import TaskHistory from './pages/Dashboard/TaskHistory';
+import CaptchaModal from './components/CaptchaModal';
+
+// 管理后台页面
+import AdminDashboard from './pages/Admin/AdminDashboard';
+import UserManagement from './pages/Admin/UserManagement';
+import AttackHistory from './pages/Admin/AttackHistory';
+import SystemLogs from './pages/Admin/SystemLogs';
+import SystemConfig from './pages/Admin/SystemConfig';
 
 // API客户端
 import { setupAxiosInterceptors } from './api/client';
@@ -27,6 +38,7 @@ const { Content } = Layout;
 
 function App() {
   const { user, loading, checkAuth, isAuthenticated } = useAuthStore();
+  const [captchaVisible, setCaptchaVisible] = useState(false);
 
   // 应用初始化
   useEffect(() => {
@@ -36,7 +48,22 @@ function App() {
     
     // 检查用户认证状态
     checkAuth();
+    
+    // 监听全局验证码事件
+    const handleCaptcha = (e) => {
+        setCaptchaVisible(true);
+    };
+    window.addEventListener('showCaptcha', handleCaptcha);
+    return () => window.removeEventListener('showCaptcha', handleCaptcha);
   }, [checkAuth]);
+
+  const handleCaptchaVerify = ({ captcha_id, captcha_code }) => {
+      sessionStorage.setItem('captcha_id', captcha_id);
+      sessionStorage.setItem('captcha_code', captcha_code);
+      setCaptchaVisible(false);
+      // Let the user retry their action
+      message.success('验证成功，请重试刚才的操作');
+  };
 
   // 显示加载状态
   if (loading) {
@@ -63,6 +90,11 @@ function App() {
   return (
     <ErrorBoundary>
       <Layout className="app-layout">
+        <CaptchaModal 
+            open={captchaVisible} 
+            onVerify={handleCaptchaVerify} 
+            onCancel={() => setCaptchaVisible(false)} 
+        />
         <Routes>
           {/* 公开路由 */}
           <Route 
@@ -98,6 +130,12 @@ function App() {
                         element={<Dashboard />} 
                       />
                       
+                      {/* 历史记录界面 */}
+                      <Route 
+                        path="/tasks/history" 
+                        element={<TaskHistory />} 
+                      />
+                      
                       {/* 攻击算法页面 */}
                        <Route 
                          path="/attacks/cw" 
@@ -111,7 +149,22 @@ function App() {
                          path="/attacks/fgsm"
                          element={<FGSMAttack />}
                        />
-                       
+                       <Route
+                         path="/attacks/ifgsm"
+                         element={<IFGSMAttack />}
+                       />
+                       <Route
+                         path="/attacks/deepfool"
+                         element={<DeepFoolAttack />}
+                       />
+
+                       {/* 管理后台页面 */}
+                       <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                       <Route path="/admin/users" element={<UserManagement />} />
+                       <Route path="/admin/attack-history" element={<AttackHistory />} />
+                       <Route path="/admin/logs" element={<SystemLogs />} />
+                       <Route path="/admin/config" element={<SystemConfig />} />
+
                        {/* 其他攻击算法页面（预留） */}
                       <Route 
                         path="/attacks/*" 

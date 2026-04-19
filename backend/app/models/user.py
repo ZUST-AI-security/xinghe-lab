@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from ..core.database import Base
 
 class User(Base):
@@ -11,9 +12,12 @@ class User(Base):
     email = Column(String(100), unique=True, index=True, nullable=False)
     full_name = Column(String(100), nullable=True)
     hashed_password = Column(String(255), nullable=False)
+    role = Column(String(20), default="user", nullable=False)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
     avatar_url = Column(String(255), nullable=True)
+    
+    tasks = relationship("TaskRecord", back_populates="user", cascade="all, delete-orphan")
     bio = Column(Text, nullable=True)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

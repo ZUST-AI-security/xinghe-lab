@@ -171,3 +171,114 @@ async def get_system_logs(
     except Exception as e:
         logger.error(f"读取日志失败: {e}")
         raise HTTPException(status_code=500, detail=f"日志读取失败: {e}")
+
+
+# ── User Management ──────────────────────────────────────────────────────────
+
+@router.get("/users", summary="获取用户列表")
+async def list_users(
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    search: str = Query("", description="按用户名或邮箱搜索"),
+    role: str = Query("", description="按角色筛选"),
+    admin_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    query = db.query(User)
+    if search:
+        query = query.filter(
+            (User.username.ilike(f"%{search}%")) | (User.email.ilike(f"%{search}%"))
+        )
+    if role:
+        query = query.filter(User.role == role)
+    total = query.count()
+    items = query.order_by(User.id.desc()).offset((page - 1) * size).limit(size).all()
+    return {
+        "items": [
+            {
+                "id": u.id,
+                "username": u.username,
+                "email": u.email,
+                "full_name": u.full_name,
+                "role": u.role,
+                "is_active": u.is_active,
+                "is_superuser": u.is_superuser,
+                "created_at": u.created_at.isoformat() if u.created_at else None,
+                "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
+            }
+            for u in items
+        ],
+        "total": total,
+        "page": page,
+        "size": size,
+    }
+
+
+@router.put("/users/{user_id}", summary="更新用户信息")
+async def update_user(
+    user_id: int,
+    email: str = "",
+    full_name: str = "",
+    role: str = "",
+    admin_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    if email:
+        user.email = email
+    if full_name:
+        user.full_name = full_name
+    if role:
+        user.role = role
+    db.commit()
+    return {"id": user.id, "username": user.username, "email": user.email,
+            "full_name": user.full_name, "role": user.role}
+
+
+@router.post("/users/{user_id}/toggle-active", summary="启用/禁用用户")
+async def toggle_user_active(
+    user_id: int,
+    admin_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    if user.id == admin_user.id:
+        raise HTTPException(status_code=400, detail="不能禁用自己")
+    user.is_active = not user.is_active
+    db.commit()
+    return {"id": user.id, "is_active": user.is_active}
+
+
+@router.post("/users/{user_id}/reset-password", summary="重置用户密码")
+async def reset_user_password(
+    user_id: int,
+    admin_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    from app.core.security import get_password_hash
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    user.hashed_password = get_password_hash("Abc12345")
+    db.commit()
+    return {"message": "密码已重置为 Abc12345"}
+
+
+@router.delete("/users/{user_id}", summary="删除用户")
+async def delete_user(
+    user_id: int,
+    admin_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    if user.id == admin_user.id:
+        raise HTTPException(status_code=400, detail="不能删除自己")
+    db.delete(user)
+    db.commit()
+    return {"message": "删除成功"}

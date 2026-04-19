@@ -3,8 +3,9 @@
 使用Pydantic Settings进行配置管理，支持环境变量覆盖
 """
 
-from pydantic_settings import BaseSettings
-from typing import List, Optional
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode
+from typing import Annotated, List, Optional
 import os
 from pathlib import Path
 
@@ -14,7 +15,12 @@ class Settings(BaseSettings):
     所有配置项都可以通过环境变量覆盖
     """
     
-    model_config = {"protected_namespaces": ()}
+    model_config = {
+        "protected_namespaces": (),
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
     
     # 应用基础配置
     app_name: str = "星河智安 AI安全攻击可视化平台"
@@ -23,7 +29,7 @@ class Settings(BaseSettings):
     secret_key: str = "your-secret-key-here-change-in-production"
     
     # 数据库配置
-    database_url: str = "sqlite:///./xinghe_zhi_an.db"
+    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/xinghelab"
     
     # JWT配置
     jwt_secret_key: str = "your-jwt-secret-key-here"
@@ -49,7 +55,7 @@ class Settings(BaseSettings):
     
     # 文件上传配置
     max_file_size_mb: int = 10
-    allowed_image_types: List[str] = ["jpg", "jpeg", "png", "bmp", "tiff"]
+    allowed_image_types: Annotated[List[str], NoDecode] = ["jpg", "jpeg", "png", "bmp", "tiff"]
     
     # 日志配置
     log_level: str = "INFO"
@@ -73,6 +79,13 @@ class Settings(BaseSettings):
     
     # API限流配置
     rate_limit_per_minute: int = 60
+
+    @field_validator("allowed_image_types", mode="before")
+    @classmethod
+    def parse_allowed_image_types(cls, value):
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

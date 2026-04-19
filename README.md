@@ -52,91 +52,89 @@ xinghe-lab/
 ### 📋 系统要求
 
 **通用要求：**
-- Python 3.8+ (推荐3.11)
-- Node.js 16+ (推荐18)
-- 现代浏览器 (Chrome、Firefox、Safari、Edge)
+- Python 3.8+ (推荐 3.11)
+- Node.js 16+ (推荐 18)
+- [可选推荐] [uv 包管理器](https://github.com/astral-sh/uv) 
 
 ---
 
-### 💻 Windows系统
+### 🌟 推荐启动方式 (基于 uv)
 
-#### 后端启动
+在系统中已安装 `uv` 包管理器时推荐使用以下快捷指令。
 
-```powershell
-# 1. 进入后端目录
-cd backend
-
-# 2. 创建虚拟环境
-python -m venv venv
-
-# 3. 激活虚拟环境
-.\venv\Scripts\activate
-
-# 4. 安装依赖
-pip install -r requirements.txt
-pip install email-validator python-multipart torch torchvision pillow
-
-# 5. 启动后端服务
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-#### 前端启动
-
-```powershell
-# 1. 新开PowerShell窗口，进入前端目录
-cd web
-
-# 2. 安装依赖
-npm install --legacy-peer-deps
-
-# 3. 配置环境变量
-echo SKIP_PREFLIGHT_CHECK=true > .env
-echo REACT_APP_API_BASE_URL=http://localhost:8000 >> .env
-
-# 4. 启动前端服务
-npm start
-```
-
----
-
-### 🐧 Linux/macOS系统
-
-#### 后端启动
-
+#### 后端与队列服务 (Windows / Linux)
 ```bash
 # 1. 进入后端目录
 cd backend
 
-# 2. 创建虚拟环境
-python3 -m venv venv
+# 2. 从锁文件同步并安装依赖
+uv sync
 
-# 3. 激活虚拟环境
-source venv/bin/activate
+# 3. 数据库配置与迁移 (需确保已在 .env 中正确配置 PostgreSQL URL)
+uv run alembic upgrade head
 
-# 4. 安装依赖
-pip install -r requirements.txt
-pip install email-validator python-multipart torch torchvision pillow
+# 4. 启动后端服务
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-# 5. 启动后端服务
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+*如果你希望使用完整的异步攻防任务处理逻辑和速率限制，请确保本地 `Redis` 已启动。并使用 `uv` 开启后台协程队列:*
+```bash
+# = 新开终端，进入 backend =
+# 启动 Celery Worker
+uv run celery -A app.core.celery_app worker --loglevel=info -P solo
+
+# 启动 Celery Beat 定时清理服务 (定期自动清理历史图片防止爆盘)
+uv run celery -A app.core.celery_app beat --loglevel=info
 ```
 
 #### 前端启动
-
 ```bash
 # 1. 新开终端，进入前端目录
 cd web
 
-# 2. 安装依赖
+# 2. 安装依赖并启动
 npm install --legacy-peer-deps
-
-# 3. 配置环境变量
-echo "SKIP_PREFLIGHT_CHECK=true" > .env
-echo "REACT_APP_API_BASE_URL=http://localhost:8000" >> .env
-
-# 4. 启动前端服务
-npm start
+npm run dev
 ```
+
+---
+
+### 💻 传统启动方式 (基于 venv 和 pip)
+
+如果您未安装 `uv`，可使用传统的虚拟环境建立指令。
+
+#### Windows 传统启动
+```powershell
+# 后端与数据库初始化
+cd backend
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 另外开启终端，利用同一虚拟环境启动队列
+.\venv\Scripts\activate
+celery -A app.core.celery_app worker --loglevel=info -P solo
+```
+
+#### Linux/macOS 传统启动
+```bash
+# 后端与数据库初始化
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 新开终端，同样激活环境并启动队列
+source venv/bin/activate
+celery -A app.core.celery_app worker --loglevel=info &
+celery -A app.core.celery_app beat --loglevel=info &
+```
+
+*(前端传统启动步骤与上方 `基于 uv` 中的前端安装描述一致。)*
 
 ---
 
@@ -144,96 +142,15 @@ npm start
 
 启动成功后，可以通过以下地址访问：
 
-- **前端应用**: http://localhost:3000
+- **前端应用**: http://localhost:5173  (或通过控制台提示的本地开发 URL)
 - **后端API**: http://localhost:8000
 - **API文档**: http://localhost:8000/docs
-- **FGSM攻击页面**: http://localhost:3000/attacks/fgsm
+- **攻击实验室**: http://localhost:5173/attacks/fgsm
 
 ## 🔑 默认账号
 
 - 用户名：`admin`
 - 密码：`admin123`
-
----
-
-## ⚠️ 常见问题与解决方案
-
-### 1. FGSM??????
-
-**??**: ???????????
-
-**????**:
-- ?? `epsilon`??? 0.01 ~ 0.05 ???????
-- ????????????????????????
-- ???????????????? `epsilon`???????????
-
-### 2. JavaScript语法错误
-
-**问题**: 在JSX文件中使用Python注释语法 `#`
-
-**解决方案**:
-```javascript
-// 错误写法
-binary_search_steps: 3,  # Python注释
-
-// 正确写法
-binary_search_steps: 3,  // JavaScript注释
-```
-
-### 3. 模型注册错误
-
-**问题**: `'RegisteredResNet100' object has no attribute 'model_name'`
-
-**解决方案**:
-- 已修复模型构造函数调用
-- 统一了ModelType枚举定义
-- 确保模型正确继承BaseModel
-
-### 4. ??????
-
-**??**: `epsilon` ????
-
-**????**:
-- `epsilon` ??? 0.0 ~ 0.2
-- ?????? `0.03`????????
-
-### 5. Redis连接问题
-
-**问题**: Redis连接失败
-
-**解决方案**:
-- Redis为可选组件，不影响核心功能
-- FGSM攻击使用同步模式，无需Redis
-- 如需异步功能，可安装并启动Redis服务
-
----
-
-## ?? FGSM??????
-
-### ??????
-
-1. **????**: http://localhost:3000
-2. **????**: ??admin/admin123
-3. **??FGSM??**: ?????"????" ? "FGSM Attack"
-4. **????**: ??JPEG?PNG?????224x224??
-5. **????**: ???? `epsilon`
-6. **????**: ??"????"??
-7. **????**: ?????????????
-
-### ????
-
-**????** (????):
-- `epsilon`: 0.03
-- `targeted`: false
-
-**?????**:
-- `epsilon`: 0.05 ~ 0.1
-- `targeted`: false
-
-## ?? ????
-
-FGSM ???????? 1~2 ??????????????????????
-????????????????????? CPU?
 
 ## 🛠️ 开发调试
 

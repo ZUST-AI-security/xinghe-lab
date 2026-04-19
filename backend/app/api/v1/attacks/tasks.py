@@ -37,27 +37,73 @@ async def get_task_status(
 
         task = AsyncResult(task_id, app=celery_app)
 
-        if task.ready():
-            if task.successful():
-                return TaskStatusResponse(
-                    task_id=task_id,
-                    status="completed",
-                    result=task.get(),
-                    completed_at=str(task.date_done),
-                )
+        state = (task.state or "PENDING").upper()
+        info = task.info if isinstance(task.info, dict) else {}
+        progress = info.get("progress")
+
+        if state == "SUCCESS":
+            return TaskStatusResponse(
+                task_id=task_id,
+                status="completed",
+                result=task.get(),
+                progress=100,
+                completed_at=str(task.date_done),
+            )
+
+        if state in {"FAILURE", "REVOKED"}:
             return TaskStatusResponse(
                 task_id=task_id,
                 status="failed",
+                progress=progress,
                 error=str(task.info) if task.info else "Task failed",
                 completed_at=str(task.date_done),
             )
 
-        progress = task.info.get("progress") if isinstance(task.info, dict) else None
+        # Celery non-terminal states: PENDING, RECEIVED, STARTED, RETRY, PROGRESS
+        if state in {"STARTED", "RECEIVED", "RETRY", "PROGRESS"}:
+            return TaskStatusResponse(task_id=task_id, status="running", progress=progress)
+
+        # Default fallback for unknown / pending states
         return TaskStatusResponse(task_id=task_id, status="pending", progress=progress)
 
     except Exception as e:
         logger.error(f"Get task status failed for {task_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/history")
+async def get_task_history(
+    page: int = 1,
+    size: int = 10,
+    current_user: User = Depends(get_current_active_user),
+):
+    """Get attack task history for the current user."""
+    from app.core.database import SessionLocal
+    from app.models.task_record import TaskRecord
+    db = SessionLocal()
+    try:
+        total = db.query(TaskRecord).filter(TaskRecord.user_id == current_user.id).count()
+        records = db.query(TaskRecord).filter(
+            TaskRecord.user_id == current_user.id
+        ).order_by(TaskRecord.created_at.desc()).offset((page - 1) * size).limit(size).all()
+        
+        return {
+            "total": total,
+            "page": page,
+            "size": size,
+            "items": [
+                {
+                    "id": r.id,
+                    "task_id": r.result.get("task_id") if isinstance(r.result, dict) else None,
+                    "algorithm_name": r.algorithm_name,
+                    "status": r.status,
+                    "created_at": r.created_at,
+                    "completed_at": r.completed_at,
+                    "result": r.result,
+                } for r in records
+            ]
+        }
+    finally:
+        db.close()
 
 
 @router.delete("/{task_id}")

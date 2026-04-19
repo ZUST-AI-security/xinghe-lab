@@ -28,6 +28,14 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // 添加验证码 (如果存在)
+    const captchaId = sessionStorage.getItem('captcha_id');
+    const captchaCode = sessionStorage.getItem('captcha_code');
+    if (captchaId && captchaCode) {
+      config.headers['X-Captcha-ID'] = captchaId;
+      config.headers['X-Captcha-Code'] = captchaCode;
+    }
 
     // 添加请求时间戳
     config.metadata = { startTime: new Date() };
@@ -56,6 +64,10 @@ apiClient.interceptors.response.use(
     // 计算请求耗时
     const endTime = new Date();
     const duration = endTime - response.config.metadata.startTime;
+
+    // 清除可能存在的验证码
+    sessionStorage.removeItem('captcha_id');
+    sessionStorage.removeItem('captcha_code');
 
     // 开发环境下打印响应信息
     if (ENABLE_DEBUG) {
@@ -129,7 +141,11 @@ apiClient.interceptors.response.use(
           message.error('请求的资源不存在');
           break;
         case 429:
-          message.error('请求过于频繁，请稍后再试');
+          if (data.require_captcha) {
+            window.dispatchEvent(new CustomEvent('showCaptcha', { detail: { originalRequest }}));
+          } else {
+            message.error('请求过于频繁，请稍后再试');
+          }
           break;
         case 500:
           message.error('服务器内部错误');

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Card, Input, Space, Table, Typography, message } from 'antd';
 import { PlusOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
-import { getSystemConfig, updateSystemConfig } from '../../../api/admin';
+import { getSystemConfig, updateSystemConfig } from '../../api/admin';
 
 const { Title } = Typography;
 

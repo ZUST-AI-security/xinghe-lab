@@ -18,7 +18,7 @@ import {
   LockOutlined,
   EditOutlined,
 } from '@ant-design/icons';
-import { getUsers, updateUser, toggleUserActive, resetUserPassword, deleteUser } from '../../../api/admin';
+import { getUsers, updateUser, toggleUserActive, resetUserPassword, deleteUser } from '../../api/admin';
 
 const { Title } = Typography;
 

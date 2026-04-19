@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Button, Select, Space, Table, Tag, Typography, message } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import { getAttackHistory } from '../../../api/admin';
+import { getAttackHistory } from '../../api/admin';
 
 const { Title } = Typography;
 
