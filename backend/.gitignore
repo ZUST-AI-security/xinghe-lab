@@ -1,6 +1,9 @@
 # Data and Models
 data/
 uploads/
+outputs/
+logs/
+models/checkpoints/
 
 # Python
 __pycache__/
@@ -13,7 +16,9 @@ ENV/
 # Database
 *.db
 *.sqlite3
+*.sqlite
 sql_app.db
+xinghe_zhi_an.db
 
 # IDEs
 .idea/

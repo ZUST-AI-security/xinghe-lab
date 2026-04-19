@@ -24,6 +24,20 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Runtime artifacts
+logs/
+outputs/
+
+# Local model cache / checkpoints
+models/
+backend/models/checkpoints/
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+xinghe_zhi_an.db
+
 # OS
 .DS_Store
 Thumbs.db
