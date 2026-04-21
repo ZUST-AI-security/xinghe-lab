@@ -21,9 +21,9 @@ from app.workers.celery_app import celery_app
 from app.utils.image_utils import base64_to_image, image_to_base64
 from app.utils.attack_response import build_prediction_summary
 from app.core.database import SessionLocal
+from app.models.attack_history import AttackHistory
 from app.models.task_record import TaskRecord
 import os
-import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,6 @@ def run_attack(
     # Initialize DB session for TaskRecord
     db = SessionLocal()
     task_record = TaskRecord(
-        id=None,  # auto-increment
         user_id=user_id,
         algorithm_name=algorithm,
         status="running",
@@ -108,10 +107,18 @@ def run_attack(
 
         self.update_state(state="PROGRESS", meta={"progress": 40, "status": "Running attack..."})
         algo = algo_cls()
+
+        def report_progress(progress: int, status_text: str):
+            self.update_state(
+                state="PROGRESS",
+                meta={"progress": int(progress), "status": status_text},
+            )
+
         adv_images, metadata = algo.generate(
             model=model,
             images=input_tensor,
             labels=original_label,
+            progress_callback=report_progress,
             **params,
         )
 
@@ -193,7 +200,7 @@ def run_attack(
         
         # --- Update Task Record ---
         import copy
-        task_record.status = "success"
+        task_record.status = "completed"
         record_result = copy.deepcopy(result)
         # Avoid saving gigantic base64 in database
         record_result.pop("original_image", None)
@@ -202,6 +209,21 @@ def run_attack(
         task_record.result = record_result
         from sqlalchemy.sql import func
         task_record.completed_at = func.now()
+        db.add(
+            AttackHistory(
+                user_id=user_id,
+                algorithm=algorithm,
+                model_name=model_name,
+                params=params,
+                success=bool(result.get("success")),
+                success_rate=metadata.get("success_rate"),
+                l2_norm=metadata.get("avg_l2_norm") or metadata.get("l2_norm"),
+                linf_norm=metadata.get("avg_linf_norm") or metadata.get("linf_norm"),
+                execution_time=result.get("time_elapsed"),
+                status="completed",
+                error_message=None,
+            )
+        )
         db.commit()
 
         logger.info(
@@ -213,6 +235,19 @@ def run_attack(
     except Exception as e:
         task_record.status = "failed"
         task_record.result = {"error": str(e)}
+        db.add(
+            AttackHistory(
+                user_id=user_id,
+                algorithm=algorithm,
+                model_name=model_name,
+                params=params,
+                success=False,
+                success_rate=0.0,
+                execution_time=time.time() - start,
+                status="failed",
+                error_message=str(e),
+            )
+        )
         db.commit()
         logger.error(
             f"Attack '{algorithm}' failed (user={user_id}, model={model_name}): {e}",

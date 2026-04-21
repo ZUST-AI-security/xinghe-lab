@@ -1,6 +1,5 @@
 /**
- * C&W攻击主页面 (改进版)
- * 完整的参数交互、图像上传、结果展示
+ * C&W attack page.
  */
 
 import React, { useState } from 'react';
@@ -41,25 +40,20 @@ const DEFAULT_CW_PARAMS = {
   c: 0.1,
   kappa: 0,
   lr: 0.01,
-  max_iter: 2000,
-  binary_search_steps: 9,
+  max_iter: 500,
+  binary_search_steps: 5,
   init_const: 0.01,
   targeted: false,
   abort_early: true,
   early_stop_iters: 50,
 };
 
-/**
- * C&W攻击页面组件 (改进版)
- */
 const CWAttack = () => {
   const [imageUrl, setImageUrl] = useState(null);
   const [advancedMode, setAdvancedMode] = useState(false);
   const [useAsync, setUseAsync] = useState(true);
-  
   const [params, setParams] = useState(DEFAULT_CW_PARAMS);
 
-  // 使用自定义Hook
   const {
     loading,
     progress,
@@ -67,6 +61,7 @@ const CWAttack = () => {
     error,
     setError,
     status,
+    statusMessage,
     runAttack,
     runSyncAttack,
     cancel,
@@ -82,85 +77,84 @@ const CWAttack = () => {
   const paramSpecs = {
     c: {
       label: '权衡系数 c',
-      description: '平衡攻击成功与扰动大小的权重。值越大，攻击成功率越高但扰动也越大',
-      tips: 'ImageNet建议从0.1开始尝试，如果攻击失败逐渐增大',
+      description: '平衡攻击成功率与扰动大小的权重。',
+      tips: 'ImageNet 建议从 0.1 开始，不够强时再逐步调大。',
       range: { min: 0.001, max: 1000 },
       step: 0.1,
       isLogScale: true,
-      unit: ''
+      unit: '',
     },
     kappa: {
-      label: '置信度阈值 κ',
-      description: '要求目标类别的logits比其他类别高出多少。值越大，对抗样本越"确信"是目标类别',
-      tips: '值越大，生成的扰动也越大。非定向攻击通常设为0',
+      label: '置信度阈值',
+      description: '要求目标类别 logits 超过其他类别的幅度。',
+      tips: '数值越大，攻击更强，但通常耗时也更长。',
       range: { min: 0, max: 50 },
       step: 1,
       isLogScale: false,
-      unit: ''
+      unit: '',
     },
     lr: {
       label: '学习率',
-      description: 'Adam优化器的步长',
-      tips: '如果损失震荡，可适当降低学习率',
+      description: 'Adam 优化器学习率。',
+      tips: '如果损失震荡，适当降低学习率。',
       range: { min: 1e-5, max: 1e-1 },
       step: 0.001,
       isLogScale: true,
-      unit: ''
+      unit: '',
     },
     max_iter: {
       label: '最大迭代次数',
-      description: '优化过程的上限',
-      tips: 'ImageNet需要更多迭代，建议500-1000',
+      description: '每轮搜索中的最大优化步数。',
+      tips: '本地开发建议先用 300-500，确认流程通了再加大。',
       range: { min: 100, max: 1000 },
       step: 50,
       isLogScale: false,
-      unit: '次'
+      unit: '次',
     },
     binary_search_steps: {
       label: '二分搜索步数',
-      description: '自动搜索最优c值的迭代次数',
-      tips: '步数越多，找到的c值越优，但耗时更长',
+      description: '用于搜索更优 c 的轮数。',
+      tips: '步数越多结果越稳，但耗时会明显上升。',
       range: { min: 1, max: 20 },
       step: 1,
       isLogScale: false,
-      unit: '步'
+      unit: '步',
     },
     init_const: {
-      label: '初始c值',
-      description: '二分搜索的起点',
-      tips: 'ImageNet建议从0.01开始',
+      label: '初始 c 值',
+      description: '二分搜索的起始点。',
+      tips: '一般保持默认值即可。',
       range: { min: 1e-4, max: 10.0 },
       step: 0.001,
       isLogScale: true,
-      unit: ''
+      unit: '',
     },
     early_stop_iters: {
       label: '早停检查步数',
-      description: '提前终止的检查间隔',
-      tips: '减少不必要的计算，但可能错过最优解',
+      description: '无明显改善时的检查间隔。',
+      tips: '可以减少不必要计算，但过小会影响结果质量。',
       range: { min: 10, max: 200 },
       step: 10,
       isLogScale: false,
-      unit: '步'
-    }
+      unit: '步',
+    },
   };
 
-  // 预设模板
   const presets = [
     {
       name: '默认参数',
-      icon: '⚡',
+      icon: 'A',
       params: DEFAULT_CW_PARAMS,
     },
     {
       name: '激进攻击',
-      icon: '🔥',
+      icon: 'B',
       params: {
         c: 10,
         kappa: 10,
         lr: 0.05,
-        max_iter: 5000,
-        binary_search_steps: 15,
+        max_iter: 1000,
+        binary_search_steps: 9,
         init_const: 0.1,
         targeted: false,
         abort_early: false,
@@ -169,12 +163,12 @@ const CWAttack = () => {
     },
     {
       name: '隐蔽攻击',
-      icon: '👻',
+      icon: 'C',
       params: {
         c: 0.01,
         kappa: 0,
         lr: 0.001,
-        max_iter: 1000,
+        max_iter: 500,
         binary_search_steps: 5,
         init_const: 0.001,
         targeted: false,
@@ -184,12 +178,12 @@ const CWAttack = () => {
     },
     {
       name: '快速测试',
-      icon: '⚡',
+      icon: 'D',
       params: {
         c: 1.0,
         kappa: 0,
         lr: 0.02,
-        max_iter: 500,
+        max_iter: 200,
         binary_search_steps: 3,
         init_const: 0.1,
         targeted: false,
@@ -209,19 +203,18 @@ const CWAttack = () => {
       setImageUrl(e.target.result);
     };
     reader.readAsDataURL(file);
-    
-    return false; // 阻止自动上传
+    return false;
   };
 
   const handleParamChange = (key, value) => {
-    setParams(prev => ({
+    setParams((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
   const handleTargetedChange = (checked) => {
-    setParams(prev => ({
+    setParams((prev) => ({
       ...prev,
       targeted: checked,
     }));
@@ -229,7 +222,7 @@ const CWAttack = () => {
 
   const applyPreset = (preset) => {
     setParams(preset.params);
-    message.success(`已应用"${preset.name}"模板`);
+    message.success(`已应用“${preset.name}”模板`);
   };
 
   const handleRunAttack = () => {
@@ -237,7 +230,7 @@ const CWAttack = () => {
       message.warning('请先上传图片');
       return;
     }
-    
+
     const attackParams = {
       image: imageUrl,
       model_name: 'resnet100_imagenet',
@@ -253,7 +246,7 @@ const CWAttack = () => {
 
   const handleReset = () => {
     setImageUrl(null);
-    setParams(presets[0].params); // 重置为默认参数
+    setParams(DEFAULT_CW_PARAMS);
     reset();
   };
 
@@ -269,18 +262,18 @@ const CWAttack = () => {
     }
   };
 
-  // 渲染状态指示器
   const renderStatusIndicator = () => {
     const statusConfig = {
       idle: { color: 'default', text: '就绪' },
       pending: { color: 'processing', text: '排队中' },
-      processing: { color: 'processing', text: '攻击中' },
-      completed: { color: isSuccess ? 'success' : 'warning', text: isSuccess ? '成功' : '失败' },
-      failed: { color: 'error', text: '失败' }
+      processing: { color: 'processing', text: '执行中' },
+      running: { color: 'processing', text: '执行中' },
+      completed: { color: isSuccess ? 'success' : 'warning', text: isSuccess ? '成功' : '已完成' },
+      failed: { color: 'error', text: '失败' },
     };
 
     const config = statusConfig[status] || statusConfig.idle;
-    
+
     return (
       <Badge status={config.color} text={config.text}>
         {isRunning && <Spin size="small" style={{ marginLeft: 8 }} />}
@@ -290,22 +283,21 @@ const CWAttack = () => {
 
   return (
     <div style={{ padding: 24 }}>
-      {/* 页面头部 */}
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <Title level={2} style={{ margin: 0 }}>
             C&W 攻击算法
-            <Tooltip title="Carlini & Wagner L2攻击，强大的基于优化的对抗攻击方法">
+            <Tooltip title="Carlini & Wagner L2 attack">
               <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
             </Tooltip>
           </Title>
           <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-            针对ImageNet ResNet152模型的C&W攻击，支持参数实时调节和多种范数约束
+            面向 ImageNet 分类模型的优化型对抗攻击。C&W 质量高，但计算量也明显更大。
           </Paragraph>
         </div>
-        
+
         <Space>
-          <Text type="secondary">状态:</Text>
+          <Text type="secondary">状态</Text>
           {renderStatusIndicator()}
           <Switch
             checkedChildren="异步"
@@ -325,15 +317,14 @@ const CWAttack = () => {
       </div>
 
       <Row gutter={24}>
-        {/* 左侧：参数配置 */}
         <Col span={10}>
-          <Card 
-            title="参数配置" 
+          <Card
+            title="参数配置"
             variant="borderless"
             extra={
-              <Tooltip title="重置所有参数和图片">
-                <Button 
-                  icon={<ReloadOutlined />} 
+              <Tooltip title="重置图片和参数">
+                <Button
+                  icon={<ReloadOutlined />}
                   onClick={handleReset}
                   disabled={isRunning}
                   size="small"
@@ -341,13 +332,9 @@ const CWAttack = () => {
               </Tooltip>
             }
           >
-            {/* 图片上传 */}
             <div style={{ marginBottom: 24 }}>
               <Text strong style={{ marginBottom: 8, display: 'block' }}>
                 待攻击图片
-                <Tooltip title="支持JPEG、PNG、WebP格式，建议使用224x224像素的图片">
-                  <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
-                </Tooltip>
               </Text>
               <ImageUploader
                 onImageChange={handleImageChange}
@@ -356,13 +343,9 @@ const CWAttack = () => {
               />
             </div>
 
-            {/* 预设模板 */}
             <div style={{ marginBottom: 24 }}>
               <Text strong style={{ marginBottom: 8, display: 'block' }}>
                 快速预设
-                <Tooltip title="选择预定义的参数组合，快速开始攻击">
-                  <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
-                </Tooltip>
               </Text>
               <Space wrap>
                 {presets.map((preset, index) => (
@@ -381,13 +364,11 @@ const CWAttack = () => {
 
             <Divider orientation="left">攻击参数</Divider>
 
-            {/* C&W核心参数滑块 */}
             {Object.entries(paramSpecs).map(([key, spec]) => {
-              // 在基础模式下隐藏部分参数
               if (!advancedMode && ['early_stop_iters'].includes(key)) {
                 return null;
               }
-              
+
               return (
                 <ParameterSlider
                   key={key}
@@ -405,7 +386,6 @@ const CWAttack = () => {
               );
             })}
 
-            {/* 定向攻击选项 */}
             <div style={{ marginBottom: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <Text strong>定向攻击</Text>
@@ -416,11 +396,10 @@ const CWAttack = () => {
                 />
               </div>
               <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                当前后端 C&amp;W 定向模式不接收手动目标类别，开启后将按后端算法逻辑选择目标。
+                当前后端定向模式仍按算法内部逻辑自动选择目标类。
               </Text>
             </div>
 
-            {/* 操作按钮 */}
             <Space size="middle">
               <Button
                 type="primary"
@@ -432,7 +411,7 @@ const CWAttack = () => {
               >
                 {useAsync ? '提交异步任务' : '同步执行'}
               </Button>
-              
+
               {canCancel && (
                 <Button
                   icon={<StopOutlined />}
@@ -442,7 +421,7 @@ const CWAttack = () => {
                   取消
                 </Button>
               )}
-              
+
               {hasResult && (
                 <>
                   <Button
@@ -463,22 +442,19 @@ const CWAttack = () => {
               )}
             </Space>
 
-            {/* 进度条 */}
             {isRunning && (
               <div style={{ marginTop: 16 }}>
-                <Progress 
-                  percent={progress} 
+                <Progress
+                  percent={progress}
                   status="active"
                   format={(percent) => `${percent}%`}
                 />
                 <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
-                  {status === 'pending' && '任务排队中，请稍候...'}
-                  {status === 'processing' && '正在执行攻击，请耐心等待...'}
+                  {statusMessage || (status === 'pending' ? '任务排队中，请稍候...' : '正在执行攻击，请耐心等待...')}
                 </Text>
               </div>
             )}
 
-            {/* 错误信息 */}
             {error && (
               <Alert
                 message="错误"
@@ -487,17 +463,16 @@ const CWAttack = () => {
                 showIcon
                 style={{ marginTop: 16 }}
                 closable
-                action={
+                action={(
                   <Button size="small" onClick={() => setError(null)}>
                     关闭
                   </Button>
-                }
+                )}
               />
             )}
           </Card>
         </Col>
 
-        {/* 右侧：结果展示 */}
         <Col span={14}>
           <ResultDisplay
             result={result}

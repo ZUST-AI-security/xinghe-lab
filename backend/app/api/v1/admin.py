@@ -1,6 +1,5 @@
 """
-Admin management API routes — system dashboard, logs, config, attack history.
-All endpoints require admin role.
+Admin management API routes: dashboard, system config, logs, attack history, users.
 """
 
 import math
@@ -8,41 +7,37 @@ import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_admin_user
-from app.core.config import settings
-from app.models.user import User
+from app.core.system_config import DEFAULT_SYSTEM_CONFIGS, ensure_default_system_configs
 from app.models.attack_history import AttackHistory
 from app.models.system_config import SystemConfig
+from app.models.user import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-# ── Dashboard ────────────────────────────────────────────────────────────────
-
-@router.get("/dashboard", summary="系统概览统计")
+@router.get("/dashboard", summary="System dashboard")
 async def admin_dashboard(
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
-    """返回系统概览统计信息：用户数、攻击总数、成功率等。"""
-    total_users = db.query(func.count(User.id)).scalar()
-    active_users = db.query(func.count(User.id)).filter(User.is_active == True).scalar()  # noqa: E712
-    total_attacks = db.query(func.count(AttackHistory.id)).scalar()
-    successful_attacks = db.query(func.count(AttackHistory.id)).filter(
-        AttackHistory.success == True  # noqa: E712
-    ).scalar()
-
-    # 按算法统计
+    total_users = db.query(func.count(User.id)).scalar() or 0
+    active_users = db.query(func.count(User.id)).filter(User.is_active.is_(True)).scalar() or 0
+    total_attacks = db.query(func.count(AttackHistory.id)).scalar() or 0
+    successful_attacks = (
+        db.query(func.count(AttackHistory.id))
+        .filter(AttackHistory.success.is_(True))
+        .scalar()
+        or 0
+    )
     algo_stats = (
-        db.query(
-            AttackHistory.algorithm,
-            func.count(AttackHistory.id).label("count"),
-        )
+        db.query(AttackHistory.algorithm, func.count(AttackHistory.id).label("count"))
         .group_by(AttackHistory.algorithm)
         .all()
     )
@@ -51,11 +46,13 @@ async def admin_dashboard(
         "users": {
             "total": total_users,
             "active": active_users,
+            "inactive": max(total_users - active_users, 0),
         },
         "attacks": {
             "total": total_attacks,
             "successful": successful_attacks,
-            "success_rate": successful_attacks / total_attacks if total_attacks > 0 else 0,
+            "failed": max(total_attacks - successful_attacks, 0),
+            "success_rate": successful_attacks / total_attacks if total_attacks else 0,
             "by_algorithm": {row.algorithm: row.count for row in algo_stats},
         },
         "system": {
@@ -66,27 +63,32 @@ async def admin_dashboard(
     }
 
 
-# ── Attack History ───────────────────────────────────────────────────────────
-
-@router.get("/attack-history", summary="攻击任务历史")
+@router.get("/attack-history", summary="Attack history")
 async def list_attack_history(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
-    algorithm: str = Query("", description="按算法筛选"),
-    user_id: int = Query(0, description="按用户 ID 筛选"),
+    algorithm: str = Query("", description="Filter by algorithm"),
+    user_id: int = Query(0, description="Filter by user id"),
+    status: str = Query("", description="Filter by task status"),
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
-    """管理员查看攻击任务历史，支持分页和筛选。"""
     query = db.query(AttackHistory)
     if algorithm:
         query = query.filter(AttackHistory.algorithm == algorithm)
     if user_id > 0:
         query = query.filter(AttackHistory.user_id == user_id)
+    if status:
+        query = query.filter(AttackHistory.status == status)
 
     total = query.count()
     pages = math.ceil(total / size) if total > 0 else 0
-    items = query.order_by(AttackHistory.id.desc()).offset((page - 1) * size).limit(size).all()
+    items = (
+        query.order_by(AttackHistory.id.desc())
+        .offset((page - 1) * size)
+        .limit(size)
+        .all()
+    )
 
     return {
         "items": [
@@ -114,19 +116,20 @@ async def list_attack_history(
     }
 
 
-# ── System Config ────────────────────────────────────────────────────────────
-
-@router.get("/config", summary="获取系统配置")
+@router.get("/config", summary="Get system config")
 async def get_system_config(
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
-    """获取所有系统配置键值对。"""
-    configs = db.query(SystemConfig).all()
-    return {c.key: {"value": c.value, "description": c.description} for c in configs}
+    ensure_default_system_configs(db)
+    configs = db.query(SystemConfig).order_by(SystemConfig.key.asc()).all()
+    payload = {c.key: {"value": c.value, "description": c.description} for c in configs}
+    for key, default in DEFAULT_SYSTEM_CONFIGS.items():
+        payload.setdefault(key, default)
+    return payload
 
 
-@router.put("/config/{key}", summary="更新系统配置")
+@router.put("/config/{key}", summary="Update system config")
 async def update_system_config(
     key: str,
     value: str,
@@ -134,7 +137,6 @@ async def update_system_config(
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
-    """创建或更新指定的系统配置。"""
     config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
     if config:
         config.value = value
@@ -144,18 +146,15 @@ async def update_system_config(
         config = SystemConfig(key=key, value=value, description=description)
         db.add(config)
     db.commit()
-    return {"key": key, "value": value}
+    return {"key": key, "value": value, "description": config.description}
 
 
-# ── System Logs ──────────────────────────────────────────────────────────────
-
-@router.get("/logs", summary="查看系统日志")
+@router.get("/logs", summary="Get system logs")
 async def get_system_logs(
-    lines: int = Query(100, ge=1, le=1000, description="返回最新的日志行数"),
-    level: str = Query("", description="日志级别筛选: INFO/WARNING/ERROR"),
+    lines: int = Query(100, ge=1, le=1000),
+    level: str = Query("", description="Filter by INFO/WARNING/ERROR"),
     admin_user: User = Depends(get_current_admin_user),
 ):
-    """读取最新的系统日志。"""
     log_path = Path(settings.log_file)
     if not log_path.exists():
         return {"lines": [], "total": 0}
@@ -165,34 +164,44 @@ async def get_system_logs(
         if level:
             level_upper = level.upper()
             all_lines = [line for line in all_lines if level_upper in line]
-
-        recent = all_lines[-lines:]
-        return {"lines": recent, "total": len(all_lines)}
-    except Exception as e:
-        logger.error(f"读取日志失败: {e}")
-        raise HTTPException(status_code=500, detail=f"日志读取失败: {e}")
+        return {"lines": all_lines[-lines:], "total": len(all_lines)}
+    except Exception as exc:
+        logger.error("Read logs failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"日志读取失败: {exc}")
 
 
-# ── User Management ──────────────────────────────────────────────────────────
-
-@router.get("/users", summary="获取用户列表")
+@router.get("/users", summary="List users")
 async def list_users(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
-    search: str = Query("", description="按用户名或邮箱搜索"),
-    role: str = Query("", description="按角色筛选"),
+    search: str = Query("", description="Search username, email, or full name"),
+    role: str = Query("", description="Filter by role"),
+    is_active: str = Query("", description="Filter by active status"),
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
     query = db.query(User)
     if search:
+        pattern = f"%{search}%"
         query = query.filter(
-            (User.username.ilike(f"%{search}%")) | (User.email.ilike(f"%{search}%"))
+            or_(
+                User.username.ilike(pattern),
+                User.email.ilike(pattern),
+                User.full_name.ilike(pattern),
+            )
         )
     if role:
         query = query.filter(User.role == role)
+    if is_active in {"true", "false"}:
+        query = query.filter(User.is_active.is_(is_active == "true"))
+
     total = query.count()
-    items = query.order_by(User.id.desc()).offset((page - 1) * size).limit(size).all()
+    items = (
+        query.order_by(User.id.desc())
+        .offset((page - 1) * size)
+        .limit(size)
+        .all()
+    )
     return {
         "items": [
             {
@@ -203,6 +212,8 @@ async def list_users(
                 "role": u.role,
                 "is_active": u.is_active,
                 "is_superuser": u.is_superuser,
+                "bio": u.bio,
+                "avatar_url": u.avatar_url,
                 "created_at": u.created_at.isoformat() if u.created_at else None,
                 "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
             }
@@ -214,30 +225,56 @@ async def list_users(
     }
 
 
-@router.put("/users/{user_id}", summary="更新用户信息")
+@router.put("/users/{user_id}", summary="Update user")
 async def update_user(
     user_id: int,
-    email: str = "",
-    full_name: str = "",
-    role: str = "",
+    email: str | None = Query(None),
+    full_name: str | None = Query(None),
+    role: str | None = Query(None),
+    is_active: str | None = Query(None),
+    bio: str | None = Query(None),
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
-    if email:
-        user.email = email
-    if full_name:
-        user.full_name = full_name
+
+    if user.id == admin_user.id:
+        if is_active == "false":
+            raise HTTPException(status_code=400, detail="不能禁用自己")
+        if role and role != "admin":
+            raise HTTPException(status_code=400, detail="不能移除自己的管理员权限")
+
+    if email is not None:
+        normalized_email = email.strip()
+        if not normalized_email:
+            raise HTTPException(status_code=400, detail="邮箱不能为空")
+        user.email = normalized_email
+    if full_name is not None:
+        user.full_name = full_name.strip() or None
     if role:
         user.role = role
+        user.is_superuser = role == "admin"
+    if is_active in {"true", "false"}:
+        user.is_active = is_active == "true"
+    if bio is not None:
+        user.bio = bio.strip() or None
+
     db.commit()
-    return {"id": user.id, "username": user.username, "email": user.email,
-            "full_name": user.full_name, "role": user.role}
+    db.refresh(user)
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.role,
+        "is_active": user.is_active,
+        "bio": user.bio,
+    }
 
 
-@router.post("/users/{user_id}/toggle-active", summary="启用/禁用用户")
+@router.post("/users/{user_id}/toggle-active", summary="Toggle user active")
 async def toggle_user_active(
     user_id: int,
     admin_user: User = Depends(get_current_admin_user),
@@ -253,13 +290,14 @@ async def toggle_user_active(
     return {"id": user.id, "is_active": user.is_active}
 
 
-@router.post("/users/{user_id}/reset-password", summary="重置用户密码")
+@router.post("/users/{user_id}/reset-password", summary="Reset user password")
 async def reset_user_password(
     user_id: int,
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
     from app.core.security import get_password_hash
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -268,7 +306,7 @@ async def reset_user_password(
     return {"message": "密码已重置为 Abc12345"}
 
 
-@router.delete("/users/{user_id}", summary="删除用户")
+@router.delete("/users/{user_id}", summary="Delete user")
 async def delete_user(
     user_id: int,
     admin_user: User = Depends(get_current_admin_user),

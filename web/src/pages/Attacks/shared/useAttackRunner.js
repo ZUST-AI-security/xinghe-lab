@@ -37,6 +37,7 @@ export const useAttackRunner = ({
   const [error, setError] = useState(null);
   const [taskId, setTaskId] = useState(null);
   const [status, setStatus] = useState('idle');
+  const [statusMessage, setStatusMessage] = useState('');
   const pollingRef = useRef(null);
 
   const stopPolling = useCallback(() => {
@@ -54,6 +55,7 @@ export const useAttackRunner = ({
     setError(null);
     setTaskId(null);
     setStatus('idle');
+    setStatusMessage('');
   }, [stopPolling]);
 
   const finishWithResult = useCallback((response, params, nextStatus = COMPLETED_STATUS) => {
@@ -62,6 +64,7 @@ export const useAttackRunner = ({
     setProgress(100);
     setTaskId(null);
     setStatus(nextStatus);
+    setStatusMessage('Completed');
   }, []);
 
   const pollTask = useCallback((currentTaskId, requestData) => {
@@ -71,6 +74,7 @@ export const useAttackRunner = ({
         const task = await getTaskStatus(currentTaskId);
         const taskStatus = task.status || 'pending';
         setStatus(taskStatus);
+        setStatusMessage(task.message || '');
         setProgress(task.progress ? Math.round(task.progress) : taskStatus === COMPLETED_STATUS ? 100 : 0);
 
         if (taskStatus === COMPLETED_STATUS) {
@@ -93,6 +97,7 @@ export const useAttackRunner = ({
         setLoading(false);
         setTaskId(null);
         setStatus(FAILED_STATUS);
+        setStatusMessage('');
         setError(pollError.response?.data?.detail || pollError.message || '获取任务状态失败');
       }
     }, 2000);
@@ -106,6 +111,7 @@ export const useAttackRunner = ({
     setError(null);
     setTaskId(null);
     setStatus('processing');
+    setStatusMessage('Running synchronously...');
 
     try {
       const response = await runSync(requestData);
@@ -116,6 +122,7 @@ export const useAttackRunner = ({
       setLoading(false);
       setProgress(0);
       setStatus(FAILED_STATUS);
+      setStatusMessage('');
       setError(
         getRequestErrorMessage(requestError, `${attackName}攻击执行失败`, {
           preferAsync: true,
@@ -132,6 +139,7 @@ export const useAttackRunner = ({
     setResult(null);
     setError(null);
     setStatus('pending');
+    setStatusMessage('Task submitted, waiting for worker...');
 
     try {
       const response = await submitAsync(requestData);
@@ -141,6 +149,7 @@ export const useAttackRunner = ({
     } catch (requestError) {
       setLoading(false);
       setStatus(FAILED_STATUS);
+      setStatusMessage('');
       setError(getRequestErrorMessage(requestError, `${attackName}任务提交失败`));
       throw requestError;
     }
@@ -209,6 +218,7 @@ export const useAttackRunner = ({
     setError,
     taskId,
     status,
+    statusMessage,
     runAttack,
     runSyncAttack,
     cancel,

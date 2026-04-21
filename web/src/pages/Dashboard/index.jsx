@@ -1,103 +1,176 @@
-import React, { useEffect } from 'react';
-import { Layout, Typography } from 'antd';
-import TopNav from './components/TopNav';
-import WelcomeBanner from './components/WelcomeBanner';
-import StatCards from './components/StatCards';
-import QuickStart from './components/QuickStart';
-import RecentActivity from './components/RecentActivity';
-import ExploreNav from './components/ExploreNav';
-import LabInfo from './components/LabInfo';
-import { useDashboardData } from './hooks/useDashboardData';
-import styles from './Dashboard.module.less';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Card, Col, List, Row, Space, Statistic, Tag, Typography } from 'antd';
+import {
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  HistoryOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
+import { Link } from 'react-router-dom';
 
-const { Content } = Layout;
-const { Title } = Typography;
+import { getMyTaskHistory, getMyTaskStats } from '../../api/tasks';
+import { useAuthStore } from '../../store/authStore';
+
+const { Title, Paragraph, Text } = Typography;
 
 const Dashboard = () => {
-  const { 
-    stats, 
-    recentActivities, 
-    algorithmUsage, 
-    gpuLoad, 
-    queueLength,
-    loading 
-  } = useDashboardData();
+  const user = useAuthStore((state) => state.user);
+  const [stats, setStats] = useState(null);
+  const [history, setHistory] = useState([]);
 
-  // 设置CSS变量
   useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--bg-primary', '#F5F7FA');
-    root.style.setProperty('--bg-secondary', '#FFFFFF');
-    root.style.setProperty('--bg-tertiary', '#F0F2F5');
-    root.style.setProperty('--accent-primary', '#1E6DF2');
-    root.style.setProperty('--accent-secondary', '#7B2EDA');
-    root.style.setProperty('--accent-glow', '#00B8D9');
-    root.style.setProperty('--text-primary', '#1A1F36');
-    root.style.setProperty('--text-secondary', '#4A5568');
-    root.style.setProperty('--text-tertiary', '#718096');
-    root.style.setProperty('--border-color', '#E2E8F0');
-    root.style.setProperty('--success', '#10B981');
-    root.style.setProperty('--warning', '#F59E0B');
-    root.style.setProperty('--error', '#EF4444');
-    root.style.setProperty('--card-shadow', '0 4px 20px rgba(0, 0, 0, 0.02), 0 2px 8px rgba(0, 0, 0, 0.02)');
-    root.style.setProperty('--card-shadow-hover', '0 12px 28px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(30, 109, 242, 0.08)');
+    const load = async () => {
+      try {
+        const [statsData, historyData] = await Promise.all([
+          getMyTaskStats(),
+          getMyTaskHistory({ page: 1, size: 5 }),
+        ]);
+        setStats(statsData);
+        setHistory(historyData.items || []);
+      } catch {
+        setStats({
+          total_attacks: 0,
+          successful_attacks: 0,
+          failed_attacks: 0,
+          success_rate: 0,
+          avg_time_elapsed: 0,
+          by_algorithm: {},
+        });
+        setHistory([]);
+      }
+    };
+    load();
   }, []);
 
+  const algorithmCards = useMemo(
+    () => Object.entries(stats?.by_algorithm || {}).map(([name, item]) => ({
+      name,
+      total: item.total,
+      successRate: item.total ? item.successful / item.total : 0,
+    })),
+    [stats]
+  );
+
   return (
-    <Layout className={styles.dashboard}>
-      <TopNav />
-      
-      <Content className={styles.content}>
-        <div className={styles.container}>
-          {/* 欢迎区域 */}
-          <WelcomeBanner 
-            gpuLoad={gpuLoad}
-            queueLength={queueLength}
-          />
+    <Space direction="vertical" size={20} style={{ width: '100%' }}>
+      <Card className="xh-hero-card xh-panel" style={{ borderRadius: 28 }}>
+        <div className="xh-kicker">EXPERIMENT HUB</div>
+        <Title className="xh-page-title" level={2}>
+          {user?.role === 'admin' ? '欢迎回来，管理员' : `欢迎回来，${user?.full_name || user?.username}`}
+        </Title>
+        <Paragraph className="xh-page-desc">
+          在这里可以快速发起攻击实验、跟踪近期任务，并把不同算法的输出结果放到同一页进行横向对比。
+        </Paragraph>
+      </Card>
 
-          {/* 概况统计 */}
-          <div className={styles.section}>
-            <StatCards stats={stats} loading={loading} />
-          </div>
-
-          {/* 快速开始 */}
-          <div className={styles.section}>
-            <Title level={3} className={styles.sectionTitle}>
-              ⚡ 快速开始
-            </Title>
-            <QuickStart />
-          </div>
-
-          {/* 近期活动 */}
-          <div className={styles.section}>
-            <Title level={3} className={styles.sectionTitle}>
-              📊 近期活动
-            </Title>
-            <RecentActivity 
-              activities={recentActivities}
-              algorithmUsage={algorithmUsage}
-              loading={loading}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} xl={6}>
+          <Card className="xh-stat-card xh-panel" style={{ borderRadius: 24 }}>
+            <Statistic
+              title="总任务数"
+              value={stats?.total_attacks || 0}
+              prefix={<HistoryOutlined />}
             />
-          </div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <Card className="xh-stat-card xh-panel" style={{ borderRadius: 24 }}>
+            <Statistic
+              title="成功任务"
+              value={stats?.successful_attacks || 0}
+              prefix={<CheckCircleOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <Card className="xh-stat-card xh-panel" style={{ borderRadius: 24 }}>
+            <Statistic
+              title="成功率"
+              value={(stats?.success_rate || 0) * 100}
+              precision={1}
+              suffix="%"
+              prefix={<ThunderboltOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <Card className="xh-stat-card xh-panel" style={{ borderRadius: 24 }}>
+            <Statistic
+              title="平均耗时"
+              value={stats?.avg_time_elapsed || 0}
+              precision={2}
+              suffix="s"
+              prefix={<ClockCircleOutlined />}
+            />
+          </Card>
+        </Col>
+      </Row>
 
-          {/* 探索更多 */}
-          <div className={styles.section}>
-            <Title level={3} className={styles.sectionTitle}>
-              🔬 探索更多
-            </Title>
-            <ExploreNav />
-          </div>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} xl={14}>
+          <Card
+            title="最近任务"
+            extra={<Link to="/tasks/history">查看全部</Link>}
+            className="xh-section-card xh-panel"
+            style={{ borderRadius: 28 }}
+          >
+            <List
+              dataSource={history}
+              locale={{ emptyText: '还没有历史任务，先提交一个攻击实验吧。' }}
+              renderItem={(item) => (
+                <List.Item>
+                  <List.Item.Meta
+                    title={(
+                      <Space wrap>
+                        <Tag className="xh-soft-tag" color="geekblue">
+                          {(item.algorithm_name || '-').toUpperCase()}
+                        </Tag>
+                        <Text strong>{item.model_name || 'resnet100_imagenet'}</Text>
+                        <Tag
+                          className="xh-soft-tag"
+                          color={
+                            item.status === 'success' || item.status === 'completed'
+                              ? 'green'
+                              : item.status === 'failed'
+                                ? 'red'
+                                : 'gold'
+                          }
+                        >
+                          {item.status}
+                        </Tag>
+                      </Space>
+                    )}
+                    description={item.created_at ? new Date(item.created_at).toLocaleString() : '时间未知'}
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Col>
 
-          {/* 实验室信息 */}
-          <div className={styles.section}>
-            <Title level={3} className={styles.sectionTitle}>
-              🏛️ 关于实验室
-            </Title>
-            <LabInfo />
-          </div>
-        </div>
-      </Content>
-    </Layout>
+        <Col xs={24} xl={10}>
+          <Card title="算法分布" className="xh-section-card xh-panel" style={{ borderRadius: 28 }}>
+            <List
+              dataSource={algorithmCards}
+              locale={{ emptyText: '暂无算法统计' }}
+              renderItem={(item) => (
+                <List.Item>
+                  <div className="xh-list-row">
+                    <Space>
+                      <Tag className="xh-soft-tag" color="cyan">
+                        {item.name.toUpperCase()}
+                      </Tag>
+                      <Text type="secondary">共 {item.total} 次</Text>
+                    </Space>
+                    <Text strong>{(item.successRate * 100).toFixed(1)}%</Text>
+                  </div>
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Col>
+      </Row>
+    </Space>
   );
 };
 

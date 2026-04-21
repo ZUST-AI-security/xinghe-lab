@@ -68,7 +68,7 @@ const ResultDisplay = ({
     );
   }
 
-  const originalImage = originalImageUrl || result.original_image;
+  const originalImage = result.original_image || originalImageUrl;
   const metadata = result.metadata || {};
   const originalPrediction = metadata.original_prediction || null;
   const adversarialPrediction = metadata.adversarial_prediction || null;

@@ -1,162 +1,218 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Tag, Button, Spin, Empty, Typography, message, Modal } from 'antd';
-import { ReloadOutlined, EyeOutlined } from '@ant-design/icons';
-import { api } from '../../api/client';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Button,
+  Card,
+  Descriptions,
+  Empty,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  message,
+} from 'antd';
+import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 
-const { Title } = Typography;
+import { getMyTaskHistory } from '../../api/tasks';
+
+const { Title, Text } = Typography;
+
+const statusColorMap = {
+  success: 'green',
+  completed: 'green',
+  failed: 'red',
+  running: 'processing',
+  pending: 'gold',
+};
 
 const TaskHistory = () => {
-    const [loading, setLoading] = useState(false);
-    const [data, setData] = useState([]);
-    const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
-    const [detailModalVisible, setDetailModalVisible] = useState(false);
-    const [currentRecord, setCurrentRecord] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState([]);
+  const [algorithm, setAlgorithm] = useState('');
+  const [status, setStatus] = useState('');
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [detailRecord, setDetailRecord] = useState(null);
 
-    const fetchHistory = async (page = 1, size = 10) => {
-        setLoading(true);
-        try {
-            const res = await api.get('/api/v1/attacks/tasks/history', { params: { page, size } });
-            setData(res.data.items || []);
-            setPagination({
-                current: res.data.page,
-                pageSize: res.data.size,
-                total: res.data.total
-            });
-        } catch (error) {
-            message.error('获取任务历史失败');
-        } finally {
-            setLoading(false);
-        }
-    };
+  const fetchHistory = useCallback(async (page = 1, size = 10) => {
+    setLoading(true);
+    try {
+      const response = await getMyTaskHistory({
+        page,
+        size,
+        algorithm,
+        status,
+      });
+      setData(response.items || []);
+      setPagination({
+        current: response.page,
+        pageSize: response.size,
+        total: response.total,
+      });
+    } catch (error) {
+      message.error('获取任务历史失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [algorithm, status]);
 
-    useEffect(() => {
-        fetchHistory(pagination.current, pagination.pageSize);
-    }, []);
+  useEffect(() => {
+    fetchHistory(1, pagination.pageSize);
+  }, [fetchHistory, pagination.pageSize]);
 
-    const handleTableChange = (newPagination) => {
-        fetchHistory(newPagination.current, newPagination.pageSize);
-    };
+  const columns = [
+    { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
+    {
+      title: '算法',
+      dataIndex: 'algorithm_name',
+      key: 'algorithm_name',
+      render: (value) => <Tag color="blue">{(value || '-').toUpperCase()}</Tag>,
+    },
+    {
+      title: '模型',
+      dataIndex: 'model_name',
+      key: 'model_name',
+      render: (value) => value || '-',
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (value) => <Tag color={statusColorMap[value] || 'default'}>{value || '-'}</Tag>,
+    },
+    {
+      title: '成功率',
+      dataIndex: 'success_rate',
+      key: 'success_rate',
+      render: (value) => (value == null ? '-' : `${(value * 100).toFixed(1)}%`),
+    },
+    {
+      title: '耗时',
+      dataIndex: 'execution_time',
+      key: 'execution_time',
+      render: (value) => (value == null ? '-' : `${value.toFixed(2)} s`),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (value) => (value ? new Date(value).toLocaleString() : '-'),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_, record) => (
+        <Button icon={<EyeOutlined />} onClick={() => setDetailRecord(record)}>
+          查看
+        </Button>
+      ),
+    },
+  ];
 
-    const columns = [
-        {
-            title: 'ID',
-            dataIndex: 'id',
-            key: 'id',
-            width: 80,
-        },
-        {
-            title: '算法',
-            dataIndex: 'algorithm_name',
-            key: 'algorithm_name',
-            render: (text) => <Tag color="blue">{text.toUpperCase()}</Tag>
-        },
-        {
-            title: '状态',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status) => {
-                const colorMap = {
-                    'success': 'green',
-                    'failed': 'red',
-                    'running': 'cyan',
-                    'pending': 'gold'
-                };
-                return <Tag color={colorMap[status] || 'default'}>{status.toUpperCase()}</Tag>;
-            }
-        },
-        {
-            title: '创建时间',
-            dataIndex: 'created_at',
-            key: 'created_at',
-            render: (text) => new Date(text).toLocaleString()
-        },
-        {
-            title: '完成时间',
-            dataIndex: 'completed_at',
-            key: 'completed_at',
-            render: (text) => text ? new Date(text).toLocaleString() : '-'
-        },
-        {
-            title: '操作',
-            key: 'action',
-            render: (_, record) => (
-                <Button 
-                    type="link" 
-                    icon={<EyeOutlined />}
-                    onClick={() => {
-                        setCurrentRecord(record);
-                        setDetailModalVisible(true);
-                    }}
-                >
-                    查看结果
-                </Button>
-            )
-        }
-    ];
+  return (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Card style={{ borderRadius: 20 }}>
+        <Space direction="vertical" size={4}>
+          <Title level={3} style={{ margin: 0 }}>
+            我的攻击任务
+          </Title>
+          <Text type="secondary">查看历史任务、完成状态、模型输出和错误详情。</Text>
+        </Space>
+      </Card>
 
-    return (
-        <div style={{ padding: '24px', background: '#fff', borderRadius: '8px', minHeight: '80vh' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={4} style={{ margin: 0 }}>我的算法请求记录</Title>
-                <Button 
-                    icon={<ReloadOutlined />} 
-                    onClick={() => fetchHistory(pagination.current, pagination.pageSize)}
-                    loading={loading}
-                >
-                    刷新
-                </Button>
-            </div>
-
-            <Table 
-                columns={columns} 
-                dataSource={data} 
-                rowKey="id"
-                pagination={pagination}
-                loading={loading}
-                onChange={handleTableChange}
-                locale={{ emptyText: <Empty description="暂无请求记录" /> }}
+      <Card style={{ borderRadius: 20 }}>
+        <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Space wrap>
+            <Select
+              allowClear
+              placeholder="按算法筛选"
+              style={{ width: 160 }}
+              onChange={(value) => setAlgorithm(value || '')}
+              options={[
+                { label: 'FGSM', value: 'fgsm' },
+                { label: 'I-FGSM', value: 'ifgsm' },
+                { label: 'PGD', value: 'pgd' },
+                { label: 'C&W', value: 'cw' },
+                { label: 'DeepFool', value: 'deepfool' },
+              ]}
             />
+            <Select
+              allowClear
+              placeholder="按状态筛选"
+              style={{ width: 160 }}
+              onChange={(value) => setStatus(value || '')}
+              options={[
+                { label: 'Pending', value: 'pending' },
+                { label: 'Running', value: 'running' },
+                { label: 'Completed', value: 'completed' },
+                { label: 'Success', value: 'success' },
+                { label: 'Failed', value: 'failed' },
+              ]}
+            />
+          </Space>
+          <Button icon={<ReloadOutlined />} onClick={() => fetchHistory()}>
+            刷新
+          </Button>
+        </Space>
 
-            <Modal
-                title={`任务详情 - ${currentRecord?.algorithm_name?.toUpperCase()}`}
-                open={detailModalVisible}
-                onCancel={() => setDetailModalVisible(false)}
-                footer={[
-                    <Button key="close" onClick={() => setDetailModalVisible(false)}>关闭</Button>
-                ]}
-                width={800}
-            >
-                {currentRecord && (
-                    <div>
-                        <p><strong>状态：</strong> {currentRecord.status}</p>
-                        {currentRecord.status === 'success' && currentRecord.result && (
-                            <div>
-                                <p><strong>运行时长：</strong> {currentRecord.result.time_elapsed?.toFixed(2)} 秒</p>
-                                <p><strong>输出目录：</strong> {currentRecord.result.output_dir}</p>
-                                <h4>预测变更</h4>
-                                <ul>
-                                    <li>原预测：{currentRecord.result.metadata?.original_prediction}</li>
-                                    <li>对抗预测：{currentRecord.result.metadata?.adversarial_prediction}</li>
-                                </ul>
-                                <h4>超参数</h4>
-                                <pre style={{ background: '#f5f5f5', padding: '12px', borderRadius: '4px' }}>
-                                    {JSON.stringify(currentRecord.result.metadata, null, 2)}
-                                </pre>
-                            </div>
-                        )}
-                        {currentRecord.status === 'failed' && (
-                            <div style={{ color: 'red' }}>
-                                <p><strong>错误信息：</strong></p>
-                                <pre style={{ background: '#fff1f0', padding: '12px', borderRadius: '4px' }}>
-                                    {currentRecord.result?.error || '未知错误'}
-                                </pre>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </Modal>
-        </div>
-    );
+        <Table
+          style={{ marginTop: 16 }}
+          rowKey="id"
+          columns={columns}
+          dataSource={data}
+          loading={loading}
+          scroll={{ x: 900 }}
+          locale={{ emptyText: <Empty description="暂无任务历史" /> }}
+          pagination={{
+            ...pagination,
+            showSizeChanger: true,
+            onChange: (page, pageSize) => fetchHistory(page, pageSize),
+          }}
+        />
+      </Card>
+
+      <Modal
+        title="任务详情"
+        open={Boolean(detailRecord)}
+        onCancel={() => setDetailRecord(null)}
+        footer={null}
+        width={900}
+      >
+        {detailRecord && (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Descriptions bordered size="small" column={2}>
+              <Descriptions.Item label="算法">{detailRecord.algorithm_name}</Descriptions.Item>
+              <Descriptions.Item label="模型">{detailRecord.model_name || '-'}</Descriptions.Item>
+              <Descriptions.Item label="状态">{detailRecord.status}</Descriptions.Item>
+              <Descriptions.Item label="成功率">
+                {detailRecord.success_rate == null ? '-' : `${(detailRecord.success_rate * 100).toFixed(1)}%`}
+              </Descriptions.Item>
+              <Descriptions.Item label="创建时间">
+                {detailRecord.created_at ? new Date(detailRecord.created_at).toLocaleString() : '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="完成时间">
+                {detailRecord.completed_at ? new Date(detailRecord.completed_at).toLocaleString() : '-'}
+              </Descriptions.Item>
+            </Descriptions>
+
+            {detailRecord.result?.metadata && (
+              <Card size="small" title="元数据">
+                <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {JSON.stringify(detailRecord.result.metadata, null, 2)}
+                </pre>
+              </Card>
+            )}
+
+            {detailRecord.error && (
+              <Card size="small" title="错误信息">
+                <Text type="danger">{detailRecord.error}</Text>
+              </Card>
+            )}
+          </Space>
+        )}
+      </Modal>
+    </Space>
+  );
 };
 
 export default TaskHistory;

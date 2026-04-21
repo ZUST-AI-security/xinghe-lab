@@ -5,8 +5,16 @@ export const getAdminDashboard = async () => {
   return res.data;
 };
 
-export const getAttackHistory = async ({ page = 1, size = 20, algorithm = '', user_id = 0 } = {}) => {
-  const res = await api.get('/admin/attack-history', { params: { page, size, algorithm, user_id } });
+export const getAttackHistory = async ({
+  page = 1,
+  size = 20,
+  algorithm = '',
+  user_id = 0,
+  status = '',
+} = {}) => {
+  const res = await api.get('/admin/attack-history', {
+    params: { page, size, algorithm, user_id, status },
+  });
   return res.data;
 };
 
@@ -16,7 +24,9 @@ export const getSystemConfig = async () => {
 };
 
 export const updateSystemConfig = async (key, value, description = '') => {
-  const res = await api.put(`/admin/config/${key}`, null, { params: { value, description } });
+  const res = await api.put(`/admin/config/${key}`, null, {
+    params: { value, description },
+  });
   return res.data;
 };
 
@@ -25,13 +35,32 @@ export const getSystemLogs = async ({ lines = 100, level = '' } = {}) => {
   return res.data;
 };
 
-export const getUsers = async ({ page = 1, size = 20, search = '', role = '' } = {}) => {
-  const res = await api.get('/admin/users', { params: { page, size, search, role } });
+export const getUsers = async ({
+  page = 1,
+  size = 20,
+  search = '',
+  role = '',
+  is_active = '',
+} = {}) => {
+  const res = await api.get('/admin/users', {
+    params: { page, size, search, role, is_active },
+  });
   return res.data;
 };
 
-export const updateUser = async (userId, { email = '', full_name = '', role = '' } = {}) => {
-  const res = await api.put(`/admin/users/${userId}`, null, { params: { email, full_name, role } });
+export const updateUser = async (
+  userId,
+  {
+    email = '',
+    full_name = '',
+    role = '',
+    is_active = '',
+    bio = '',
+  } = {}
+) => {
+  const res = await api.put(`/admin/users/${userId}`, null, {
+    params: { email, full_name, role, is_active, bio },
+  });
   return res.data;
 };
 

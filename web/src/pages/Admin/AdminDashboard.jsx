@@ -1,82 +1,142 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Col, Row, Statistic, Typography, Spin, Tag } from 'antd';
+import { Card, Col, Empty, Row, Space, Statistic, Tag, Typography } from 'antd';
 import {
-  UserOutlined,
-  ThunderboltOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined,
+  DatabaseOutlined,
+  TeamOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
+
 import { getAdminDashboard } from '../../api/admin';
 
-const { Title } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 const AdminDashboard = () => {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAdminDashboard()
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    getAdminDashboard().then(setData).catch(() => setData(null));
   }, []);
 
-  if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+  const algorithms = Object.entries(data?.attacks?.by_algorithm || {});
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={2}>系统概览</Title>
+    <div className="xh-page-shell">
+      <Card className="xh-page-banner" bordered={false}>
+        <div className="xh-page-kicker">ADMIN CONSOLE</div>
+        <Title level={2} className="xh-page-title">
+          后台管理概览
+        </Title>
+        <Paragraph className="xh-page-desc">
+          在这里集中查看用户规模、攻击任务状态和当前系统环境，方便快速排查异常并调整平台配置。
+        </Paragraph>
+      </Card>
 
-      <Row gutter={[24, 24]}>
-        <Col span={6}>
-          <Card>
-            <Statistic title="用户总数" value={data?.users?.total || 0} prefix={<UserOutlined />} />
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} xl={6}>
+          <Card className="xh-stat-card" bordered={false}>
+            <Statistic title="总用户数" value={data?.users?.total || 0} prefix={<TeamOutlined />} />
           </Card>
         </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic title="活跃用户" value={data?.users?.active || 0} prefix={<UserOutlined />} valueStyle={{ color: '#3f8600' }} />
+        <Col xs={24} sm={12} xl={6}>
+          <Card className="xh-stat-card" bordered={false}>
+            <Statistic title="活跃用户" value={data?.users?.active || 0} prefix={<TeamOutlined />} />
           </Card>
         </Col>
-        <Col span={6}>
-          <Card>
+        <Col xs={24} sm={12} xl={6}>
+          <Card className="xh-stat-card" bordered={false}>
             <Statistic title="攻击总数" value={data?.attacks?.total || 0} prefix={<ThunderboltOutlined />} />
           </Card>
         </Col>
-        <Col span={6}>
-          <Card>
+        <Col xs={24} sm={12} xl={6}>
+          <Card className="xh-stat-card" bordered={false}>
             <Statistic
               title="攻击成功率"
               value={(data?.attacks?.success_rate || 0) * 100}
-              suffix="%"
               precision={1}
+              suffix="%"
               prefix={<CheckCircleOutlined />}
-              valueStyle={{ color: data?.attacks?.success_rate > 0.5 ? '#3f8600' : '#cf1322' }}
             />
           </Card>
         </Col>
       </Row>
 
-      <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
-        <Col span={12}>
-          <Card title="各算法攻击统计">
-            {data?.attacks?.by_algorithm && Object.entries(data.attacks.by_algorithm).length > 0 ? (
-              Object.entries(data.attacks.by_algorithm).map(([algo, count]) => (
-                <div key={algo} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Tag color="blue">{algo.toUpperCase()}</Tag>
-                  <span>{count} 次</span>
-                </div>
-              ))
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={14}>
+          <Card title="算法分布" className="xh-admin-card" bordered={false}>
+            {algorithms.length === 0 ? (
+              <div className="xh-empty-note">
+                <Empty description="暂时还没有攻击记录" />
+              </div>
             ) : (
-              <span style={{ color: '#999' }}>暂无攻击记录</span>
+              <Space direction="vertical" size={14} style={{ width: '100%' }}>
+                {algorithms.map(([algorithm, count]) => (
+                  <div key={algorithm} className="xh-list-row">
+                    <Space>
+                      <Tag className="xh-role-tag" color="blue">
+                        {algorithm.toUpperCase()}
+                      </Tag>
+                      <Text strong>{count} 次</Text>
+                    </Space>
+                    <div
+                      style={{
+                        flex: 1,
+                        maxWidth: 240,
+                        height: 8,
+                        borderRadius: 999,
+                        background: '#e8f1ff',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${Math.min((count / Math.max(data?.attacks?.total || 1, 1)) * 100, 100)}%`,
+                          height: '100%',
+                          background: '#1677ff',
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </Space>
             )}
           </Card>
         </Col>
-        <Col span={12}>
-          <Card title="系统信息">
-            <p><strong>版本:</strong> {data?.system?.version || '-'}</p>
-            <p><strong>调试模式:</strong> <Tag color={data?.system?.debug ? 'orange' : 'green'}>{data?.system?.debug ? '开启' : '关闭'}</Tag></p>
-            <p><strong>数据库:</strong> <Tag color="blue">{data?.system?.database || '-'}</Tag></p>
+
+        <Col xs={24} lg={10}>
+          <Card title="系统环境" className="xh-admin-card" bordered={false}>
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <div className="xh-soft-panel">
+                <Space>
+                  <DatabaseOutlined style={{ color: '#1677ff' }} />
+                  <div>
+                    <Text type="secondary">数据库</Text>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                      {data?.system?.database || '-'}
+                    </div>
+                  </div>
+                </Space>
+              </div>
+
+              <div className="xh-soft-panel">
+                <Space>
+                  <TeamOutlined style={{ color: '#1677ff' }} />
+                  <div>
+                    <Text type="secondary">版本</Text>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                      {data?.system?.version || '-'}
+                    </div>
+                  </div>
+                </Space>
+              </div>
+
+              <Space>
+                <Text type="secondary">调试模式</Text>
+                <Tag className="xh-status-tag" color={data?.system?.debug ? 'gold' : 'green'}>
+                  {data?.system?.debug ? '开启' : '关闭'}
+                </Tag>
+              </Space>
+            </Space>
           </Card>
         </Col>
       </Row>

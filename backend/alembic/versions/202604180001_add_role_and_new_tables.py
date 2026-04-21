@@ -25,7 +25,7 @@ def upgrade() -> None:
         )
 
     # 将现有 superuser 标记为 admin 角色
-    op.execute("UPDATE users SET role = 'admin' WHERE is_superuser = 1 OR is_superuser = true")
+    op.execute("UPDATE users SET role = 'admin' WHERE is_superuser IS TRUE")
 
     # 创建 attack_history 表
     op.create_table(

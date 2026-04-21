@@ -1,57 +1,77 @@
 """
-星河智安 (XingHe ZhiAn) - 用户相关Pydantic模型
-定义用户数据的验证和序列化模式
+XingHe ZhiAn - user-related Pydantic schemas.
 """
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional, Literal
 from datetime import datetime
+from typing import Literal, Optional
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+
+def _validate_password_strength(value: str) -> str:
+    if len(value) < 8:
+        raise ValueError("密码长度至少 8 位")
+    if len(value.encode("utf-8")) > 72:
+        raise ValueError("密码长度不能超过 72 个 UTF-8 字节")
+    if not any(char.isupper() for char in value):
+        raise ValueError("密码必须包含至少一个大写字母")
+    if not any(char.islower() for char in value):
+        raise ValueError("密码必须包含至少一个小写字母")
+    if not any(char.isdigit() for char in value):
+        raise ValueError("密码必须包含至少一个数字")
+    return value
+
 
 class UserBase(BaseModel):
-    """用户基础模型"""
+    """Base user schema."""
+
     username: str = Field(..., min_length=3, max_length=50, description="用户名")
     email: EmailStr = Field(..., description="邮箱地址")
     full_name: Optional[str] = Field(None, max_length=100, description="全名")
 
+
 class UserCreate(UserBase):
-    """用户创建模型"""
+    """User registration payload."""
+
     password: str = Field(..., min_length=8, max_length=100, description="密码")
-    
-    @field_validator('password')
+
+    @field_validator("password")
     @classmethod
-    def validate_password(cls, v):
-        """密码验证"""
-        if len(v) < 8:
-            raise ValueError('密码长度至少8位')
-        if not any(c.isupper() for c in v):
-            raise ValueError('密码必须包含至少一个大写字母')
-        if not any(c.islower() for c in v):
-            raise ValueError('密码必须包含至少一个小写字母')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('密码必须包含至少一个数字')
-        return v
+    def validate_password(cls, value: str) -> str:
+        return _validate_password_strength(value)
+
 
 class UserUpdate(BaseModel):
-    """用户更新模型"""
+    """Self-service user update payload."""
+
     email: Optional[EmailStr] = Field(None, description="邮箱地址")
     full_name: Optional[str] = Field(None, max_length=100, description="全名")
     bio: Optional[str] = Field(None, max_length=500, description="个人简介")
-    avatar_url: Optional[str] = Field(None, max_length=255, description="头像URL")
+    avatar_url: Optional[str] = Field(None, max_length=255, description="头像 URL")
+
 
 class AdminUserUpdate(BaseModel):
-    """管理员更新用户模型"""
+    """Admin user update payload."""
+
     email: Optional[EmailStr] = Field(None, description="邮箱地址")
     full_name: Optional[str] = Field(None, max_length=100, description="全名")
-    role: Optional[Literal["admin", "user", "viewer"]] = Field(None, description="用户角色")
+    role: Optional[Literal["admin", "user", "viewer"]] = Field(
+        None,
+        description="用户角色",
+    )
     is_active: Optional[bool] = Field(None, description="是否激活")
 
+
 class UserLogin(BaseModel):
-    """用户登录模型"""
+    """User login payload."""
+
     username: str = Field(..., description="用户名或邮箱")
     password: str = Field(..., description="密码")
 
+
 class UserResponse(UserBase):
-    """用户响应模型"""
+    """User response payload."""
+
     id: int
     is_active: bool
     is_superuser: bool
@@ -60,44 +80,43 @@ class UserResponse(UserBase):
     bio: Optional[str] = None
     created_at: datetime
     last_login_at: Optional[datetime] = None
-    
+
     class Config:
         from_attributes = True
 
+
 class UserListResponse(BaseModel):
-    """用户列表分页响应"""
+    """Paginated user list response."""
+
     items: list[UserResponse]
     total: int
     page: int
     size: int
     pages: int
 
+
 class Token(BaseModel):
-    """令牌模型"""
+    """Token response payload."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
 
+
 class TokenRefresh(BaseModel):
-    """令牌刷新模型"""
+    """Refresh token request payload."""
+
     refresh_token: str
 
+
 class PasswordChange(BaseModel):
-    """密码修改模型"""
+    """Password change payload."""
+
     current_password: str = Field(..., description="当前密码")
     new_password: str = Field(..., min_length=8, max_length=100, description="新密码")
-    
-    @field_validator('new_password')
+
+    @field_validator("new_password")
     @classmethod
-    def validate_new_password(cls, v):
-        """新密码验证"""
-        if len(v) < 8:
-            raise ValueError('密码长度至少8位')
-        if not any(c.isupper() for c in v):
-            raise ValueError('密码必须包含至少一个大写字母')
-        if not any(c.islower() for c in v):
-            raise ValueError('密码必须包含至少一个小写字母')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('密码必须包含至少一个数字')
-        return v
+    def validate_new_password(cls, value: str) -> str:
+        return _validate_password_strength(value)

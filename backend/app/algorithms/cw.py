@@ -98,6 +98,7 @@ class CWAlgorithm(BaseAlgorithm):
         targeted: bool = False,
         abort_early: bool = True,
         early_stop_iters: int = 50,
+        progress_callback = None,
         **kwargs,
     ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         start = time.time()
@@ -134,8 +135,21 @@ class CWAlgorithm(BaseAlgorithm):
         best_l2 = torch.full((batch,), 1e10, device=device)
 
         history_losses: list = []
+        total_steps = max(binary_search_steps * max_iter, 1)
+
+        def emit_progress(search_idx: int, iter_idx: int, message: str) -> None:
+            if progress_callback is None:
+                return
+            logical_steps = min(search_idx * max_iter + iter_idx + 1, total_steps)
+            percent = 40 + int(logical_steps * 50 / total_steps)
+            progress_callback(percent, message)
 
         for search_step in range(binary_search_steps):
+            emit_progress(
+                search_step,
+                0,
+                f"Running attack... search {search_step + 1}/{binary_search_steps}",
+            )
             w = self._arctanh_encode(pixels).detach().requires_grad_(True)
             optimizer = optim.Adam([w], lr=lr)
             best_loss_iter = torch.full((batch,), float("inf"), device=device)
@@ -153,6 +167,16 @@ class CWAlgorithm(BaseAlgorithm):
                 if iteration % 20 == 0:
                     history_losses.append(loss.item())
 
+                if iteration % 10 == 0 or iteration == max_iter - 1:
+                    emit_progress(
+                        search_step,
+                        iteration,
+                        (
+                            f"Running attack... search {search_step + 1}/{binary_search_steps}, "
+                            f"iter {iteration + 1}/{max_iter}"
+                        ),
+                    )
+
                 if abort_early and iteration % early_stop_iters == 0:
                     cur = (l2 + c_cur * f).detach()
                     improved = cur < best_loss_iter
@@ -160,6 +184,14 @@ class CWAlgorithm(BaseAlgorithm):
                     no_improve = torch.where(improved, torch.zeros_like(no_improve), no_improve + 1)
                     if (no_improve >= 2).all():
                         logger.debug(f"C&W early-stop at iter {iteration} (search {search_step})")
+                        emit_progress(
+                            search_step,
+                            iteration,
+                            (
+                                f"Running attack... search {search_step + 1}/{binary_search_steps}, "
+                                f"early stop at iter {iteration + 1}"
+                            ),
+                        )
                         break
 
             # Update best adversarial examples

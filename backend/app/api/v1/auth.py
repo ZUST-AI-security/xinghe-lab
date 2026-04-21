@@ -1,5 +1,5 @@
 """
-Authentication API routes — register, login, token refresh, logout.
+Authentication API routes - register, login, token refresh, logout.
 """
 
 from datetime import timedelta
@@ -8,16 +8,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+from app.core.database import get_db
 from app.core.security import (
-    get_password_hash,
+    authenticate_user,
     create_access_token,
     create_refresh_token,
     get_current_user,
-    authenticate_user,
+    get_password_hash,
 )
-from app.core.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, Token
+from app.schemas.user import Token, UserCreate, UserResponse
 
 router = APIRouter()
 
@@ -26,9 +26,18 @@ router = APIRouter()
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user account."""
     if db.query(User).filter(User.username == user_data.username).first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户名已存在")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="用户名已存在",
+        )
     if db.query(User).filter(User.email == user_data.email).first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="邮箱已被注册")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="邮箱已被注册",
+        )
+
+    # A fresh deployment has no seeded credentials. The first user becomes admin.
+    is_first_user = db.query(User.id).first() is None
 
     db_user = User(
         username=user_data.username,
@@ -36,6 +45,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         full_name=getattr(user_data, "full_name", None),
         hashed_password=get_password_hash(user_data.password),
         is_active=True,
+        is_superuser=is_first_user,
+        role="admin" if is_first_user else "user",
     )
     db.add(db_user)
     db.commit()
@@ -57,7 +68,10 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户账号已被禁用")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="用户账号已被禁用",
+        )
 
     access_token = create_access_token(
         data={"sub": user.username},

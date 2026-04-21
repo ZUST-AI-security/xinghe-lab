@@ -1,196 +1,179 @@
-/**
- * 星河智安 (XingHe ZhiAn) - 主应用组件
- * AI安全攻击可视化平台的核心应用
- */
-
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout, Spin, message } from 'antd';
-import ErrorBoundary from './components/Common/ErrorBoundary';
+import { Navigate, Route, Routes } from 'react-router-dom';
+
+import CaptchaModal from './components/CaptchaModal';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import MainLayout from './components/Layout/MainLayout';
+import { setupAxiosInterceptors } from './api/client';
 import { useAuthStore } from './store/authStore';
 
-// 布局组件
-import MainLayout from './components/Layout/MainLayout';
-
-// 页面组件
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import Dashboard from './pages/Dashboard';
-import CWAttack from './pages/Attacks/CWAttack';
-import PGDAttack from './pages/Attacks/PGDAttack';
-import FGSMAttack from './pages/Attacks/FGSMAttack';
-import IFGSMAttack from './pages/Attacks/IFGSMAttack';
-import DeepFoolAttack from './pages/Attacks/DeepFoolAttack';
 import TaskHistory from './pages/Dashboard/TaskHistory';
-import CaptchaModal from './components/CaptchaModal';
-
-// 管理后台页面
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import UserManagement from './pages/Admin/UserManagement';
 import AttackHistory from './pages/Admin/AttackHistory';
 import SystemLogs from './pages/Admin/SystemLogs';
 import SystemConfig from './pages/Admin/SystemConfig';
+import CWAttack from './pages/Attacks/CWAttack';
+import PGDAttack from './pages/Attacks/PGDAttack';
+import FGSMAttack from './pages/Attacks/FGSMAttack';
+import IFGSMAttack from './pages/Attacks/IFGSMAttack';
+import DeepFoolAttack from './pages/Attacks/DeepFoolAttack';
+import CompareMode from './pages/Attacks/CompareMode';
 
-// API客户端
-import { setupAxiosInterceptors } from './api/client';
+const FullPageSpinner = () => (
+  <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+    <Spin size="large" />
+  </div>
+);
 
-const { Content } = Layout;
+const EmptyState = ({ title, description }) => (
+  <div
+    style={{
+      background: '#fff',
+      borderRadius: 20,
+      padding: 32,
+      border: '1px solid #e5e7eb',
+    }}
+  >
+    <h2 style={{ marginTop: 0 }}>{title}</h2>
+    <p style={{ marginBottom: 0, color: '#64748b' }}>{description}</p>
+  </div>
+);
 
 function App() {
   const { user, loading, checkAuth, isAuthenticated } = useAuthStore();
   const [captchaVisible, setCaptchaVisible] = useState(false);
 
-  // 应用初始化
   useEffect(() => {
-    console.log('🚀 App初始化，检查认证状态...');
-    // 设置Axios拦截器
     setupAxiosInterceptors();
-    
-    // 检查用户认证状态
     checkAuth();
-    
-    // 监听全局验证码事件
-    const handleCaptcha = (e) => {
-        setCaptchaVisible(true);
-    };
+    const handleCaptcha = () => setCaptchaVisible(true);
     window.addEventListener('showCaptcha', handleCaptcha);
     return () => window.removeEventListener('showCaptcha', handleCaptcha);
   }, [checkAuth]);
 
   const handleCaptchaVerify = ({ captcha_id, captcha_code }) => {
-      sessionStorage.setItem('captcha_id', captcha_id);
-      sessionStorage.setItem('captcha_code', captcha_code);
-      setCaptchaVisible(false);
-      // Let the user retry their action
-      message.success('验证成功，请重试刚才的操作');
+    sessionStorage.setItem('captcha_id', captcha_id);
+    sessionStorage.setItem('captcha_code', captcha_code);
+    setCaptchaVisible(false);
+    message.success('验证码通过，请重试刚才的操作。');
   };
 
-  // 显示加载状态
-  if (loading) {
-    console.log('⏳ 显示加载状态...');
-    return (
-      <div className="flex-center full-height">
-        <Spin size="large" />
-      </div>
-    );
-  }
-
-  console.log('📊 App状态:', { user: user?.username, isAuthenticated, loading });
-
-  // 受保护的路由组件
   const ProtectedRoute = ({ children }) => {
-    console.log('🛡️ ProtectedRoute检查:', { user: user?.username, isAuthenticated });
     if (!user || !isAuthenticated) {
-      console.log('🔄 重定向到登录页');
       return <Navigate to="/login" replace />;
     }
     return children;
   };
 
+  const AdminRoute = ({ children }) => {
+    if (!user || !isAuthenticated) {
+      return <Navigate to="/login" replace />;
+    }
+    if (user.role !== 'admin') {
+      return <Navigate to="/dashboard" replace />;
+    }
+    return children;
+  };
+
+  if (loading) {
+    return <FullPageSpinner />;
+  }
+
   return (
     <ErrorBoundary>
       <Layout className="app-layout">
-        <CaptchaModal 
-            open={captchaVisible} 
-            onVerify={handleCaptchaVerify} 
-            onCancel={() => setCaptchaVisible(false)} 
+        <CaptchaModal
+          open={captchaVisible}
+          onVerify={handleCaptchaVerify}
+          onCancel={() => setCaptchaVisible(false)}
         />
+
         <Routes>
-          {/* 公开路由 */}
-          <Route 
-            path="/login" 
-            element={
-              user && isAuthenticated ? <Navigate to="/" replace /> : <Login />
-            } 
+          <Route
+            path="/login"
+            element={user && isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
           />
-          <Route 
-            path="/register" 
-            element={
-              user && isAuthenticated ? <Navigate to="/" replace /> : <Register />
-            } 
+          <Route
+            path="/register"
+            element={user && isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />}
           />
 
-          {/* 受保护的路由 */}
-          <Route 
-            path="/*" 
-            element={
+          <Route
+            path="/*"
+            element={(
               <ProtectedRoute>
                 <MainLayout>
-                  <Content>
-                    <Routes>
-                      {/* 默认路由重定向到Dashboard */}
-                      <Route 
-                        path="/" 
-                        element={<Navigate to="/dashboard" replace />} 
-                      />
-                      
-                      {/* Dashboard主页 */}
-                      <Route 
-                        path="/dashboard" 
-                        element={<Dashboard />} 
-                      />
-                      
-                      {/* 历史记录界面 */}
-                      <Route 
-                        path="/tasks/history" 
-                        element={<TaskHistory />} 
-                      />
-                      
-                      {/* 攻击算法页面 */}
-                       <Route 
-                         path="/attacks/cw" 
-                         element={<CWAttack />} 
-                       />
-                       <Route
-                         path="/attacks/pgd"
-                         element={<PGDAttack />}
-                       />
-                       <Route
-                         path="/attacks/fgsm"
-                         element={<FGSMAttack />}
-                       />
-                       <Route
-                         path="/attacks/ifgsm"
-                         element={<IFGSMAttack />}
-                       />
-                       <Route
-                         path="/attacks/deepfool"
-                         element={<DeepFoolAttack />}
-                       />
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/tasks/history" element={<TaskHistory />} />
 
-                       {/* 管理后台页面 */}
-                       <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                       <Route path="/admin/users" element={<UserManagement />} />
-                       <Route path="/admin/attack-history" element={<AttackHistory />} />
-                       <Route path="/admin/logs" element={<SystemLogs />} />
-                       <Route path="/admin/config" element={<SystemConfig />} />
+                    <Route path="/attacks/fgsm" element={<FGSMAttack />} />
+                    <Route path="/attacks/ifgsm" element={<IFGSMAttack />} />
+                    <Route path="/attacks/pgd" element={<PGDAttack />} />
+                    <Route path="/attacks/cw" element={<CWAttack />} />
+                    <Route path="/attacks/deepfool" element={<DeepFoolAttack />} />
+                    <Route path="/attacks/compare" element={<CompareMode />} />
 
-                       {/* 其他攻击算法页面（预留） */}
-                      <Route 
-                        path="/attacks/*" 
-                        element={
-                          <div className="content-card">
-                            <h2>功能开发中</h2>
-                            <p>更多攻击算法正在开发中，敬请期待...</p>
-                          </div>
-                        } 
-                      />
-                      
-                      {/* 404页面 */}
-                      <Route 
-                        path="*" 
-                        element={
-                          <div className="content-card text-center">
-                            <h2>页面未找到</h2>
-                            <p>您访问的页面不存在</p>
-                          </div>
-                        } 
-                      />
-                    </Routes>
-                  </Content>
+                    <Route
+                      path="/admin/dashboard"
+                      element={(
+                        <AdminRoute>
+                          <AdminDashboard />
+                        </AdminRoute>
+                      )}
+                    />
+                    <Route
+                      path="/admin/users"
+                      element={(
+                        <AdminRoute>
+                          <UserManagement />
+                        </AdminRoute>
+                      )}
+                    />
+                    <Route
+                      path="/admin/attack-history"
+                      element={(
+                        <AdminRoute>
+                          <AttackHistory />
+                        </AdminRoute>
+                      )}
+                    />
+                    <Route
+                      path="/admin/logs"
+                      element={(
+                        <AdminRoute>
+                          <SystemLogs />
+                        </AdminRoute>
+                      )}
+                    />
+                    <Route
+                      path="/admin/config"
+                      element={(
+                        <AdminRoute>
+                          <SystemConfig />
+                        </AdminRoute>
+                      )}
+                    />
+
+                    <Route
+                      path="*"
+                      element={(
+                        <EmptyState
+                          title="页面未找到"
+                          description="当前地址没有对应内容，请从左侧导航重新进入。"
+                        />
+                      )}
+                    />
+                  </Routes>
                 </MainLayout>
               </ProtectedRoute>
-            } 
+            )}
           />
         </Routes>
       </Layout>
