@@ -38,7 +38,7 @@ const MainLayout = ({ children }) => {
     return collapsed ? 88 : 260;
   }, [collapsed, isMobile]);
 
-  const headerTitle = isAdmin ? '后台管理' : '实验工作台';
+  const headerTitle = isAdmin ? '星河智安' : '实验工作台';
   const headerSubtitle = isAdmin
     ? '统一查看任务、用户与系统状态'
     : '提交攻击任务、跟踪结果与发起对比实验';

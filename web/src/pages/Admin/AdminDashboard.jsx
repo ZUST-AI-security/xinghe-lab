@@ -25,7 +25,7 @@ const AdminDashboard = () => {
       <Card className="xh-page-banner" bordered={false}>
         <div className="xh-page-kicker">ADMIN CONSOLE</div>
         <Title level={2} className="xh-page-title">
-          后台管理概览
+          星河智安概览
         </Title>
         <Paragraph className="xh-page-desc">
           在这里集中查看用户规模、攻击任务状态和当前系统环境，方便快速排查异常并调整平台配置。

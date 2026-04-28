@@ -44,7 +44,7 @@ const buildMenuItems = (isAdmin) => {
     items.push({
       key: '/admin',
       icon: <SettingOutlined />,
-      label: '后台管理',
+      label: '系统管理',
       children: [
         { key: '/admin/dashboard', icon: <DashboardOutlined />, label: '系统概览' },
         { key: '/admin/users', icon: <TeamOutlined />, label: '用户管理' },
