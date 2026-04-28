@@ -8,12 +8,13 @@ import {
   Row,
   Select,
   Space,
+  Table,
   Tag,
   Typography,
   Upload,
   message,
 } from 'antd';
-import { PlayCircleOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { MinusCircleOutlined, PlayCircleOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 
 import { submitCWAttack, getAttackTaskStatus as getCWTaskStatus } from '../../api/attacks/cw';
 import { submitFGSMAttack, getAttackTaskStatus as getFGSMTaskStatus } from '../../api/attacks/fgsm';
@@ -126,8 +127,10 @@ const ResultPreview = ({ title, panel, image }) => (
 
 const CompareMode = () => {
   const [imageUrl, setImageUrl] = useState('');
-  const [leftPanel, setLeftPanel] = useState(initialPanelState('fgsm'));
-  const [rightPanel, setRightPanel] = useState(initialPanelState('cw'));
+  const [panels, setPanels] = useState([
+    initialPanelState('fgsm'),
+    initialPanelState('cw'),
+  ]);
   const intervalsRef = useRef([]);
 
   const clearPolling = () => {
@@ -145,15 +148,15 @@ const CompareMode = () => {
     }
   };
 
-  const updatePanel = (side, updater) => {
-    if (side === 'left') {
-      setLeftPanel((prev) => updater(prev));
-      return;
-    }
-    setRightPanel((prev) => updater(prev));
+  const updatePanel = (index, updater) => {
+    setPanels((prev) => {
+      const newPanels = [...prev];
+      newPanels[index] = updater(newPanels[index]);
+      return newPanels;
+    });
   };
 
-  const submitOne = async (side, panel) => {
+  const submitOne = async (index, panel) => {
     const { submit, poll } = algorithmConfig[panel.algorithm];
     const params = parseParams(panel);
     const response = await submit({
@@ -161,7 +164,7 @@ const CompareMode = () => {
       model_name: 'resnet100_imagenet',
       params,
     });
-    updatePanel(side, (prev) => ({
+    updatePanel(index, (prev) => ({
       ...prev,
       taskId: response.task_id,
       status: 'pending',
@@ -182,7 +185,7 @@ const CompareMode = () => {
                   : {},
             }
           : null;
-        updatePanel(side, (prev) => ({
+        updatePanel(index, (prev) => ({
           ...prev,
           status: task.status,
           progress: task.progress || (task.status === 'completed' ? 100 : prev.progress),
@@ -194,7 +197,7 @@ const CompareMode = () => {
         }
       } catch (error) {
         clearInterval(timer);
-        updatePanel(side, (prev) => ({
+        updatePanel(index, (prev) => ({
           ...prev,
           status: 'failed',
           message: error.message || '轮询失败',
@@ -212,11 +215,8 @@ const CompareMode = () => {
     }
     clearPolling();
     try {
-      await Promise.all([
-        submitOne('left', leftPanel),
-        submitOne('right', rightPanel),
-      ]);
-      message.success('双任务已提交，可以在同一页面等待结果对比');
+      await Promise.all(panels.map((panel, index) => submitOne(index, panel)));
+      message.success(`${panels.length} 个任务已提交，可以在同一页面等待结果对比`);
     } catch (error) {
       message.error(error.message || '任务提交失败');
     }
@@ -230,56 +230,83 @@ const CompareMode = () => {
   };
 
   const comparisonSummary = useMemo(() => {
-    if (!leftPanel.result || !rightPanel.result) {
+    if (panels.length === 0 || !panels.every((p) => p.result)) {
       return null;
     }
     return [
       {
         key: 'algorithm',
         label: '算法',
-        left: algorithmConfig[leftPanel.algorithm].label,
-        right: algorithmConfig[rightPanel.algorithm].label,
+        render: (panel) => algorithmConfig[panel.algorithm].label,
       },
       {
         key: 'success',
         label: '成功',
-        left: leftPanel.result.success ? '是' : '否',
-        right: rightPanel.result.success ? '是' : '否',
+        render: (panel) => (panel.result.success ? '是' : '否'),
       },
       {
         key: 'time',
         label: '耗时',
-        left: `${(leftPanel.result.time_elapsed || 0).toFixed(2)} s`,
-        right: `${(rightPanel.result.time_elapsed || 0).toFixed(2)} s`,
+        render: (panel) => `${(panel.result.time_elapsed || 0).toFixed(2)} s`,
       },
       {
         key: 'prediction',
         label: '对抗预测',
-        left: formatPrediction(leftPanel.result.metadata?.adversarial_prediction),
-        right: formatPrediction(rightPanel.result.metadata?.adversarial_prediction),
+        render: (panel) => formatPrediction(panel.result.metadata?.adversarial_prediction),
       },
     ];
-  }, [leftPanel, rightPanel]);
+  }, [panels]);
 
   const resetAll = () => {
     clearPolling();
     setImageUrl('');
-    setLeftPanel(initialPanelState('fgsm'));
-    setRightPanel(initialPanelState('cw'));
+    setPanels([initialPanelState('fgsm'), initialPanelState('cw')]);
   };
 
-  const renderConfigPanel = (title, panel, side) => (
-    <Card title={title} style={{ borderRadius: 18 }}>
+  const addPanel = () => {
+    const availableAlgorithms = Object.keys(algorithmConfig);
+    const usedAlgorithms = panels.map((p) => p.algorithm);
+    const nextAlgorithm = availableAlgorithms.find((algo) => !usedAlgorithms.includes(algo)) || availableAlgorithms[0];
+    setPanels((prev) => [...prev, initialPanelState(nextAlgorithm)]);
+  };
+
+  const removePanel = (index) => {
+    if (panels.length <= 1) {
+      message.warning('至少保留一个对比任务');
+      return;
+    }
+    clearPolling();
+    setPanels((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const renderConfigPanel = (title, panel, index) => (
+    <Card
+      title={title}
+      style={{ borderRadius: 18 }}
+      extra={
+        panels.length > 1 && (
+          <Button
+            type="text"
+            danger
+            icon={<MinusCircleOutlined />}
+            onClick={() => removePanel(index)}
+            size="small"
+          >
+            移除
+          </Button>
+        )
+      }
+    >
       <Space direction="vertical" size={12} style={{ width: '100%' }}>
         <Select
           value={panel.algorithm}
           options={Object.entries(algorithmConfig).map(([value, item]) => ({ value, label: item.label }))}
-          onChange={(value) => updatePanel(side, () => initialPanelState(value))}
+          onChange={(value) => updatePanel(index, () => initialPanelState(value))}
         />
         <Input.TextArea
           rows={10}
           value={panel.paramsText}
-          onChange={(event) => updatePanel(side, (prev) => ({ ...prev, paramsText: event.target.value }))}
+          onChange={(event) => updatePanel(index, (prev) => ({ ...prev, paramsText: event.target.value }))}
         />
       </Space>
     </Card>
@@ -290,15 +317,16 @@ const CompareMode = () => {
       <Card style={{ borderRadius: 20 }}>
         <Title level={3} style={{ marginTop: 0 }}>对比模式</Title>
         <Paragraph style={{ marginBottom: 12 }}>
-          同时提交两个攻击任务，在同一个界面查看进度和结果，方便比较不同算法或不同参数的输出。
+          同时提交多个攻击任务，在同一个界面查看进度和结果，方便比较不同算法或不同参数的输出。
         </Paragraph>
         <Space wrap>
           <Upload beforeUpload={handleUpload} showUploadList={false}>
             <Button icon={<UploadOutlined />}>上传图片</Button>
           </Upload>
           <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRun}>
-            同时提交两个任务
+            同时提交 {panels.length} 个任务
           </Button>
+          <Button icon={<PlusOutlined />} onClick={addPanel}>添加对比</Button>
           <Button icon={<ReloadOutlined />} onClick={resetAll}>重置</Button>
         </Space>
         {imageUrl && (
@@ -309,34 +337,41 @@ const CompareMode = () => {
       </Card>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24} xl={12}>{renderConfigPanel('左侧任务', leftPanel, 'left')}</Col>
-        <Col xs={24} xl={12}>{renderConfigPanel('右侧任务', rightPanel, 'right')}</Col>
+        {panels.map((panel, index) => (
+          <Col xs={24} xl={12} key={index}>
+            {renderConfigPanel(`任务 ${index + 1}`, panel, index)}
+          </Col>
+        ))}
       </Row>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24} xl={12}>
-          <ResultPreview title="左侧结果" panel={leftPanel} image={imageUrl} />
-        </Col>
-        <Col xs={24} xl={12}>
-          <ResultPreview title="右侧结果" panel={rightPanel} image={imageUrl} />
-        </Col>
+        {panels.map((panel, index) => (
+          <Col xs={24} xl={12} key={index}>
+            <ResultPreview title={`任务 ${index + 1} 结果`} panel={panel} image={imageUrl} />
+          </Col>
+        ))}
       </Row>
 
       {comparisonSummary && (
         <Card title="结果对比摘要" style={{ borderRadius: 20 }}>
-          <Row gutter={[16, 16]}>
-            {comparisonSummary.map((item) => (
-              <Col xs={24} md={12} key={item.key}>
-                <Card size="small">
-                  <Text type="secondary">{item.label}</Text>
-                  <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                    <Text strong>{item.left}</Text>
-                    <Text strong>{item.right}</Text>
-                  </div>
-                </Card>
-              </Col>
-            ))}
-          </Row>
+          <Table
+            dataSource={comparisonSummary}
+            pagination={false}
+            size="small"
+            columns={[
+              {
+                title: '指标',
+                dataIndex: 'label',
+                key: 'label',
+                width: 120,
+              },
+              ...panels.map((panel, index) => ({
+                title: algorithmConfig[panel.algorithm].label,
+                key: index,
+                render: (_, record) => record.render(panel),
+              })),
+            ]}
+          />
         </Card>
       )}
     </Space>
