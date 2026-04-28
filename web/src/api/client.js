@@ -4,7 +4,18 @@
  */
 
 import axios from 'axios';
-import { message } from 'antd';
+import { App } from 'antd';
+
+// 全局 message 实例
+let globalMessage = null;
+
+export const setGlobalMessage = (messageInstance) => {
+  globalMessage = messageInstance;
+};
+
+const getMessage = () => {
+  return globalMessage || { error: console.error, success: console.log, warning: console.warn };
+};
 
 // API基础配置
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -126,39 +137,40 @@ apiClient.interceptors.response.use(
     // 处理其他HTTP错误
     if (error.response) {
       const { status, data } = error.response;
+      const msg = getMessage();
       
       switch (status) {
         case 400:
-          message.error(data.detail || '请求参数错误');
+          msg.error(data.detail || '请求参数错误');
           break;
         case 401:
-          message.error('认证失败，请重新登录');
+          msg.error('认证失败，请重新登录');
           break;
         case 403:
-          message.error('权限不足');
+          msg.error('权限不足');
           break;
         case 404:
-          message.error('请求的资源不存在');
+          msg.error('请求的资源不存在');
           break;
         case 429:
           if (data.require_captcha) {
             window.dispatchEvent(new CustomEvent('showCaptcha', { detail: { originalRequest }}));
           } else {
-            message.error('请求过于频繁，请稍后再试');
+            msg.error('请求过于频繁，请稍后再试');
           }
           break;
         case 500:
-          message.error('服务器内部错误');
+          msg.error('服务器内部错误');
           break;
         default:
-          message.error(data.detail || `请求失败 (${status})`);
+          msg.error(data.detail || `请求失败 (${status})`);
       }
     } else if (error.request) {
       // 网络错误
-      message.error('网络连接失败，请检查网络设置');
+      getMessage().error('网络连接失败，请检查网络设置');
     } else {
       // 其他错误
-      message.error('请求配置错误');
+      getMessage().error('请求配置错误');
     }
 
     return Promise.reject(error);

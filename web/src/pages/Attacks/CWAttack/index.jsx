@@ -14,11 +14,11 @@ import {
   Alert,
   Progress,
   Spin,
-  message,
   Tooltip,
   Badge,
   Tag,
   Switch,
+  App,
 } from 'antd';
 import {
   PlayCircleOutlined,
@@ -49,6 +49,7 @@ const DEFAULT_CW_PARAMS = {
 };
 
 const CWAttack = () => {
+  const { message } = App.useApp();
   const [imageUrl, setImageUrl] = useState(null);
   const [advancedMode, setAdvancedMode] = useState(false);
   const [useAsync, setUseAsync] = useState(true);

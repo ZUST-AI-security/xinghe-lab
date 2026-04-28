@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, message, Divider } from 'antd';
+import { Form, Input, Button, Card, Divider, App } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, UserAddOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -14,6 +14,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const { register } = useAuthStore();
   const navigate = useNavigate();
+  const { message } = App.useApp();
 
   // 处理注册
   const handleRegister = async (values) => {

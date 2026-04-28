@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Modal, Input, message, Spin } from 'antd';
+import { Modal, Input, Spin, App } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { api } from '../api/client';
 
 const CaptchaModal = ({ open, onVerify, onCancel }) => {
+    const { message } = App.useApp();
     const [captchaId, setCaptchaId] = useState('');
     const [captchaImage, setCaptchaImage] = useState('');
     const [code, setCode] = useState('');

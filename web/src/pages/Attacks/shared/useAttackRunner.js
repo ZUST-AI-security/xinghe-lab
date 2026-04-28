@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { message } from 'antd';
+import { App } from 'antd';
 
 const COMPLETED_STATUS = 'completed';
 const FAILED_STATUS = 'failed';
@@ -31,6 +31,7 @@ export const useAttackRunner = ({
   searchClassesApi,
   historyStorageKey,
 }) => {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);

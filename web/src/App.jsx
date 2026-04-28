@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Layout, Spin, message } from 'antd';
+import { Layout, Spin, App as AntApp } from 'antd';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import CaptchaModal from './components/CaptchaModal';
-import ErrorBoundary from './components/common/ErrorBoundary';
+import ErrorBoundary from './components/Common/ErrorBoundary';
 import MainLayout from './components/Layout/MainLayout';
-import { setupAxiosInterceptors } from './api/client';
+import { setupAxiosInterceptors, setGlobalMessage } from './api/client';
 import { useAuthStore } from './store/authStore';
 
 import Login from './pages/Auth/Login';
@@ -47,14 +47,16 @@ const EmptyState = ({ title, description }) => (
 function App() {
   const { user, loading, checkAuth, isAuthenticated } = useAuthStore();
   const [captchaVisible, setCaptchaVisible] = useState(false);
+  const { message } = AntApp.useApp();
 
   useEffect(() => {
+    setGlobalMessage(message);
     setupAxiosInterceptors();
     checkAuth();
     const handleCaptcha = () => setCaptchaVisible(true);
     window.addEventListener('showCaptcha', handleCaptcha);
     return () => window.removeEventListener('showCaptcha', handleCaptcha);
-  }, [checkAuth]);
+  }, [checkAuth, message]);
 
   const handleCaptchaVerify = ({ captcha_id, captcha_code }) => {
     sessionStorage.setItem('captcha_id', captcha_id);

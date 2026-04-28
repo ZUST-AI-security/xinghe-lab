@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Upload, message, Image, Button } from 'antd';
+import { Upload, Image, Button, App } from 'antd';
 import { InboxOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { getBase64FromFile } from '../../utils/formatters';
 
@@ -19,6 +19,7 @@ const ImageUploader = ({
   showPreview = true,
   disabled = false,
 }) => {
+  const { message } = App.useApp();
   const [previewImage, setPreviewImage] = useState(null);
   const [previewVisible, setPreviewVisible] = useState(false);
 
@@ -54,7 +55,7 @@ const ImageUploader = ({
       message.error('图片处理失败');
       return false;
     }
-  }, [maxSize, onChange, showPreview]);
+  }, [maxSize, onChange, showPreview, message]);
 
   // 清除图片
   const handleClear = () => {

@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, message, Divider, Space } from 'antd';
+import { Form, Input, Button, Card, Divider, Space, App } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -14,6 +14,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuthStore();
   const navigate = useNavigate();
+  const { message } = App.useApp();
 
   // 处理登录
   const handleLogin = async (values) => {

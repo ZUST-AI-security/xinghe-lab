@@ -11,6 +11,7 @@ Configuration notes (for low-spec servers):
     worker_prefetch_multiplier=1  — don't prefetch, dispatch one task at a time
 """
 
+from datetime import datetime, timezone
 import time
 import logging
 from typing import Any, Dict
@@ -208,7 +209,7 @@ def run_attack(
         record_result.pop("heatmap", None)
         task_record.result = record_result
         from sqlalchemy.sql import func
-        task_record.completed_at = func.now()
+        task_record.completed_at = datetime.now(timezone.utc)
         db.add(
             AttackHistory(
                 user_id=user_id,

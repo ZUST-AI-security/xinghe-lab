@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Card, Input, Select, Space, Typography, message, Tag } from 'antd';
+import { Button, Card, Input, Select, Space, Typography, Tag, App } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { getSystemLogs } from '../../api/admin';
 
 const { Title, Text } = Typography;
 
 const SystemLogs = () => {
+  const { message } = App.useApp();
   const [lines, setLines] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);

@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Slider, InputNumber, Row, Col, Tooltip, Typography } from 'antd';
+import { Slider, InputNumber, Row, Col, Tooltip, Typography, Space } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -77,16 +77,22 @@ const ParameterSlider = ({
           </Text>
         </Col>
         <Col>
-          <InputNumber
-            value={value}
-            onChange={onChange}
-            min={range.min}
-            max={range.max}
-            step={step}
-            disabled={disabled}
-            style={{ width: 120 }}
-            addonAfter={unit}
-          />
+          <Space.Compact style={{ width: 120 }}>
+            <InputNumber
+              value={value}
+              onChange={onChange}
+              min={range.min}
+              max={range.max}
+              step={step}
+              disabled={disabled}
+              style={{ width: 80 }}
+            />
+            <InputNumber
+              value={unit}
+              disabled
+              style={{ width: 40, textAlign: 'center', borderLeft: 'none', backgroundColor: '#f5f5f5' }}
+            />
+          </Space.Compact>
         </Col>
       </Row>
       

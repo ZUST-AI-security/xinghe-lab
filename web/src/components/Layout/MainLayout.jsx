@@ -65,7 +65,7 @@ const MainLayout = ({ children }) => {
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
           closable={false}
-          bodyStyle={{ padding: 0 }}
+          styles={{ body: { padding: 0 } }}
         >
           <SideMenu mobile onNavigate={() => setDrawerOpen(false)} />
         </Drawer>

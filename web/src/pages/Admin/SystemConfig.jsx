@@ -5,7 +5,7 @@ import {
   Input,
   Table,
   Typography,
-  message,
+  App,
 } from 'antd';
 import { PlusOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
 
@@ -14,6 +14,7 @@ import { getSystemConfig, updateSystemConfig } from '../../api/admin';
 const { Title, Paragraph, Text } = Typography;
 
 const SystemConfig = () => {
+  const { message } = App.useApp();
   const [configs, setConfigs] = useState({});
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState({});

@@ -8,7 +8,9 @@ import { api } from './client';
 // 用户登录
 export const login = async (credentials) => {
   // 后端使用OAuth2PasswordRequestForm，需要表单数据
-  const formData = `username=${encodeURIComponent(credentials.username)}&password=${encodeURIComponent(credentials.password)}`;
+  const formData = new URLSearchParams();
+  formData.append('username', credentials.username);
+  formData.append('password', credentials.password);
   
   console.log('🔐 发送登录请求:', credentials);
   const response = await api.post('/auth/login', formData, {

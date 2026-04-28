@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     secret_key: str = "your-secret-key-here-change-in-production"
     
     # 数据库配置
-    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/xinghelab"
+    database_url: str = "sqlite:///./xinghe_zhi_an.db"
     
     # JWT配置
     jwt_secret_key: str = "your-jwt-secret-key-here"

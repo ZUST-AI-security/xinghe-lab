@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Upload, message, Image, Progress, Typography } from 'antd';
+import { Upload, Image, Progress, Typography, App } from 'antd';
 import { InboxOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const { Dragger } = Upload;
@@ -32,6 +32,7 @@ const ImageUploader = ({
   acceptTypes = ['image/jpeg', 'image/png', 'image/webp'],
   placeholder = '点击或拖拽图片到此区域上传'
 }) => {
+  const { message } = App.useApp();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -53,7 +54,7 @@ const ImageUploader = ({
     }
 
     return true;
-  }, [acceptTypes, maxSize]);
+  }, [acceptTypes, maxSize, message]);
 
   // 生成预览URL
   const generatePreview = (file) => {
