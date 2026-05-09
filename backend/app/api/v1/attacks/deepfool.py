@@ -50,6 +50,7 @@ def _get_or_load_model(model_name: str):
 @router.post("/run", response_model=DeepFoolAttackResponse, summary="同步执行 DeepFool 攻击")
 async def run_deepfool_sync(
     request: DeepFoolAttackRequest,
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """同步执行 DeepFool 最小 L2 扰动攻击。"""

@@ -53,6 +53,7 @@ def _get_or_load_model(model_name: str):
 @router.post("/run", response_model=CWAttackResponse)
 async def run_cw_sync(
     request: CWAttackRequest,
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """

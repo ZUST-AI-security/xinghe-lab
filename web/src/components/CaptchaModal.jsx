@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Input, Spin, App } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import { api } from '../api/client';
+import { getCaptcha } from '../api/captcha';
 
 const CaptchaModal = ({ open, onVerify, onCancel }) => {
     const { message } = App.useApp();
@@ -13,9 +13,9 @@ const CaptchaModal = ({ open, onVerify, onCancel }) => {
     const loadCaptcha = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/api/v1/captcha/');
-            setCaptchaId(res.data.captcha_id);
-            setCaptchaImage(res.data.image);
+            const data = await getCaptcha();
+            setCaptchaId(data.captcha_id);
+            setCaptchaImage(data.image);
         } catch (error) {
             message.error("获取验证码失败");
         } finally {

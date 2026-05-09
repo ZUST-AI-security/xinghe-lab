@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import PropTypes from 'prop-types';
 import {
   Avatar,
   Button,
@@ -173,10 +172,6 @@ const MainLayout = ({ children }) => {
       </Layout>
     </Layout>
   );
-};
-
-MainLayout.propTypes = {
-  children: PropTypes.node.isRequired,
 };
 
 export default MainLayout;

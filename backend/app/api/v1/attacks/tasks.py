@@ -8,8 +8,9 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
-from app.core.database import SessionLocal
+from app.core.database import get_db
 from app.core.security import get_current_active_user
 from app.models.attack_history import AttackHistory
 from app.models.task_record import TaskRecord
@@ -64,96 +65,92 @@ async def get_task_history(
     algorithm: str = Query("", description="Filter by algorithm name"),
     status: str = Query("", description="Filter by task status"),
     current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Get attack task history for the current user."""
-    db = SessionLocal()
-    try:
-        query = db.query(TaskRecord).filter(TaskRecord.user_id == current_user.id)
-        if algorithm:
-            query = query.filter(TaskRecord.algorithm_name == algorithm)
-        if status == "completed":
-            query = query.filter(TaskRecord.status.in_(("completed", "success")))
-        elif status:
-            query = query.filter(TaskRecord.status == status)
+    query = db.query(TaskRecord).filter(TaskRecord.user_id == current_user.id)
+    if algorithm:
+        query = query.filter(TaskRecord.algorithm_name == algorithm)
+    if status == "completed":
+        query = query.filter(TaskRecord.status.in_(("completed", "success")))
+    elif status:
+        query = query.filter(TaskRecord.status == status)
 
-        total = query.count()
-        pages = (total + size - 1) // size if total else 0
-        records = (
-            query.order_by(TaskRecord.created_at.desc(), TaskRecord.id.desc())
-            .offset((page - 1) * size)
-            .limit(size)
-            .all()
-        )
+    total = query.count()
+    pages = (total + size - 1) // size if total else 0
+    records = (
+        query.order_by(TaskRecord.created_at.desc(), TaskRecord.id.desc())
+        .offset((page - 1) * size)
+        .limit(size)
+        .all()
+    )
 
-        items: list[TaskHistoryItem] = []
-        for record in records:
-            result = record.result if isinstance(record.result, dict) else None
-            metadata = result.get("metadata", {}) if result else {}
-            items.append(
-                TaskHistoryItem(
-                    id=record.id,
-                    task_id=result.get("task_id") if result else None,
-                    algorithm_name=record.algorithm_name,
-                    model_name=metadata.get("model_name"),
-                    status=record.status,
-                    success=result.get("success") if result else None,
-                    success_rate=metadata.get("success_rate"),
-                    execution_time=result.get("time_elapsed") if result else None,
-                    created_at=_to_iso(record.created_at),
-                    completed_at=_to_iso(record.completed_at),
-                    result=result,
-                    error=(result or {}).get("error"),
-                )
+    items: list[TaskHistoryItem] = []
+    for record in records:
+        result = record.result if isinstance(record.result, dict) else None
+        metadata = result.get("metadata", {}) if result else {}
+        items.append(
+            TaskHistoryItem(
+                id=record.id,
+                task_id=result.get("task_id") if result else None,
+                algorithm_name=record.algorithm_name,
+                model_name=metadata.get("model_name"),
+                status=record.status,
+                success=result.get("success") if result else None,
+                success_rate=metadata.get("success_rate"),
+                execution_time=result.get("time_elapsed") if result else None,
+                created_at=_to_iso(record.created_at),
+                completed_at=_to_iso(record.completed_at),
+                result=result,
+                error=(result or {}).get("error"),
             )
-
-        return TaskHistoryResponse(
-            items=items,
-            total=total,
-            page=page,
-            size=size,
-            pages=pages,
         )
-    finally:
-        db.close()
+
+    return TaskHistoryResponse(
+        items=items,
+        total=total,
+        page=page,
+        size=size,
+        pages=pages,
+    )
 
 
 @router.get("/stats")
-async def get_task_stats(current_user: User = Depends(get_current_active_user)):
+async def get_task_stats(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     """Get aggregated attack history statistics for the current user."""
-    db = SessionLocal()
-    try:
-        history_query = db.query(AttackHistory).filter(AttackHistory.user_id == current_user.id)
-        total_attacks = history_query.count()
-        successful_attacks = history_query.filter(AttackHistory.success.is_(True)).count()
-        avg_time = history_query.with_entities(AttackHistory.execution_time).all()
-        latest = history_query.order_by(AttackHistory.created_at.desc()).first()
+    history_query = db.query(AttackHistory).filter(AttackHistory.user_id == current_user.id)
+    total_attacks = history_query.count()
+    successful_attacks = history_query.filter(AttackHistory.success.is_(True)).count()
+    avg_time = history_query.with_entities(AttackHistory.execution_time).all()
+    latest = history_query.order_by(AttackHistory.created_at.desc()).first()
 
-        algorithm_rows = (
-            history_query.with_entities(
-                AttackHistory.algorithm,
-                AttackHistory.success,
-            )
-            .all()
+    algorithm_rows = (
+        history_query.with_entities(
+            AttackHistory.algorithm,
+            AttackHistory.success,
         )
-        by_algorithm: dict[str, dict[str, int]] = {}
-        for algorithm_name, success in algorithm_rows:
-            item = by_algorithm.setdefault(algorithm_name, {"total": 0, "successful": 0})
-            item["total"] += 1
-            if success:
-                item["successful"] += 1
+        .all()
+    )
+    by_algorithm: dict[str, dict[str, int]] = {}
+    for algorithm_name, success in algorithm_rows:
+        item = by_algorithm.setdefault(algorithm_name, {"total": 0, "successful": 0})
+        item["total"] += 1
+        if success:
+            item["successful"] += 1
 
-        execution_times = [row[0] for row in avg_time if row[0] is not None]
-        return {
-            "total_attacks": total_attacks,
-            "successful_attacks": successful_attacks,
-            "failed_attacks": total_attacks - successful_attacks,
-            "success_rate": successful_attacks / total_attacks if total_attacks else 0,
-            "avg_time_elapsed": sum(execution_times) / len(execution_times) if execution_times else 0,
-            "last_attack_time": _to_iso(latest.created_at if latest else None),
-            "by_algorithm": by_algorithm,
-        }
-    finally:
-        db.close()
+    execution_times = [row[0] for row in avg_time if row[0] is not None]
+    return {
+        "total_attacks": total_attacks,
+        "successful_attacks": successful_attacks,
+        "failed_attacks": total_attacks - successful_attacks,
+        "success_rate": successful_attacks / total_attacks if total_attacks else 0,
+        "avg_time_elapsed": sum(execution_times) / len(execution_times) if execution_times else 0,
+        "last_attack_time": _to_iso(latest.created_at if latest else None),
+        "by_algorithm": by_algorithm,
+    }
 
 
 @router.get("/{task_id}", response_model=TaskStatusResponse)

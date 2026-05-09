@@ -7,7 +7,7 @@ Lists models from the ml_models registry without loading weights.
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.security import get_current_user
+from app.core.security import get_current_active_user
 from app.models.user import User
 
 router = APIRouter()
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/")
-async def list_models():
+async def list_models(current_user: User = Depends(get_current_active_user)):
     """List all registered models with their metadata (no weight loading)."""
     try:
         from app.ml_models.registry import list_all
@@ -27,7 +27,7 @@ async def list_models():
 
 
 @router.get("/stats")
-async def get_model_stats(current_user: User = Depends(get_current_user)):
+async def get_model_stats(current_user: User = Depends(get_current_active_user)):
     """Model registry statistics (authenticated)."""
     try:
         from app.ml_models.registry import list_all
@@ -47,7 +47,7 @@ async def get_model_stats(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/{model_name}")
-async def get_model_info(model_name: str):
+async def get_model_info(model_name: str, current_user: User = Depends(get_current_active_user)):
     """Get metadata for a specific model by id."""
     try:
         from app.ml_models.registry import list_all

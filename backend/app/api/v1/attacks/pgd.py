@@ -53,6 +53,7 @@ def _get_or_load_model(model_name: str):
 @router.post("/run", response_model=PGDAttackResponse)
 async def run_pgd_sync(
     request: PGDAttackRequest,
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """

@@ -53,6 +53,7 @@ def _get_or_load_model(model_name: str):
 @router.post("/run", response_model=FGSMAttackResponse)
 async def run_fgsm_sync(
     request: FGSMAttackRequest,
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """

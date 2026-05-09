@@ -24,9 +24,7 @@ export const getSystemConfig = async () => {
 };
 
 export const updateSystemConfig = async (key, value, description = '') => {
-  const res = await api.put(`/admin/config/${key}`, null, {
-    params: { value, description },
-  });
+  const res = await api.put(`/admin/config/${key}`, { value, description });
   return res.data;
 };
 
@@ -58,9 +56,13 @@ export const updateUser = async (
     bio = '',
   } = {}
 ) => {
-  const res = await api.put(`/admin/users/${userId}`, null, {
-    params: { email, full_name, role, is_active, bio },
-  });
+  const body = {};
+  if (email) body.email = email;
+  if (full_name) body.full_name = full_name;
+  if (role) body.role = role;
+  if (is_active !== '') body.is_active = is_active === 'true' || is_active === true;
+  if (bio) body.bio = bio;
+  const res = await api.put(`/admin/users/${userId}`, body);
   return res.data;
 };
 

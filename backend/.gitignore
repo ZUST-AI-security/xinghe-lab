@@ -27,3 +27,11 @@ xinghe_zhi_an.db
 
 # Environment
 .env
+
+# Celery beat schedule
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal
+
+# Screenshots / docs images
+*.png

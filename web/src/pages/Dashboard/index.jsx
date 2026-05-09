@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Col, List, Row, Space, Statistic, Tag, Typography } from 'antd';
+import { App, Card, Col, List, Row, Space, Statistic, Tag, Typography } from 'antd';
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -15,6 +15,7 @@ const { Title, Paragraph, Text } = Typography;
 
 const Dashboard = () => {
   const user = useAuthStore((state) => state.user);
+  const { message } = App.useApp();
   const [stats, setStats] = useState(null);
   const [history, setHistory] = useState([]);
 
@@ -28,6 +29,7 @@ const Dashboard = () => {
         setStats(statsData);
         setHistory(historyData.items || []);
       } catch {
+        message.error('加载仪表盘数据失败');
         setStats({
           total_attacks: 0,
           successful_attacks: 0,

@@ -7,21 +7,18 @@ import { api } from './client';
 
 // 用户登录
 export const login = async (credentials) => {
-  // 后端现在使用JSON格式，包含验证码
-  const loginData = {
-    username: credentials.username,
-    password: credentials.password,
-  };
-
-  // 如果提供了验证码，添加到请求数据
-  if (credentials.captcha_id && credentials.captcha_code) {
-    loginData.captcha_id = credentials.captcha_id;
-    loginData.captcha_code = credentials.captcha_code;
-  }
-
-  console.log('🔐 发送登录请求:', loginData);
-  const response = await api.post('/auth/login', loginData);
-
+  // 后端使用OAuth2PasswordRequestForm，需要表单数据
+  const formData = new URLSearchParams();
+  formData.append('username', credentials.username);
+  formData.append('password', credentials.password);
+  
+  console.log('🔐 发送登录请求:', credentials);
+  const response = await api.post('/auth/login', formData, {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  });
+  
   console.log('✅ 登录响应:', response.data);
   return response.data;
 };

@@ -17,6 +17,7 @@ from app.core.system_config import DEFAULT_SYSTEM_CONFIGS, ensure_default_system
 from app.models.attack_history import AttackHistory
 from app.models.system_config import SystemConfig
 from app.models.user import User
+from app.schemas.admin import AdminUpdateUserRequest, UpdateConfigRequest
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -132,21 +133,20 @@ async def get_system_config(
 @router.put("/config/{key}", summary="Update system config")
 async def update_system_config(
     key: str,
-    value: str,
-    description: str = "",
+    data: UpdateConfigRequest,
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
     config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
     if config:
-        config.value = value
-        if description:
-            config.description = description
+        config.value = data.value
+        if data.description:
+            config.description = data.description
     else:
-        config = SystemConfig(key=key, value=value, description=description)
+        config = SystemConfig(key=key, value=data.value, description=data.description)
         db.add(config)
     db.commit()
-    return {"key": key, "value": value, "description": config.description}
+    return {"key": key, "value": data.value, "description": config.description}
 
 
 @router.get("/logs", summary="Get system logs")
@@ -228,11 +228,7 @@ async def list_users(
 @router.put("/users/{user_id}", summary="Update user")
 async def update_user(
     user_id: int,
-    email: str | None = Query(None),
-    full_name: str | None = Query(None),
-    role: str | None = Query(None),
-    is_active: str | None = Query(None),
-    bio: str | None = Query(None),
+    data: AdminUpdateUserRequest,
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
@@ -241,25 +237,25 @@ async def update_user(
         raise HTTPException(status_code=404, detail="用户不存在")
 
     if user.id == admin_user.id:
-        if is_active == "false":
+        if data.is_active is False:
             raise HTTPException(status_code=400, detail="不能禁用自己")
-        if role and role != "admin":
+        if data.role and data.role != "admin":
             raise HTTPException(status_code=400, detail="不能移除自己的管理员权限")
 
-    if email is not None:
-        normalized_email = email.strip()
+    if data.email is not None:
+        normalized_email = data.email.strip()
         if not normalized_email:
             raise HTTPException(status_code=400, detail="邮箱不能为空")
         user.email = normalized_email
-    if full_name is not None:
-        user.full_name = full_name.strip() or None
-    if role:
-        user.role = role
-        user.is_superuser = role == "admin"
-    if is_active in {"true", "false"}:
-        user.is_active = is_active == "true"
-    if bio is not None:
-        user.bio = bio.strip() or None
+    if data.full_name is not None:
+        user.full_name = data.full_name.strip() or None
+    if data.role:
+        user.role = data.role
+        user.is_superuser = data.role == "admin"
+    if data.is_active is not None:
+        user.is_active = data.is_active
+    if data.bio is not None:
+        user.bio = data.bio.strip() or None
 
     db.commit()
     db.refresh(user)
@@ -303,7 +299,7 @@ async def reset_user_password(
         raise HTTPException(status_code=404, detail="用户不存在")
     user.hashed_password = get_password_hash("Abc12345")
     db.commit()
-    return {"message": "密码已重置为 Abc12345"}
+    return {"message": "密码已重置，请通知用户使用默认密码登录后修改密码"}
 
 
 @router.delete("/users/{user_id}", summary="Delete user")

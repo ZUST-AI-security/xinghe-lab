@@ -7,7 +7,7 @@ To add a new algorithm:
 """
 
 from fastapi import APIRouter, Depends
-from app.api.v1.attacks import fgsm, cw, pgd, ifgsm, deepfool, tasks
+from app.api.v1.attacks import fgsm, cw, pgd, ifgsm, deepfool
 import app.algorithms  # side-effect: registers all algorithms
 from app.core.rate_limit import rate_limiter_dependency
 
@@ -17,4 +17,3 @@ router.include_router(cw.router)
 router.include_router(pgd.router)
 router.include_router(ifgsm.router)
 router.include_router(deepfool.router)
-router.include_router(tasks.router)

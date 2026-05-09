@@ -81,10 +81,18 @@ app = FastAPI(
 if settings.is_development:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 
 os.makedirs("outputs", exist_ok=True)
@@ -114,11 +122,13 @@ app.add_exception_handler(Exception, general_exception_handler)
 
 from app.api.v1 import admin, auth, captcha, models, users  # noqa: E402
 from app.api.v1.attacks import router as attacks_router  # noqa: E402
+from app.api.v1.attacks.tasks import router as tasks_router  # noqa: E402
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["用户管理"])
 app.include_router(models.router, prefix="/api/v1/models", tags=["模型管理"])
 app.include_router(attacks_router, prefix="/api/v1/attacks", tags=["攻击算法"])
+app.include_router(tasks_router, prefix="/api/v1/attacks", tags=["任务管理"])
 app.include_router(captcha.router, prefix="/api/v1/captcha", tags=["验证码"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["系统管理"])
 

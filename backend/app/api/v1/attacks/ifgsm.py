@@ -50,6 +50,7 @@ def _get_or_load_model(model_name: str):
 @router.post("/run", response_model=IFGSMAttackResponse, summary="同步执行 I-FGSM 攻击")
 async def run_ifgsm_sync(
     request: IFGSMAttackRequest,
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """同步执行 I-FGSM 迭代对抗攻击，适合快速演示。长任务请使用 /submit。"""
