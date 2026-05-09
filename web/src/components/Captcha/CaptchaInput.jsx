@@ -8,7 +8,7 @@ import { Input, Space, message } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { getCaptcha } from '../../api/captcha';
 
-const CaptchaInput = ({ value, onChange, placeholder = '验证码' }) => {
+const CaptchaInput = ({ value, onChange, onCaptchaIdChange, placeholder = '验证码' }) => {
   const [captchaId, setCaptchaId] = useState('');
   const [captchaImage, setCaptchaImage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,8 +18,15 @@ const CaptchaInput = ({ value, onChange, placeholder = '验证码' }) => {
     setLoading(true);
     try {
       const response = await getCaptcha();
-      setCaptchaId(response.captcha_id);
+      const newCaptchaId = response.captcha_id;
+      setCaptchaId(newCaptchaId);
       setCaptchaImage(response.image);
+
+      // 通知父组件验证码ID变化
+      if (onCaptchaIdChange) {
+        onCaptchaIdChange(newCaptchaId);
+      }
+
       // 清空输入
       if (onChange) {
         onChange('');

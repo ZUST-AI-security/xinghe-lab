@@ -193,7 +193,7 @@ const Register = () => {
           >
             <CaptchaInput
               placeholder="验证码"
-              onChange={handleCaptchaChange}
+              onCaptchaIdChange={handleCaptchaChange}
             />
           </Form.Item>
 
