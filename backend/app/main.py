@@ -92,10 +92,20 @@ app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 
 
 @app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
+async def add_security_headers(request: Request, call_next):
     start = time.time()
     response = await call_next(request)
     response.headers["X-Process-Time"] = f"{time.time() - start:.4f}"
+
+    # 添加安全头部
+    if settings.is_production:
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+
     return response
 
 

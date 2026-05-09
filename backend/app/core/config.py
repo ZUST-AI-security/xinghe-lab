@@ -3,7 +3,7 @@
 使用Pydantic Settings进行配置管理，支持环境变量覆盖
 """
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode
 from typing import Annotated, List, Optional
 import os
@@ -25,17 +25,17 @@ class Settings(BaseSettings):
     # 应用基础配置
     app_name: str = "星河智安 AI安全攻击可视化平台"
     app_version: str = "1.0.0"
-    debug: bool = True
-    secret_key: str = "your-secret-key-here-change-in-production"
+    debug: bool = False  # 生产环境必须关闭debug
+    secret_key: str = ""  # 必须通过环境变量设置
     
     # 数据库配置
     database_url: str = "sqlite:///./xinghe_zhi_an.db"
     
     # JWT配置
-    jwt_secret_key: str = "your-jwt-secret-key-here"
+    jwt_secret_key: str = ""  # 必须通过环境变量设置
     jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 30
-    jwt_refresh_token_expire_days: int = 7
+    jwt_access_token_expire_minutes: int = 15  # 缩短访问token有效期
+    jwt_refresh_token_expire_days: int = 3  # 缩短刷新token有效期
     
     # Redis配置
     redis_url: str = "redis://localhost:6379/0"
@@ -61,16 +61,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_file: str = "./logs/app.log"
     
-    # CORS配置（开发模式）
-    cors_origins: List[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:40747",
-    ]
+    # CORS配置（生产环境需要限制为实际域名）
+    cors_origins: List[str] = []  # 生产环境必须通过环境变量设置
     
     # 安全配置
     password_min_length: int = 8
@@ -86,6 +78,19 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @model_validator(mode="after")
+    def validate_security_config(self):
+        """验证安全配置"""
+        if not self.debug:
+            # 生产环境必须设置的安全配置
+            if not self.secret_key:
+                raise ValueError("生产环境必须设置SECRET_KEY环境变量")
+            if not self.jwt_secret_key:
+                raise ValueError("生产环境必须设置JWT_SECRET_KEY环境变量")
+            if not self.cors_origins:
+                raise ValueError("生产环境必须设置CORS_ORIGINS环境变量")
+        return self
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
