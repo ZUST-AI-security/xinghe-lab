@@ -71,7 +71,7 @@ def run_attack(
         user_id:    requesting user id (for logging / history)
     """
     start = time.time()
-    
+
     # Initialize DB session for TaskRecord
     db = SessionLocal()
     task_record = TaskRecord(
@@ -83,6 +83,15 @@ def run_attack(
     db.add(task_record)
     db.commit()
     db.refresh(task_record)
+
+    # Redis pause check
+    import redis
+    from app.core.config import settings
+    r = redis.from_url(settings.redis_url)
+
+    def check_paused():
+        """Check if task is paused via Redis flag."""
+        return r.exists(f"pause:{self.request.id}")
     
     try:
         self.update_state(state="PROGRESS", meta={"progress": 0, "status": "Initializing..."})
@@ -110,6 +119,20 @@ def run_attack(
         algo = algo_cls()
 
         def report_progress(progress: int, status_text: str):
+            # Check for pause before updating progress
+            if check_paused():
+                self.update_state(
+                    state="PROGRESS",
+                    meta={"progress": int(progress), "status": "Paused by user"},
+                )
+                # Wait while paused
+                while check_paused():
+                    time.sleep(1)
+                    # Update heartbeat to prevent task timeout
+                    self.update_state(
+                        state="PROGRESS",
+                        meta={"progress": int(progress), "status": "Paused by user"},
+                    )
             self.update_state(
                 state="PROGRESS",
                 meta={"progress": int(progress), "status": status_text},

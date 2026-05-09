@@ -1,4 +1,5 @@
 import { api } from '../client';
+import { pauseTask as pauseTaskApi, resumeTask as resumeTaskApi } from '../tasks';
 
 export const runFGSMAttack = async (attackRequest) => {
   const response = await api.post('/attacks/fgsm/run', attackRequest);
@@ -19,6 +20,9 @@ export const cancelAttackTask = async (taskId) => {
   const response = await api.delete(`/attacks/tasks/${taskId}`);
   return response.data;
 };
+
+export const pauseAttackTask = pauseTaskApi;
+export const resumeAttackTask = resumeTaskApi;
 
 export const getAlgorithmParams = async () => {
   const response = await api.get('/attacks/fgsm/params/schema');

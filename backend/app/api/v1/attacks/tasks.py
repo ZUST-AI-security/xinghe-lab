@@ -229,3 +229,41 @@ async def cancel_task(
     except Exception as exc:
         logger.error("Cancel task failed for %s: %s", task_id, exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/{task_id}/pause")
+async def pause_task(
+    task_id: str,
+    current_user: User = Depends(get_current_active_user),
+):
+    """Pause a running attack task."""
+    try:
+        import redis
+        from app.core.config import settings
+
+        r = redis.from_url(settings.redis_url)
+        r.set(f"pause:{task_id}", "1", ex=3600)  # 1 hour expiry
+        logger.info(f"Task {task_id} paused by user {current_user.id}")
+        return {"message": "Task paused", "task_id": task_id}
+    except Exception as exc:
+        logger.error("Pause task failed for %s: %s", task_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/{task_id}/resume")
+async def resume_task(
+    task_id: str,
+    current_user: User = Depends(get_current_active_user),
+):
+    """Resume a paused attack task."""
+    try:
+        import redis
+        from app.core.config import settings
+
+        r = redis.from_url(settings.redis_url)
+        r.delete(f"pause:{task_id}")
+        logger.info(f"Task {task_id} resumed by user {current_user.id}")
+        return {"message": "Task resumed", "task_id": task_id}
+    except Exception as exc:
+        logger.error("Resume task failed for %s: %s", task_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))

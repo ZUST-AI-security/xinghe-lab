@@ -15,6 +15,7 @@ import {
 } from 'antd';
 import {
   InfoCircleOutlined,
+  PauseCircleOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
   StopOutlined,
@@ -44,11 +45,16 @@ const FGSMAttack = () => {
     runAttack,
     runSyncAttack,
     cancel,
+    pause,
+    resume,
     reset,
     saveResult,
     exportData,
     isRunning,
+    isPaused,
     canCancel,
+    canPause,
+    canResume,
   } = useFGSMAttack();
 
   const handleImageChange = (file) => {
@@ -150,6 +156,16 @@ const FGSMAttack = () => {
               <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAttack} loading={loading} disabled={!imageUrl || isRunning} size="large">
                 {useAsync ? '提交异步任务' : '同步执行'}
               </Button>
+              {canPause && (
+                <Button icon={<PauseCircleOutlined />} onClick={pause}>
+                  暂停
+                </Button>
+              )}
+              {canResume && (
+                <Button icon={<PlayCircleOutlined />} onClick={resume} type="primary">
+                  恢复
+                </Button>
+              )}
               {canCancel && (
                 <Button icon={<StopOutlined />} onClick={cancel} danger>
                   取消

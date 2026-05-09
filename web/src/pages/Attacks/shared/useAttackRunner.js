@@ -28,6 +28,8 @@ export const useAttackRunner = ({
   submitAsync,
   getTaskStatus,
   cancelTask,
+  pauseTask,
+  resumeTask,
   searchClassesApi,
   historyStorageKey,
 }) => {
@@ -169,6 +171,32 @@ export const useAttackRunner = ({
     }
   }, [cancelTask, reset, taskId]);
 
+  const pause = useCallback(async () => {
+    if (!taskId || !pauseTask) {
+      return;
+    }
+
+    try {
+      await pauseTask(taskId);
+      message.info('任务已暂停');
+    } catch (error) {
+      message.error('暂停任务失败');
+    }
+  }, [pauseTask, taskId, message]);
+
+  const resume = useCallback(async () => {
+    if (!taskId || !resumeTask) {
+      return;
+    }
+
+    try {
+      await resumeTask(taskId);
+      message.info('任务已恢复');
+    } catch (error) {
+      message.error('恢复任务失败');
+    }
+  }, [resumeTask, taskId, message]);
+
   const saveResult = useCallback((notes = '') => {
     if (!result) {
       throw new Error('没有可保存的结果');
@@ -223,12 +251,17 @@ export const useAttackRunner = ({
     runAttack,
     runSyncAttack,
     cancel,
+    pause,
+    resume,
     reset,
     saveResult,
     exportData,
     searchClasses,
     isRunning,
+    isPaused: statusMessage?.includes('Paused'),
     canCancel: Boolean(taskId) && isRunning,
+    canPause: Boolean(taskId) && isRunning && !statusMessage?.includes('Paused'),
+    canResume: Boolean(taskId) && statusMessage?.includes('Paused'),
     canRetry: status === FAILED_STATUS,
     hasResult: Boolean(result),
     isSuccess: status === COMPLETED_STATUS && Boolean(result?.success),
