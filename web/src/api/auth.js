@@ -7,18 +7,19 @@ import { api } from './client';
 
 // 用户登录
 export const login = async (credentials) => {
-  // 后端使用OAuth2PasswordRequestForm，需要表单数据
-  const formData = new URLSearchParams();
-  formData.append('username', credentials.username);
-  formData.append('password', credentials.password);
-  
-  console.log('🔐 发送登录请求:', credentials);
-  const response = await api.post('/auth/login', formData, {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-  });
-  
+  const loginData = {
+    username: credentials.username,
+    password: credentials.password,
+  };
+
+  if (credentials.captcha_id && credentials.captcha_code) {
+    loginData.captcha_id = credentials.captcha_id;
+    loginData.captcha_code = credentials.captcha_code;
+  }
+
+  console.log('🔐 发送登录请求:', loginData);
+  const response = await api.post('/auth/login', loginData);
+
   console.log('✅ 登录响应:', response.data);
   return response.data;
 };
@@ -48,13 +49,13 @@ export const getCurrentUser = async () => {
 
 // 修改密码
 export const changePassword = async (passwordData) => {
-  const response = await api.post('/auth/change-password', passwordData);
+  const response = await api.post('/users/me/change-password', passwordData);
   return response.data;
 };
 
 // 更新用户信息
 export const updateProfile = async (profileData) => {
-  const response = await api.put('/auth/profile', profileData);
+  const response = await api.put('/users/me', profileData);
   return response.data;
 };
 
