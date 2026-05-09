@@ -8,19 +8,30 @@ import { Form, Input, Button, Card, Divider, App } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, UserAddOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import CaptchaInput from '../../components/Captcha/CaptchaInput';
 
 const Register = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [captchaId, setCaptchaId] = useState('');
   const { register } = useAuthStore();
   const navigate = useNavigate();
   const { message } = App.useApp();
+
+  // 处理验证码变化
+  const handleCaptchaChange = (id) => {
+    setCaptchaId(id);
+  };
 
   // 处理注册
   const handleRegister = async (values) => {
     setLoading(true);
     try {
-      await register(values);
+      await register({
+        ...values,
+        captcha_id: captchaId,
+        captcha_code: values.captcha_code,
+      });
       message.success('注册成功！');
       navigate('/');
     } catch (error) {
@@ -170,6 +181,19 @@ const Register = () => {
               prefix={<LockOutlined />}
               placeholder="确认密码"
               autoComplete="new-password"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="captcha_code"
+            rules={[
+              { required: true, message: '请输入验证码' },
+              { len: 4, message: '验证码为4位字符' },
+            ]}
+          >
+            <CaptchaInput
+              placeholder="验证码"
+              onChange={handleCaptchaChange}
             />
           </Form.Item>
 

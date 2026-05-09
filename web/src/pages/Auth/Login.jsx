@@ -8,20 +8,31 @@ import { Form, Input, Button, Card, Divider, Space, App } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import CaptchaInput from '../../components/Captcha/CaptchaInput';
 
 const Login = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [captchaId, setCaptchaId] = useState('');
   const { login } = useAuthStore();
   const navigate = useNavigate();
   const { message } = App.useApp();
+
+  // 处理验证码变化
+  const handleCaptchaChange = (id) => {
+    setCaptchaId(id);
+  };
 
   // 处理登录
   const handleLogin = async (values) => {
     setLoading(true);
     try {
       console.log('🔐 开始登录:', values);
-      await login(values);
+      await login({
+        ...values,
+        captcha_id: captchaId,
+        captcha_code: values.captcha_code,
+      });
       console.log('✅ 登录成功，准备跳转...');
       message.success('登录成功！');
       navigate('/');
@@ -93,6 +104,19 @@ const Login = () => {
               prefix={<LockOutlined />}
               placeholder="密码"
               autoComplete="current-password"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="captcha_code"
+            rules={[
+              { required: true, message: '请输入验证码' },
+              { len: 4, message: '验证码为4位字符' },
+            ]}
+          >
+            <CaptchaInput
+              placeholder="验证码"
+              onChange={handleCaptchaChange}
             />
           </Form.Item>
 
