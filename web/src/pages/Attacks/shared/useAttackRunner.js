@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { App } from 'antd';
+import { useAttackStore } from '../../../store/attackStore';
 
 const COMPLETED_STATUS = 'completed';
 const FAILED_STATUS = 'failed';
@@ -24,6 +25,7 @@ const normalizeResult = (response, params) => ({
 
 export const useAttackRunner = ({
   attackName,
+  algorithmKey,
   runSync,
   submitAsync,
   getTaskStatus,
@@ -34,13 +36,31 @@ export const useAttackRunner = ({
   historyStorageKey,
 }) => {
   const { message } = App.useApp();
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
-  const [taskId, setTaskId] = useState(null);
-  const [status, setStatus] = useState('idle');
-  const [statusMessage, setStatusMessage] = useState('');
+  const updateSlice = useAttackStore((s) => s.updateSlice);
+
+  // Persisted fields — read directly from store, write via updateSlice
+  const result = useAttackStore((s) => (algorithmKey ? s[algorithmKey]?.result : null)) ?? null;
+  const status = useAttackStore((s) => (algorithmKey ? s[algorithmKey]?.status : 'idle')) ?? 'idle';
+  const error = useAttackStore((s) => (algorithmKey ? s[algorithmKey]?.error : null)) ?? null;
+  const progress = useAttackStore((s) => (algorithmKey ? s[algorithmKey]?.progress : 0)) ?? 0;
+
+  const setResult = useCallback(
+    (val) => updateSlice(algorithmKey, { result: typeof val === 'function' ? val(result) : val }),
+    [algorithmKey, updateSlice, result]
+  );
+  const setStatus = useCallback(
+    (val) => updateSlice(algorithmKey, { status: typeof val === 'function' ? val(status) : val }),
+    [algorithmKey, updateSlice, status]
+  );
+  const setError = useCallback(
+    (val) => updateSlice(algorithmKey, { error: typeof val === 'function' ? val(error) : val }),
+    [algorithmKey, updateSlice, error]
+  );
+  const setProgress = useCallback(
+    (val) => updateSlice(algorithmKey, { progress: typeof val === 'function' ? val(progress) : val }),
+    [algorithmKey, updateSlice, progress]
+  );
+
   const pollingRef = useRef(null);
 
   const stopPolling = useCallback(() => {
@@ -50,25 +70,51 @@ export const useAttackRunner = ({
     }
   }, []);
 
+  // We need loading/taskId/statusMessage to trigger re-renders, so use store for these too
+  const loading = useAttackStore((s) => (algorithmKey ? s[algorithmKey]?._loading : false)) ?? false;
+  const taskId = useAttackStore((s) => (algorithmKey ? s[algorithmKey]?._taskId : null)) ?? null;
+  const statusMessage = useAttackStore((s) => (algorithmKey ? s[algorithmKey]?._statusMessage : '')) ?? '';
+
+  const setLoading = useCallback(
+    (val) => updateSlice(algorithmKey, { _loading: val }),
+    [algorithmKey, updateSlice]
+  );
+  const setTaskId = useCallback(
+    (val) => updateSlice(algorithmKey, { _taskId: val }),
+    [algorithmKey, updateSlice]
+  );
+  const setStatusMessage = useCallback(
+    (val) => updateSlice(algorithmKey, { _statusMessage: val }),
+    [algorithmKey, updateSlice]
+  );
+
   const reset = useCallback(() => {
     stopPolling();
-    setLoading(false);
-    setProgress(0);
-    setResult(null);
-    setError(null);
-    setTaskId(null);
-    setStatus('idle');
-    setStatusMessage('');
-  }, [stopPolling]);
+    if (algorithmKey) {
+      updateSlice(algorithmKey, {
+        _loading: false,
+        progress: 0,
+        result: null,
+        error: null,
+        _taskId: null,
+        status: 'idle',
+        _statusMessage: '',
+      });
+    }
+  }, [stopPolling, algorithmKey, updateSlice]);
 
   const finishWithResult = useCallback((response, params, nextStatus = COMPLETED_STATUS) => {
-    setResult(normalizeResult(response, params));
-    setLoading(false);
-    setProgress(100);
-    setTaskId(null);
-    setStatus(nextStatus);
-    setStatusMessage('Completed');
-  }, []);
+    if (algorithmKey) {
+      updateSlice(algorithmKey, {
+        result: normalizeResult(response, params),
+        _loading: false,
+        progress: 100,
+        _taskId: null,
+        status: nextStatus,
+        _statusMessage: 'Completed',
+      });
+    }
+  }, [algorithmKey, updateSlice]);
 
   const pollTask = useCallback((currentTaskId, requestData) => {
     stopPolling();
@@ -76,9 +122,13 @@ export const useAttackRunner = ({
       try {
         const task = await getTaskStatus(currentTaskId);
         const taskStatus = task.status || 'pending';
-        setStatus(taskStatus);
-        setStatusMessage(task.message || '');
-        setProgress(task.progress ? Math.round(task.progress) : taskStatus === COMPLETED_STATUS ? 100 : 0);
+        const taskProgress = task.progress ? Math.round(task.progress) : taskStatus === COMPLETED_STATUS ? 100 : 0;
+
+        updateSlice(algorithmKey, {
+          status: taskStatus,
+          _statusMessage: task.message || '',
+          progress: taskProgress,
+        });
 
         if (taskStatus === COMPLETED_STATUS) {
           stopPolling();
@@ -89,32 +139,38 @@ export const useAttackRunner = ({
 
         if (taskStatus === FAILED_STATUS) {
           stopPolling();
-          setLoading(false);
-          setTaskId(null);
-          setError(task.error || '任务执行失败');
-          setStatus(FAILED_STATUS);
+          updateSlice(algorithmKey, {
+            _loading: false,
+            _taskId: null,
+            error: task.error || '任务执行失败',
+            status: FAILED_STATUS,
+          });
           message.error(task.error || `${attackName}攻击失败`);
         }
       } catch (pollError) {
         stopPolling();
-        setLoading(false);
-        setTaskId(null);
-        setStatus(FAILED_STATUS);
-        setStatusMessage('');
-        setError(pollError.response?.data?.detail || pollError.message || '获取任务状态失败');
+        updateSlice(algorithmKey, {
+          _loading: false,
+          _taskId: null,
+          status: FAILED_STATUS,
+          _statusMessage: '',
+          error: pollError.response?.data?.detail || pollError.message || '获取任务状态失败',
+        });
       }
     }, 2000);
-  }, [attackName, finishWithResult, getTaskStatus, stopPolling]);
+  }, [attackName, algorithmKey, finishWithResult, getTaskStatus, stopPolling, updateSlice, message]);
 
   const runSyncAttack = useCallback(async (requestData) => {
     stopPolling();
-    setLoading(true);
-    setProgress(20);
-    setResult(null);
-    setError(null);
-    setTaskId(null);
-    setStatus('processing');
-    setStatusMessage('Running synchronously...');
+    updateSlice(algorithmKey, {
+      _loading: true,
+      progress: 20,
+      result: null,
+      error: null,
+      _taskId: null,
+      status: 'processing',
+      _statusMessage: 'Running synchronously...',
+    });
 
     try {
       const response = await runSync(requestData);
@@ -122,41 +178,45 @@ export const useAttackRunner = ({
       message.success(`${attackName}攻击完成`);
       return response;
     } catch (requestError) {
-      setLoading(false);
-      setProgress(0);
-      setStatus(FAILED_STATUS);
-      setStatusMessage('');
-      setError(
-        getRequestErrorMessage(requestError, `${attackName}攻击执行失败`, {
+      updateSlice(algorithmKey, {
+        _loading: false,
+        progress: 0,
+        status: FAILED_STATUS,
+        _statusMessage: '',
+        error: getRequestErrorMessage(requestError, `${attackName}攻击执行失败`, {
           preferAsync: true,
-        })
-      );
+        }),
+      });
       throw requestError;
     }
-  }, [attackName, finishWithResult, runSync, stopPolling]);
+  }, [attackName, algorithmKey, finishWithResult, runSync, stopPolling, updateSlice, message]);
 
   const runAttack = useCallback(async (requestData) => {
     stopPolling();
-    setLoading(true);
-    setProgress(0);
-    setResult(null);
-    setError(null);
-    setStatus('pending');
-    setStatusMessage('Task submitted, waiting for worker...');
+    updateSlice(algorithmKey, {
+      _loading: true,
+      progress: 0,
+      result: null,
+      error: null,
+      status: 'pending',
+      _statusMessage: 'Task submitted, waiting for worker...',
+    });
 
     try {
       const response = await submitAsync(requestData);
-      setTaskId(response.task_id);
+      updateSlice(algorithmKey, { _taskId: response.task_id });
       pollTask(response.task_id, requestData);
       return response;
     } catch (requestError) {
-      setLoading(false);
-      setStatus(FAILED_STATUS);
-      setStatusMessage('');
-      setError(getRequestErrorMessage(requestError, `${attackName}任务提交失败`));
+      updateSlice(algorithmKey, {
+        _loading: false,
+        status: FAILED_STATUS,
+        _statusMessage: '',
+        error: getRequestErrorMessage(requestError, `${attackName}任务提交失败`),
+      });
       throw requestError;
     }
-  }, [attackName, pollTask, stopPolling, submitAsync]);
+  }, [attackName, algorithmKey, pollTask, stopPolling, submitAsync, updateSlice, message]);
 
   const cancel = useCallback(async () => {
     if (!taskId) {
@@ -169,7 +229,7 @@ export const useAttackRunner = ({
     } finally {
       reset();
     }
-  }, [cancelTask, reset, taskId]);
+  }, [cancelTask, reset, taskId, message]);
 
   const pause = useCallback(async () => {
     if (!taskId || !pauseTask) {
@@ -179,7 +239,7 @@ export const useAttackRunner = ({
     try {
       await pauseTask(taskId);
       message.info('任务已暂停');
-    } catch (error) {
+    } catch (err) {
       message.error('暂停任务失败');
     }
   }, [pauseTask, taskId, message]);
@@ -192,7 +252,7 @@ export const useAttackRunner = ({
     try {
       await resumeTask(taskId);
       message.info('任务已恢复');
-    } catch (error) {
+    } catch (err) {
       message.error('恢复任务失败');
     }
   }, [resumeTask, taskId, message]);
@@ -210,7 +270,7 @@ export const useAttackRunner = ({
     const existing = JSON.parse(localStorage.getItem(historyStorageKey) || '[]');
     localStorage.setItem(historyStorageKey, JSON.stringify([savedItem, ...existing].slice(0, 50)));
     message.success('结果已保存');
-  }, [historyStorageKey, result]);
+  }, [historyStorageKey, result, message]);
 
   const exportData = useCallback((resultData = result) => {
     if (!resultData) {

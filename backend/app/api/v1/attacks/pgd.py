@@ -28,7 +28,7 @@ from app.schemas.attacks.pgd import (
 )
 from app.utils.image_utils import base64_to_image, image_to_base64
 from app.utils.attack_response import build_prediction_summary
-from app.core.exceptions import AttackError, ValidationError
+from app.core.exceptions import AttackError, ValidationError, safe_error_detail
 from app.utils.imagenet_classes import search_classes, get_class_by_id, get_popular_classes
 
 router = APIRouter(prefix="/pgd", tags=["PGD Attack"])
@@ -125,8 +125,8 @@ async def run_pgd_sync(
     except Exception as e:
         logger.error(f"PGD sync attack failed: {e}", exc_info=True)
         if isinstance(e, (AttackError, ValidationError, ValueError)):
-            raise HTTPException(status_code=400, detail=str(e))
-        raise HTTPException(status_code=500, detail=f"Attack failed: {e}")
+            raise HTTPException(status_code=400, detail=safe_error_detail(str(e), "攻击执行失败"))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "攻击执行失败"))
 
 
 @router.post("/submit", response_model=PGDAsyncTaskResponse)
@@ -152,7 +152,7 @@ async def submit_pgd_async(
 
     except Exception as e:
         logger.error(f"PGD task submit failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Task submission failed: {e}")
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "任务提交失败"))
 
 
 @router.get("/params/schema")
@@ -168,7 +168,7 @@ async def get_pgd_params_schema():
         raise
     except Exception as e:
         logger.error(f"Get PGD params schema failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "获取参数配置失败"))
 
 
 @router.get("/history", response_model=PGDHistoryListResponse)
@@ -192,7 +192,7 @@ async def search_imagenet_classes(
     try:
         return {"results": search_classes(q, limit)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "搜索类别失败"))
 
 
 @router.get("/classes/popular")
@@ -203,7 +203,7 @@ async def get_popular_imagenet_classes(
     try:
         return {"results": get_popular_classes(limit)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "获取类别失败"))
 
 
 @router.get("/classes/{class_id}")

@@ -9,6 +9,7 @@ import { useAttackRunner } from '../../shared/useAttackRunner';
 
 const useDeepFoolAttack = () => useAttackRunner({
   attackName: 'DeepFool',
+  algorithmKey: 'deepfool',
   runSync: runDeepFoolAttack,
   submitAsync: submitDeepFoolAttack,
   getTaskStatus: getAttackTaskStatus,

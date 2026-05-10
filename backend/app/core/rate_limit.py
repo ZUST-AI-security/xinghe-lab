@@ -86,3 +86,29 @@ async def rate_limiter_dependency(request: Request):
         raise RateLimitExceeded()
 
     return True
+
+
+async def auth_login_rate_limiter(request: Request):
+    """Rate limit for login endpoint: max 5 attempts per IP per minute."""
+    client_ip = request.client.host
+    key = f"rate_limit:auth_login:{client_ip}"
+    is_allowed = check_rate_limit(key, limit=5, window=60)
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="登录尝试过于频繁，请1分钟后再试",
+        )
+    return True
+
+
+async def auth_register_rate_limiter(request: Request):
+    """Rate limit for register endpoint: max 3 registrations per IP per hour."""
+    client_ip = request.client.host
+    key = f"rate_limit:auth_register:{client_ip}"
+    is_allowed = check_rate_limit(key, limit=3, window=3600)
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="注册过于频繁，请1小时后再试",
+        )
+    return True

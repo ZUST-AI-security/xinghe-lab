@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
+from .base import BaseAttackRequest
+
 
 class CWParams(BaseModel):
     c: float = Field(1.0, ge=0.001, le=10.0, description="Trade-off constant (higher = prioritize attack success)")
@@ -19,9 +21,7 @@ class CWParams(BaseModel):
     early_stop_iters: int = Field(50, ge=1, description="Steps without improvement before early stop")
 
 
-class CWAttackRequest(BaseModel):
-    image: str = Field(..., description="Base64-encoded image (data:image/... prefix required)")
-    model_name: Optional[str] = Field("resnet100_imagenet", description="Model identifier")
+class CWAttackRequest(BaseAttackRequest):
     params: CWParams = Field(default_factory=CWParams, description="C&W hyper-parameters")
 
     class Config:

@@ -58,7 +58,7 @@ const CaptchaInput = ({ value, onChange, onCaptchaIdChange, placeholder = 'éªŒè¯
         placeholder={placeholder}
         value={value}
         onChange={handleChange}
-        maxLength={4}
+        maxLength={5}
         style={{ flex: 1 }}
       />
       <div

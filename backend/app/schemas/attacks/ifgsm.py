@@ -1,8 +1,10 @@
 """I-FGSM attack Pydantic models."""
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+
+from .base import BaseAttackRequest
 
 
 class IFGSMAttackParams(BaseModel):
@@ -13,18 +15,9 @@ class IFGSMAttackParams(BaseModel):
     targeted: bool = Field(False, description="是否定向攻击")
 
 
-class IFGSMAttackRequest(BaseModel):
+class IFGSMAttackRequest(BaseAttackRequest):
     """I-FGSM 攻击请求"""
-    image: str = Field(..., description="Base64 编码图像")
-    model_name: Optional[str] = Field("resnet100_imagenet", description="模型名称")
     params: IFGSMAttackParams = Field(default_factory=IFGSMAttackParams, description="攻击参数")
-
-    @field_validator('image')
-    @classmethod
-    def validate_image(cls, v):
-        if not v.startswith('data:image/'):
-            raise ValueError('图像格式无效，必须以 data:image/ 开头')
-        return v
 
 
 class IFGSMAttackResponse(BaseModel):

@@ -24,16 +24,18 @@ import ImageUploader from '../CWAttack/components/ImageUploader';
 import ParameterSlider from '../CWAttack/components/ParameterSlider';
 import ResultDisplay from '../CWAttack/components/ResultDisplay';
 import useFGSMAttack from './hooks/useFGSMAttack';
+import { useAttackStore } from '../../../store/attackStore';
 
 const { Title, Paragraph, Text } = Typography;
 
 const FGSMAttack = () => {
+  const storeSlice = useAttackStore((s) => s.fgsm);
+  const updateSlice = useAttackStore((s) => s.updateSlice);
+  const resetSlice = useAttackStore((s) => s.resetSlice);
+
   const [imageUrl, setImageUrl] = useState(null);
-  const [useAsync, setUseAsync] = useState(true);
-  const [params, setParams] = useState({
-    epsilon: 0.03,
-    targeted: false,
-  });
+  const [useAsync, setUseAsync] = useState(storeSlice.useAsync);
+  const [params, setParams] = useState(storeSlice.params);
 
   const {
     loading,
@@ -68,6 +70,16 @@ const FGSMAttack = () => {
     return false;
   };
 
+  const handleParamsChange = (newParams) => {
+    setParams(newParams);
+    updateSlice('fgsm', { params: newParams });
+  };
+
+  const handleUseAsyncChange = (checked) => {
+    setUseAsync(checked);
+    updateSlice('fgsm', { useAsync: checked });
+  };
+
   const handleRunAttack = () => {
     if (!imageUrl) {
       return;
@@ -87,6 +99,7 @@ const FGSMAttack = () => {
   const handleReset = () => {
     setImageUrl(null);
     setParams({ epsilon: 0.03, targeted: false });
+    resetSlice('fgsm');
     reset();
   };
 
@@ -118,7 +131,7 @@ const FGSMAttack = () => {
         <Space>
           <Text type="secondary">状态:</Text>
           <Badge status={currentStatus.color} text={currentStatus.text} />
-          <Switch checkedChildren="异步" unCheckedChildren="同步" checked={useAsync} onChange={setUseAsync} size="small" />
+          <Switch checkedChildren="异步" unCheckedChildren="同步" checked={useAsync} onChange={handleUseAsyncChange} size="small" />
         </Space>
       </div>
 
@@ -139,7 +152,7 @@ const FGSMAttack = () => {
               description="FGSM 单步更新的 L-infinity 扰动上界。"
               tips="值越大越容易成功，但图像变化也更明显。"
               value={params.epsilon}
-              onChange={(value) => setParams((prev) => ({ ...prev, epsilon: value }))}
+              onChange={(value) => handleParamsChange({ ...params, epsilon: value })}
               range={{ min: 0, max: 0.2 }}
               step={0.001}
               disabled={isRunning}
@@ -147,7 +160,7 @@ const FGSMAttack = () => {
 
             <div style={{ marginBottom: 24 }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>攻击模式</Text>
-              <Tag color={params.targeted ? 'purple' : 'blue'} onClick={() => setParams((prev) => ({ ...prev, targeted: !prev.targeted }))} style={{ cursor: 'pointer' }}>
+              <Tag color={params.targeted ? 'purple' : 'blue'} onClick={() => handleParamsChange({ ...params, targeted: !params.targeted })} style={{ cursor: 'pointer' }}>
                 {params.targeted ? '定向攻击' : '非定向攻击'}
               </Tag>
             </div>

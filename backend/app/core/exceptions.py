@@ -10,7 +10,16 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from typing import Union, Dict, Any
 import logging
 
+from .config import settings
+
 logger = logging.getLogger(__name__)
+
+
+def safe_error_detail(detail: str, fallback: str = "操作失败") -> str:
+    """Return the original detail in development, generic message in production."""
+    if settings.is_development:
+        return detail
+    return fallback
 
 class XingHeException(Exception):
     """

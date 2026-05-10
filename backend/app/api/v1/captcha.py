@@ -11,10 +11,10 @@ image_captcha = ImageCaptcha(width=160, height=60)
 @router.get("/")
 async def get_captcha():
     """获取图形验证码"""
-    # 生成随机4位字符
+    # 生成随机5位字符（大小写字母+数字，62种字符，抗OCR）
     import random
     import string
-    captcha_text = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    captcha_text = ''.join(random.choices(string.ascii_letters + string.digits, k=5))
     
     # 将图片写入内存流
     data = image_captcha.generate(captcha_text)

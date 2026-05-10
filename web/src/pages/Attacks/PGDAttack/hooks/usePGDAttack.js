@@ -9,6 +9,7 @@ import { useAttackRunner } from '../../shared/useAttackRunner';
 
 const usePGDAttack = () => useAttackRunner({
   attackName: 'PGD',
+  algorithmKey: 'pgd',
   runSync: runPGDAttack,
   submitAsync: submitPGDAttack,
   getTaskStatus: getAttackTaskStatus,

@@ -11,6 +11,7 @@ import { useAttackRunner } from '../../shared/useAttackRunner';
 
 const useFGSMAttack = () => useAttackRunner({
   attackName: 'FGSM',
+  algorithmKey: 'fgsm',
   runSync: runFGSMAttack,
   submitAsync: submitFGSMAttack,
   getTaskStatus: getAttackTaskStatus,

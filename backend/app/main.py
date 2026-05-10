@@ -10,13 +10,14 @@ import os
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.database import ensure_required_tables, initialize_database
+from app.core.security import get_current_active_user
+from app.models.user import User
 from app.core.exceptions import (
     XingHeException,
     general_exception_handler,
@@ -96,16 +97,46 @@ else:
     )
 
 os.makedirs("outputs", exist_ok=True)
-app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
+
+
+@app.get("/outputs/{file_path:path}", tags=["Files"], include_in_schema=False)
+async def serve_output_file(
+    file_path: str,
+    current_user: User = Depends(get_current_active_user),
+):
+    """Serve output files with authentication."""
+    import mimetypes
+    from pathlib import Path
+
+    full_path = Path("outputs") / file_path
+    if not full_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Prevent directory traversal
+    try:
+        full_path.resolve().relative_to(Path("outputs").resolve())
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    from fastapi.responses import FileResponse
+    media_type = mimetypes.guess_type(str(full_path))[0] or "application/octet-stream"
+    return FileResponse(str(full_path), media_type=media_type)
 
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
+    # Production HTTPS redirect
+    if settings.is_production:
+        proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+        if proto == "http":
+            from fastapi.responses import RedirectResponse
+            https_url = str(request.url).replace("http://", "https://", 1)
+            return RedirectResponse(url=https_url, status_code=301)
+
     start = time.time()
     response = await call_next(request)
     response.headers["X-Process-Time"] = f"{time.time() - start:.4f}"
 
-    # 添加安全头部
     if settings.is_production:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -156,17 +187,19 @@ async def health_check():
         db.close()
         redis.from_url(settings.redis_url).ping()
 
-        return {"status": "healthy", "database": "connected", "redis": "connected"}
+        if settings.is_development:
+            return {"status": "healthy", "database": "connected", "redis": "connected"}
+        return {"status": "healthy"}
     except Exception as exc:
         logger.error("健康检查失败: %s", exc)
         return JSONResponse(
             status_code=503,
-            content={"status": "unhealthy", "error": str(exc)},
+            content={"status": "unhealthy"},
         )
 
 
 @app.get("/info", tags=["系统"])
-async def system_info():
+async def system_info(current_user: User = Depends(get_current_active_user)):
     from app.algorithms.registry import list_all as list_algos
     from app.ml_models.registry import list_all as list_models
 

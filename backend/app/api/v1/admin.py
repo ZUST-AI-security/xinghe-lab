@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.exceptions import safe_error_detail
 from app.core.security import get_current_admin_user
 from app.core.system_config import DEFAULT_SYSTEM_CONFIGS, ensure_default_system_configs
 from app.models.attack_history import AttackHistory
@@ -167,7 +168,7 @@ async def get_system_logs(
         return {"lines": all_lines[-lines:], "total": len(all_lines)}
     except Exception as exc:
         logger.error("Read logs failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"日志读取失败: {exc}")
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(exc), "日志读取失败"))
 
 
 @router.get("/users", summary="List users")
@@ -297,7 +298,7 @@ async def reset_user_password(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
-    user.hashed_password = get_password_hash("Abc12345")
+    user.hashed_password = get_password_hash(settings.default_reset_password)
     db.commit()
     return {"message": "密码已重置，请通知用户使用默认密码登录后修改密码"}
 

@@ -27,7 +27,7 @@ from app.schemas.attacks.ifgsm import (
 )
 from app.utils.image_utils import base64_to_image, image_to_base64
 from app.utils.attack_response import build_prediction_summary
-from app.core.exceptions import AttackError, ValidationError
+from app.core.exceptions import AttackError, ValidationError, safe_error_detail
 from app.utils.imagenet_classes import search_classes, get_class_by_id, get_popular_classes
 
 router = APIRouter(prefix="/ifgsm", tags=["I-FGSM Attack"])
@@ -128,8 +128,8 @@ async def run_ifgsm_sync(
     except Exception as e:
         logger.error(f"I-FGSM attack failed: {e}", exc_info=True)
         if isinstance(e, (AttackError, ValidationError, ValueError)):
-            raise HTTPException(status_code=400, detail=str(e))
-        raise HTTPException(status_code=500, detail=f"攻击执行失败: {e}")
+            raise HTTPException(status_code=400, detail=safe_error_detail(str(e), "攻击执行失败"))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "攻击执行失败"))
 
 
 @router.post("/submit", response_model=IFGSMAsyncTaskResponse, summary="异步提交 I-FGSM 攻击")
@@ -150,7 +150,7 @@ async def submit_ifgsm_async(
         return IFGSMAsyncTaskResponse(task_id=task.id, status="pending")
     except Exception as e:
         logger.error(f"I-FGSM task submit failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"任务提交失败: {e}")
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "任务提交失败"))
 
 
 @router.get("/params/schema", summary="获取 I-FGSM 参数 Schema")

@@ -8,6 +8,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.security import get_current_active_user
+from app.core.exceptions import safe_error_detail
 from app.models.user import User
 
 router = APIRouter()
@@ -23,7 +24,7 @@ async def list_models(current_user: User = Depends(get_current_active_user)):
         return {"models": models, "total": len(models)}
     except Exception as e:
         logger.error(f"list_models failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "获取模型列表失败"))
 
 
 @router.get("/stats")
@@ -43,7 +44,7 @@ async def get_model_stats(current_user: User = Depends(get_current_active_user))
         }
     except Exception as e:
         logger.error(f"get_model_stats failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "获取模型统计失败"))
 
 
 @router.get("/{model_name}")
@@ -59,4 +60,4 @@ async def get_model_info(model_name: str, current_user: User = Depends(get_curre
         raise
     except Exception as e:
         logger.error(f"get_model_info failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "获取模型信息失败"))

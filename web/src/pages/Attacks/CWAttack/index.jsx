@@ -33,6 +33,7 @@ import ParameterSlider from './components/ParameterSlider';
 import ImageUploader from './components/ImageUploader';
 import ResultDisplay from './components/ResultDisplay';
 import useCWAttack from './hooks/useCWAttack';
+import { useAttackStore } from '../../../store/attackStore';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -50,10 +51,14 @@ const DEFAULT_CW_PARAMS = {
 
 const CWAttack = () => {
   const { message } = App.useApp();
+  const storeSlice = useAttackStore((s) => s.cw);
+  const updateSlice = useAttackStore((s) => s.updateSlice);
+  const resetSlice = useAttackStore((s) => s.resetSlice);
+
   const [imageUrl, setImageUrl] = useState(null);
   const [advancedMode, setAdvancedMode] = useState(false);
-  const [useAsync, setUseAsync] = useState(true);
-  const [params, setParams] = useState(DEFAULT_CW_PARAMS);
+  const [useAsync, setUseAsync] = useState(storeSlice.useAsync);
+  const [params, setParams] = useState(storeSlice.params);
 
   const {
     loading,
@@ -194,6 +199,16 @@ const CWAttack = () => {
     },
   ];
 
+  const handleParamsChange = (newParams) => {
+    setParams(newParams);
+    updateSlice('cw', { params: newParams });
+  };
+
+  const handleUseAsyncChange = (checked) => {
+    setUseAsync(checked);
+    updateSlice('cw', { useAsync: checked });
+  };
+
   const handleImageChange = (file) => {
     if (!file) {
       setImageUrl(null);
@@ -208,22 +223,21 @@ const CWAttack = () => {
   };
 
   const handleParamChange = (key, value) => {
-    setParams((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+    const newParams = { ...params, [key]: value };
+    setParams(newParams);
+    updateSlice('cw', { params: newParams });
   };
 
   const handleTargetedChange = (checked) => {
-    setParams((prev) => ({
-      ...prev,
-      targeted: checked,
-    }));
+    const newParams = { ...params, targeted: checked };
+    setParams(newParams);
+    updateSlice('cw', { params: newParams });
   };
 
   const applyPreset = (preset) => {
     setParams(preset.params);
-    message.success(`已应用“${preset.name}”模板`);
+    updateSlice('cw', { params: preset.params });
+    message.success(`已应用”${preset.name}”模板`);
   };
 
   const handleRunAttack = () => {
@@ -248,6 +262,7 @@ const CWAttack = () => {
   const handleReset = () => {
     setImageUrl(null);
     setParams(DEFAULT_CW_PARAMS);
+    resetSlice('cw');
     reset();
   };
 
@@ -304,7 +319,7 @@ const CWAttack = () => {
             checkedChildren="异步"
             unCheckedChildren="同步"
             checked={useAsync}
-            onChange={setUseAsync}
+            onChange={handleUseAsyncChange}
             size="small"
           />
           <Switch

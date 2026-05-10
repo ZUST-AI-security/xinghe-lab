@@ -68,7 +68,12 @@ class Settings(BaseSettings):
     password_min_length: int = 8
     max_login_attempts: int = 5
     lockout_duration_minutes: int = 15
-    
+    default_reset_password: str = "Abc12345"
+    admin_setup_token: Optional[str] = None  # 首次部署时设置，防止攻击者抢先注册管理员
+
+    # 图片上传限制（base64 编码后最大字节数）
+    max_image_base64_bytes: int = 15_000_000  # ~15MB base64 ≈ 11MB 原图
+
     # API限流配置
     rate_limit_per_minute: int = 60
 

@@ -5,22 +5,16 @@
 
 import { api } from './client';
 
-// 用户登录
+// 用户登录（验证码必填）
 export const login = async (credentials) => {
   const loginData = {
     username: credentials.username,
     password: credentials.password,
+    captcha_id: credentials.captcha_id,
+    captcha_code: credentials.captcha_code,
   };
 
-  if (credentials.captcha_id && credentials.captcha_code) {
-    loginData.captcha_id = credentials.captcha_id;
-    loginData.captcha_code = credentials.captcha_code;
-  }
-
-  console.log('🔐 发送登录请求:', loginData);
   const response = await api.post('/auth/login', loginData);
-
-  console.log('✅ 登录响应:', response.data);
   return response.data;
 };
 
@@ -59,15 +53,14 @@ export const updateProfile = async (profileData) => {
   return response.data;
 };
 
-// 登出
+// 登出（发送 refresh_token 供服务端黑名单）
 export const logout = async () => {
   try {
-    await api.post('/auth/logout');
+    const refreshToken = localStorage.getItem('refresh_token');
+    await api.post('/auth/logout', { refresh_token: refreshToken });
   } catch (error) {
-    // 即使服务器端登出失败，也要清除本地token
     console.warn('服务器端登出失败:', error);
   } finally {
-    // 清除本地存储的token
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
   }

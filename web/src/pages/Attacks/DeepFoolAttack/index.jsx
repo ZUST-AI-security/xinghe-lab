@@ -22,17 +22,18 @@ import ImageUploader from '../CWAttack/components/ImageUploader';
 import ParameterSlider from '../CWAttack/components/ParameterSlider';
 import ResultDisplay from '../CWAttack/components/ResultDisplay';
 import useDeepFoolAttack from './hooks/useDeepFoolAttack';
+import { useAttackStore } from '../../../store/attackStore';
 
 const { Title, Paragraph, Text } = Typography;
 
 const DeepFoolAttack = () => {
+  const storeSlice = useAttackStore((s) => s.deepfool);
+  const updateSlice = useAttackStore((s) => s.updateSlice);
+  const resetSlice = useAttackStore((s) => s.resetSlice);
+
   const [imageUrl, setImageUrl] = useState(null);
-  const [useAsync, setUseAsync] = useState(true);
-  const [params, setParams] = useState({
-    max_iter: 50,
-    overshoot: 0.02,
-    num_classes: 10,
-  });
+  const [useAsync, setUseAsync] = useState(storeSlice.useAsync);
+  const [params, setParams] = useState(storeSlice.params);
 
   const {
     loading,
@@ -62,6 +63,16 @@ const DeepFoolAttack = () => {
     return false;
   };
 
+  const handleParamsChange = (newParams) => {
+    setParams(newParams);
+    updateSlice('deepfool', { params: newParams });
+  };
+
+  const handleUseAsyncChange = (checked) => {
+    setUseAsync(checked);
+    updateSlice('deepfool', { useAsync: checked });
+  };
+
   const handleRunAttack = () => {
     if (!imageUrl) return;
     const requestData = {
@@ -78,7 +89,9 @@ const DeepFoolAttack = () => {
 
   const handleReset = () => {
     setImageUrl(null);
-    setParams({ max_iter: 50, overshoot: 0.02, num_classes: 10 });
+    const defaults = { max_iter: 50, overshoot: 0.02, num_classes: 10 };
+    setParams(defaults);
+    resetSlice('deepfool');
     reset();
   };
 
@@ -110,7 +123,7 @@ const DeepFoolAttack = () => {
         <Space>
           <Text type="secondary">状态:</Text>
           <Badge status={currentStatus.color} text={currentStatus.text} />
-          <Switch checkedChildren="异步" unCheckedChildren="同步" checked={useAsync} onChange={setUseAsync} size="small" />
+          <Switch checkedChildren="异步" unCheckedChildren="同步" checked={useAsync} onChange={handleUseAsyncChange} size="small" />
         </Space>
       </div>
 
@@ -131,7 +144,7 @@ const DeepFoolAttack = () => {
               description="DeepFool 的最大迭代步数。"
               tips="通常 50 次迭代已足够，增大可能略微降低扰动量。"
               value={params.max_iter}
-              onChange={(value) => setParams((prev) => ({ ...prev, max_iter: value }))}
+              onChange={(value) => handleParamsChange({ ...params, max_iter: value })}
               range={{ min: 1, max: 200 }}
               step={1}
               disabled={isRunning}
@@ -142,7 +155,7 @@ const DeepFoolAttack = () => {
               description="越过决策边界的乘数因子。"
               tips="较小值产生更精确的扰动，较大值提高攻击成功率。"
               value={params.overshoot}
-              onChange={(value) => setParams((prev) => ({ ...prev, overshoot: value }))}
+              onChange={(value) => handleParamsChange({ ...params, overshoot: value })}
               range={{ min: 0.001, max: 0.1 }}
               step={0.001}
               disabled={isRunning}
@@ -153,7 +166,7 @@ const DeepFoolAttack = () => {
               description="计算扰动时考虑的候选类别数量。"
               tips="增大可搜索更多类别边界，但计算成本更高。"
               value={params.num_classes}
-              onChange={(value) => setParams((prev) => ({ ...prev, num_classes: value }))}
+              onChange={(value) => handleParamsChange({ ...params, num_classes: value })}
               range={{ min: 2, max: 20 }}
               step={1}
               disabled={isRunning}

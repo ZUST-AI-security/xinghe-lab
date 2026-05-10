@@ -16,9 +16,41 @@ from app.models.attack_history import AttackHistory
 from app.models.task_record import TaskRecord
 from app.models.user import User
 from app.workers.celery_app import celery_app
+from app.core.exceptions import safe_error_detail
 
 router = APIRouter(prefix="/tasks", tags=["Attack Tasks"])
 logger = logging.getLogger(__name__)
+
+
+def _verify_task_ownership(task_id: str, current_user: User, db: Session) -> None:
+    """Verify the current user owns the task. Raises 403 if not."""
+    from celery.result import AsyncResult
+
+    task = AsyncResult(task_id, app=celery_app)
+    state = (task.state or "PENDING").upper()
+
+    # PENDING tasks: Celery returns PENDING for unknown IDs too.
+    # Ownership can't be determined from Celery alone, so allow through
+    # (the task either doesn't exist or is genuinely pending).
+    if state == "PENDING":
+        return
+
+    # For all other states (STARTED, SUCCESS, FAILURE, REVOKED, etc.),
+    # check user_id from the task result metadata.
+    try:
+        info = task.info if isinstance(task.info, dict) else {}
+        # Celery tasks store user_id in result metadata
+        task_user_id = (
+            info.get("metadata", {}).get("user_id")
+            or info.get("user_id")
+        )
+        if task_user_id is not None and int(task_user_id) != current_user.id:
+            raise HTTPException(status_code=403, detail="无权操作此任务")
+    except HTTPException:
+        raise
+    except Exception:
+        # If we can't determine ownership (e.g. unpickling error), deny access
+        raise HTTPException(status_code=403, detail="无法验证任务所有权")
 
 
 class TaskStatusResponse(BaseModel):
@@ -157,8 +189,10 @@ async def get_task_stats(
 async def get_task_status(
     task_id: str,
     current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Poll the status and result of a submitted attack task."""
+    _verify_task_ownership(task_id, current_user, db)
     try:
         from celery.result import AsyncResult
 
@@ -204,15 +238,17 @@ async def get_task_status(
         )
     except Exception as exc:
         logger.error("Get task status failed for %s: %s", task_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(exc), "获取任务状态失败"))
 
 
 @router.delete("/{task_id}")
 async def cancel_task(
     task_id: str,
     current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Cancel a pending or running attack task."""
+    _verify_task_ownership(task_id, current_user, db)
     try:
         from celery.result import AsyncResult
 
@@ -225,15 +261,17 @@ async def cancel_task(
         raise
     except Exception as exc:
         logger.error("Cancel task failed for %s: %s", task_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(exc), "取消任务失败"))
 
 
 @router.post("/{task_id}/pause")
 async def pause_task(
     task_id: str,
     current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Pause a running attack task."""
+    _verify_task_ownership(task_id, current_user, db)
     try:
         import redis
         from app.core.config import settings
@@ -244,15 +282,17 @@ async def pause_task(
         return {"message": "Task paused", "task_id": task_id}
     except Exception as exc:
         logger.error("Pause task failed for %s: %s", task_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(exc), "暂停任务失败"))
 
 
 @router.post("/{task_id}/resume")
 async def resume_task(
     task_id: str,
     current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """Resume a paused attack task."""
+    _verify_task_ownership(task_id, current_user, db)
     try:
         import redis
         from app.core.config import settings
@@ -263,4 +303,4 @@ async def resume_task(
         return {"message": "Task resumed", "task_id": task_id}
     except Exception as exc:
         logger.error("Resume task failed for %s: %s", task_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(exc), "恢复任务失败"))

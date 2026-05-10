@@ -1,8 +1,10 @@
 """DeepFool attack Pydantic models."""
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+
+from .base import BaseAttackRequest
 
 
 class DeepFoolAttackParams(BaseModel):
@@ -12,18 +14,9 @@ class DeepFoolAttackParams(BaseModel):
     num_classes: int = Field(10, ge=2, le=20, description="候选类别数 (Top-K)")
 
 
-class DeepFoolAttackRequest(BaseModel):
+class DeepFoolAttackRequest(BaseAttackRequest):
     """DeepFool 攻击请求"""
-    image: str = Field(..., description="Base64 编码图像")
-    model_name: Optional[str] = Field("resnet100_imagenet", description="模型名称")
     params: DeepFoolAttackParams = Field(default_factory=DeepFoolAttackParams, description="攻击参数")
-
-    @field_validator('image')
-    @classmethod
-    def validate_image(cls, v):
-        if not v.startswith('data:image/'):
-            raise ValueError('图像格式无效，必须以 data:image/ 开头')
-        return v
 
 
 class DeepFoolAttackResponse(BaseModel):

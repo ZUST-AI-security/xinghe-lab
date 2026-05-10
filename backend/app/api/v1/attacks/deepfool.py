@@ -27,7 +27,7 @@ from app.schemas.attacks.deepfool import (
 )
 from app.utils.image_utils import base64_to_image, image_to_base64
 from app.utils.attack_response import build_prediction_summary
-from app.core.exceptions import AttackError, ValidationError
+from app.core.exceptions import AttackError, ValidationError, safe_error_detail
 from app.utils.imagenet_classes import search_classes, get_class_by_id, get_popular_classes
 
 router = APIRouter(prefix="/deepfool", tags=["DeepFool Attack"])
@@ -126,8 +126,8 @@ async def run_deepfool_sync(
     except Exception as e:
         logger.error(f"DeepFool attack failed: {e}", exc_info=True)
         if isinstance(e, (AttackError, ValidationError, ValueError)):
-            raise HTTPException(status_code=400, detail=str(e))
-        raise HTTPException(status_code=500, detail=f"攻击执行失败: {e}")
+            raise HTTPException(status_code=400, detail=safe_error_detail(str(e), "攻击执行失败"))
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "攻击执行失败"))
 
 
 @router.post("/submit", response_model=DeepFoolAsyncTaskResponse, summary="异步提交 DeepFool 攻击")
@@ -148,7 +148,7 @@ async def submit_deepfool_async(
         return DeepFoolAsyncTaskResponse(task_id=task.id, status="pending")
     except Exception as e:
         logger.error(f"DeepFool task submit failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"任务提交失败: {e}")
+        raise HTTPException(status_code=500, detail=safe_error_detail(str(e), "任务提交失败"))
 
 
 @router.get("/params/schema", summary="获取 DeepFool 参数 Schema")

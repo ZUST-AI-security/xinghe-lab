@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
+from .base import BaseAttackRequest
+
 
 class PGDAttackParams(BaseModel):
     """PGD attack parameters."""
@@ -32,18 +34,9 @@ class PGDAttackParams(BaseModel):
         return v
 
 
-class PGDAttackRequest(BaseModel):
+class PGDAttackRequest(BaseAttackRequest):
     """PGD attack request model."""
-    image: str = Field(..., description="Base64 encoded image")
-    model_name: Optional[str] = Field("resnet100_imagenet", description="Model name")
     params: PGDAttackParams = Field(default_factory=PGDAttackParams, description="Attack parameters")
-
-    @field_validator('image')
-    @classmethod
-    def validate_image(cls, v):
-        if not v.startswith('data:image/'):
-            raise ValueError('Invalid image format, must start with data:image/')
-        return v
 
 
 class PGDAttackResponse(BaseModel):

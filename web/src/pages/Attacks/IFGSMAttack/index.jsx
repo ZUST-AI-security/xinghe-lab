@@ -23,18 +23,18 @@ import ImageUploader from '../CWAttack/components/ImageUploader';
 import ParameterSlider from '../CWAttack/components/ParameterSlider';
 import ResultDisplay from '../CWAttack/components/ResultDisplay';
 import useIFGSMAttack from './hooks/useIFGSMAttack';
+import { useAttackStore } from '../../../store/attackStore';
 
 const { Title, Paragraph, Text } = Typography;
 
 const IFGSMAttack = () => {
+  const storeSlice = useAttackStore((s) => s.ifgsm);
+  const updateSlice = useAttackStore((s) => s.updateSlice);
+  const resetSlice = useAttackStore((s) => s.resetSlice);
+
   const [imageUrl, setImageUrl] = useState(null);
-  const [useAsync, setUseAsync] = useState(true);
-  const [params, setParams] = useState({
-    epsilon: 0.03,
-    alpha: 0.01,
-    num_iterations: 10,
-    targeted: false,
-  });
+  const [useAsync, setUseAsync] = useState(storeSlice.useAsync);
+  const [params, setParams] = useState(storeSlice.params);
 
   const {
     loading,
@@ -64,6 +64,16 @@ const IFGSMAttack = () => {
     return false;
   };
 
+  const handleParamsChange = (newParams) => {
+    setParams(newParams);
+    updateSlice('ifgsm', { params: newParams });
+  };
+
+  const handleUseAsyncChange = (checked) => {
+    setUseAsync(checked);
+    updateSlice('ifgsm', { useAsync: checked });
+  };
+
   const handleRunAttack = () => {
     if (!imageUrl) return;
     const requestData = {
@@ -80,7 +90,9 @@ const IFGSMAttack = () => {
 
   const handleReset = () => {
     setImageUrl(null);
-    setParams({ epsilon: 0.03, alpha: 0.01, num_iterations: 10, targeted: false });
+    const defaults = { epsilon: 0.03, alpha: 0.01, num_iterations: 10, targeted: false };
+    setParams(defaults);
+    resetSlice('ifgsm');
     reset();
   };
 
@@ -112,7 +124,7 @@ const IFGSMAttack = () => {
         <Space>
           <Text type="secondary">状态:</Text>
           <Badge status={currentStatus.color} text={currentStatus.text} />
-          <Switch checkedChildren="异步" unCheckedChildren="同步" checked={useAsync} onChange={setUseAsync} size="small" />
+          <Switch checkedChildren="异步" unCheckedChildren="同步" checked={useAsync} onChange={handleUseAsyncChange} size="small" />
         </Space>
       </div>
 
@@ -133,7 +145,7 @@ const IFGSMAttack = () => {
               description="L∞ 扰动约束上界。"
               tips="值越大攻击越容易成功，但图像质量下降越明显。"
               value={params.epsilon}
-              onChange={(value) => setParams((prev) => ({ ...prev, epsilon: value }))}
+              onChange={(value) => handleParamsChange({ ...params, epsilon: value })}
               range={{ min: 0, max: 0.2 }}
               step={0.001}
               disabled={isRunning}
@@ -144,7 +156,7 @@ const IFGSMAttack = () => {
               description="每次迭代的步长大小。"
               tips="通常设为 epsilon / num_iterations 的量级。"
               value={params.alpha}
-              onChange={(value) => setParams((prev) => ({ ...prev, alpha: value }))}
+              onChange={(value) => handleParamsChange({ ...params, alpha: value })}
               range={{ min: 0.001, max: 0.1 }}
               step={0.001}
               disabled={isRunning}
@@ -155,7 +167,7 @@ const IFGSMAttack = () => {
               description="I-FGSM 的迭代步数。"
               tips="更多迭代可能获得更强攻击效果，但耗时增加。"
               value={params.num_iterations}
-              onChange={(value) => setParams((prev) => ({ ...prev, num_iterations: value }))}
+              onChange={(value) => handleParamsChange({ ...params, num_iterations: value })}
               range={{ min: 1, max: 100 }}
               step={1}
               disabled={isRunning}
@@ -163,7 +175,7 @@ const IFGSMAttack = () => {
 
             <div style={{ marginBottom: 24 }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>攻击模式</Text>
-              <Tag color={params.targeted ? 'purple' : 'blue'} onClick={() => setParams((prev) => ({ ...prev, targeted: !prev.targeted }))} style={{ cursor: 'pointer' }}>
+              <Tag color={params.targeted ? 'purple' : 'blue'} onClick={() => handleParamsChange({ ...params, targeted: !params.targeted })} style={{ cursor: 'pointer' }}>
                 {params.targeted ? '定向攻击' : '非定向攻击'}
               </Tag>
             </div>

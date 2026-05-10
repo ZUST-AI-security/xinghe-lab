@@ -100,34 +100,63 @@ def create_refresh_token(data: dict) -> str:
 def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
     """
     验证JWT令牌
-    
+
     Args:
         token: JWT令牌
         token_type: 令牌类型 ("access" 或 "refresh")
-        
+
     Returns:
         Optional[dict]: 解码后的数据，验证失败返回None
     """
     try:
+        # Check server-side blacklist first
+        if is_token_blacklisted(token):
+            return None
+
         payload = jwt.decode(
-            token, 
-            settings.jwt_secret_key, 
+            token,
+            settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm]
         )
-        
+
         # 检查令牌类型
         if payload.get("type") != token_type:
             return None
-            
+
         # 检查过期时间
         exp = payload.get("exp")
         if exp is None or datetime.fromtimestamp(exp) < datetime.utcnow():
             return None
-            
+
         return payload
-        
+
     except JWTError:
         return None
+
+
+def blacklist_token(token: str) -> None:
+    """Add a token to the server-side blacklist (Redis)."""
+    import logging
+    import redis as redis_lib
+    try:
+        r = redis_lib.from_url(settings.redis_url, decode_responses=True)
+        # Store for the max possible token lifetime (refresh token expiry)
+        ttl = settings.jwt_refresh_token_expire_days * 86400
+        r.set(f"token_blacklist:{token}", "1", ex=ttl)
+    except Exception:
+        logging.getLogger(__name__).error("Redis不可用，Token黑名单写入失败，token可能仍有效")
+
+
+def is_token_blacklisted(token: str) -> bool:
+    """Check if a token has been revoked server-side. Fail-closed for security."""
+    import logging
+    import redis as redis_lib
+    try:
+        r = redis_lib.from_url(settings.redis_url, decode_responses=True)
+        return r.exists(f"token_blacklist:{token}") == 1
+    except Exception:
+        logging.getLogger(__name__).warning("Redis不可用，Token黑名单检查失败，拒绝请求（fail-closed）")
+        return True  # Fail-closed: if Redis is down, reject the token
 
 def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
     """

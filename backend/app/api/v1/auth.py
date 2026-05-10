@@ -18,10 +18,12 @@ from app.core.security import (
     get_current_user,
     get_password_hash,
     verify_token,
+    blacklist_token,
 )
 from app.models.user import User
 from app.schemas.user import Token, UserCreate, UserResponse
 from app.core.config import settings
+from app.core.rate_limit import auth_login_rate_limiter, auth_register_rate_limiter
 
 router = APIRouter()
 
@@ -69,14 +71,15 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=100)
     full_name: Optional[str] = Field(None, max_length=100)
     captcha_id: str = Field(..., description="验证码ID")
-    captcha_code: str = Field(..., min_length=4, max_length=4, description="验证码")
+    captcha_code: str = Field(..., min_length=5, max_length=5, description="验证码")
+    setup_token: Optional[str] = Field(None, description="首次部署管理员 setup token")
 
 
 class LoginRequest(BaseModel):
     username: str
     password: str
-    captcha_id: Optional[str] = Field(None, description="验证码ID")
-    captcha_code: Optional[str] = Field(None, min_length=4, max_length=4, description="验证码")
+    captcha_id: str = Field(..., description="验证码ID")
+    captcha_code: str = Field(..., min_length=5, max_length=5, description="验证码")
 
 
 class RefreshRequest(BaseModel):
@@ -84,7 +87,11 @@ class RefreshRequest(BaseModel):
 
 
 @router.post("/register", response_model=UserResponse)
-async def register(request_data: RegisterRequest, db: Session = Depends(get_db)):
+async def register(
+    request_data: RegisterRequest,
+    db: Session = Depends(get_db),
+    _rate_limit: None = Depends(auth_register_rate_limiter),
+):
     """Register a new user account with captcha verification."""
     # 验证验证码
     redis_client = get_redis_client()
@@ -116,6 +123,22 @@ async def register(request_data: RegisterRequest, db: Session = Depends(get_db))
     # A fresh deployment has no seeded credentials. The first user becomes admin.
     is_first_user = db.query(User.id).first() is None
 
+    # 防止攻击者抢先注册管理员：如果配置了 admin_setup_token，首个用户必须提供
+    if is_first_user and settings.admin_setup_token:
+        if request_data.setup_token != settings.admin_setup_token:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="首次注册管理员账号需要提供正确的 setup token",
+            )
+
+    # 邮箱注册频率限制：同一邮箱 24 小时内只能注册 1 次
+    email_rate_key = f"rate_limit:register_email:{request_data.email}"
+    if redis_client.exists(email_rate_key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="该邮箱注册过于频繁，请24小时后再试",
+        )
+
     db_user = User(
         username=request_data.username,
         email=request_data.email,
@@ -128,6 +151,14 @@ async def register(request_data: RegisterRequest, db: Session = Depends(get_db))
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+
+    # 设置邮箱注册频率限制（24小时）
+    redis_client.set(email_rate_key, "1", ex=86400)
+
+    if is_first_user:
+        import logging
+        logging.getLogger(__name__).warning("首个用户注册为管理员: %s", db_user.username)
+
     return db_user
 
 
@@ -136,6 +167,7 @@ async def login(
     request_data: LoginRequest,
     request: Request = None,
     db: Session = Depends(get_db),
+    _rate_limit: None = Depends(auth_login_rate_limiter),
 ):
     """Authenticate and return JWT access + refresh tokens with captcha verification."""
     client_ip = request.client.host if request else "unknown"
@@ -144,20 +176,19 @@ async def login(
     # 检查是否被锁定
     _check_login_lockout(redis_client, client_ip)
 
-    # 验证验证码（如果提供）
-    if request_data.captcha_id and request_data.captcha_code:
-        stored_captcha = redis_client.get(f"captcha:{request_data.captcha_id}")
-        if not stored_captcha:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="验证码已过期，请重新获取",
-            )
-        if stored_captcha.lower() != request_data.captcha_code.lower():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="验证码错误",
-            )
-        redis_client.delete(f"captcha:{request_data.captcha_id}")
+    # 验证验证码（强制）
+    stored_captcha = redis_client.get(f"captcha:{request_data.captcha_id}")
+    if not stored_captcha:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="验证码已过期，请重新获取",
+        )
+    if stored_captcha.lower() != request_data.captcha_code.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="验证码错误",
+        )
+    redis_client.delete(f"captcha:{request_data.captcha_id}")
 
     user = authenticate_user(db, request_data.username, request_data.password)
     if not user:
@@ -191,7 +222,7 @@ async def login(
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(request_data: RefreshRequest, db: Session = Depends(get_db)):
-    """Issue a new access token using a valid refresh token."""
+    """Issue a new access token using a valid refresh token. Old refresh token is blacklisted."""
     payload = verify_token(request_data.refresh_token, token_type="refresh")
     if payload is None:
         raise HTTPException(
@@ -211,6 +242,8 @@ async def refresh_token(request_data: RefreshRequest, db: Session = Depends(get_
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户不存在或已被禁用",
         )
+    # 轮转：将旧 refresh token 加入黑名单
+    blacklist_token(request_data.refresh_token)
     access_token = create_access_token(
         data={"sub": user.username},
         expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
@@ -231,6 +264,21 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/logout")
-async def logout(current_user: User = Depends(get_current_user)):
-    """Log out (client should discard its token; server-side blacklist TODO)."""
+async def logout(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Log out and blacklist both access and refresh tokens server-side."""
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        blacklist_token(auth_header[7:])
+
+    # Also blacklist the refresh token if provided in body
+    try:
+        body = await request.json()
+        if isinstance(body, dict) and body.get("refresh_token"):
+            blacklist_token(body["refresh_token"])
+    except Exception:
+        pass  # Body may be empty or not JSON
+
     return {"message": "登出成功"}

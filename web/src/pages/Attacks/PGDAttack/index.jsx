@@ -23,22 +23,19 @@ import ImageUploader from '../CWAttack/components/ImageUploader';
 import ParameterSlider from '../CWAttack/components/ParameterSlider';
 import ResultDisplay from '../CWAttack/components/ResultDisplay';
 import usePGDAttack from './hooks/usePGDAttack';
+import { useAttackStore } from '../../../store/attackStore';
 
 const { Title, Paragraph, Text } = Typography;
 
 const PGDAttack = () => {
+  const storeSlice = useAttackStore((s) => s.pgd);
+  const updateSlice = useAttackStore((s) => s.updateSlice);
+  const resetSlice = useAttackStore((s) => s.resetSlice);
+
   const [imageUrl, setImageUrl] = useState(null);
   const [advancedMode, setAdvancedMode] = useState(false);
-  const [useAsync, setUseAsync] = useState(true);
-  const [params, setParams] = useState({
-    epsilon: 0.03,
-    alpha: 0.01,
-    num_iter: 40,
-    targeted: false,
-    random_start: true,
-    loss_type: 'ce',
-    norm: 'linf',
-  });
+  const [useAsync, setUseAsync] = useState(storeSlice.useAsync);
+  const [params, setParams] = useState(storeSlice.params);
 
   const {
     loading,
@@ -110,6 +107,16 @@ const PGDAttack = () => {
     return false;
   };
 
+  const handleParamsChange = (newParams) => {
+    setParams(newParams);
+    updateSlice('pgd', { params: newParams });
+  };
+
+  const handleUseAsyncChange = (checked) => {
+    setUseAsync(checked);
+    updateSlice('pgd', { useAsync: checked });
+  };
+
   const handleRunAttack = () => {
     if (!imageUrl) {
       return;
@@ -130,6 +137,7 @@ const PGDAttack = () => {
   const handleReset = () => {
     setImageUrl(null);
     setParams(presets[0].params);
+    resetSlice('pgd');
     reset();
   };
 
@@ -164,7 +172,7 @@ const PGDAttack = () => {
         <Space>
           <Text type="secondary">状态:</Text>
           {renderStatusIndicator()}
-          <Switch checkedChildren="异步" unCheckedChildren="同步" checked={useAsync} onChange={setUseAsync} size="small" />
+          <Switch checkedChildren="异步" unCheckedChildren="同步" checked={useAsync} onChange={handleUseAsyncChange} size="small" />
           <Switch checkedChildren="高级" unCheckedChildren="基础" checked={advancedMode} onChange={setAdvancedMode} size="small" />
         </Space>
       </div>
@@ -187,7 +195,7 @@ const PGDAttack = () => {
               <Text strong style={{ display: 'block', marginBottom: 8 }}>快速预设</Text>
               <Space wrap>
                 {presets.map((preset) => (
-                  <Tag key={preset.name} style={{ cursor: 'pointer' }} onClick={() => setParams(preset.params)} color={JSON.stringify(params) === JSON.stringify(preset.params) ? 'blue' : 'default'}>
+                  <Tag key={preset.name} style={{ cursor: 'pointer' }} onClick={() => handleParamsChange(preset.params)} color={JSON.stringify(params) === JSON.stringify(preset.params) ? 'blue' : 'default'}>
                     {preset.name}
                   </Tag>
                 ))}
@@ -201,7 +209,7 @@ const PGDAttack = () => {
                 description={spec.description}
                 tips={spec.tips}
                 value={params[key]}
-                onChange={(value) => setParams((prev) => ({ ...prev, [key]: value }))}
+                onChange={(value) => handleParamsChange({ ...params, [key]: value })}
                 range={spec.range}
                 step={spec.step}
                 unit={spec.unit}
@@ -212,24 +220,24 @@ const PGDAttack = () => {
             <div style={{ marginBottom: 24 }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>攻击模式</Text>
               <Space wrap>
-                <Tag color={params.targeted ? 'purple' : 'blue'} onClick={() => setParams((prev) => ({ ...prev, targeted: !prev.targeted }))} style={{ cursor: 'pointer' }}>
+                <Tag color={params.targeted ? 'purple' : 'blue'} onClick={() => handleParamsChange({ ...params, targeted: !params.targeted })} style={{ cursor: 'pointer' }}>
                   {params.targeted ? '定向攻击' : '非定向攻击'}
                 </Tag>
-                <Tag color={params.random_start ? 'green' : 'default'} onClick={() => setParams((prev) => ({ ...prev, random_start: !prev.random_start }))} style={{ cursor: 'pointer' }}>
+                <Tag color={params.random_start ? 'green' : 'default'} onClick={() => handleParamsChange({ ...params, random_start: !params.random_start })} style={{ cursor: 'pointer' }}>
                   {params.random_start ? '随机初始化开启' : '随机初始化关闭'}
                 </Tag>
                 {advancedMode && (
                   <>
-                    <Tag color={params.norm === 'linf' ? 'geekblue' : 'default'} onClick={() => setParams((prev) => ({ ...prev, norm: 'linf' }))} style={{ cursor: 'pointer' }}>
+                    <Tag color={params.norm === 'linf' ? 'geekblue' : 'default'} onClick={() => handleParamsChange({ ...params, norm: 'linf' })} style={{ cursor: 'pointer' }}>
                       Linf
                     </Tag>
-                    <Tag color={params.norm === 'l2' ? 'geekblue' : 'default'} onClick={() => setParams((prev) => ({ ...prev, norm: 'l2' }))} style={{ cursor: 'pointer' }}>
+                    <Tag color={params.norm === 'l2' ? 'geekblue' : 'default'} onClick={() => handleParamsChange({ ...params, norm: 'l2' })} style={{ cursor: 'pointer' }}>
                       L2
                     </Tag>
-                    <Tag color={params.loss_type === 'ce' ? 'gold' : 'default'} onClick={() => setParams((prev) => ({ ...prev, loss_type: 'ce' }))} style={{ cursor: 'pointer' }}>
+                    <Tag color={params.loss_type === 'ce' ? 'gold' : 'default'} onClick={() => handleParamsChange({ ...params, loss_type: 'ce' })} style={{ cursor: 'pointer' }}>
                       CE Loss
                     </Tag>
-                    <Tag color={params.loss_type === 'dlr' ? 'gold' : 'default'} onClick={() => setParams((prev) => ({ ...prev, loss_type: 'dlr' }))} style={{ cursor: 'pointer' }}>
+                    <Tag color={params.loss_type === 'dlr' ? 'gold' : 'default'} onClick={() => handleParamsChange({ ...params, loss_type: 'dlr' })} style={{ cursor: 'pointer' }}>
                       DLR Loss
                     </Tag>
                   </>

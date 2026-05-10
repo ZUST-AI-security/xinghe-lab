@@ -9,6 +9,7 @@ import { useAttackRunner } from '../../shared/useAttackRunner';
 
 const useCWAttack = () => useAttackRunner({
   attackName: 'C&W',
+  algorithmKey: 'cw',
   runSync: runCWAttack,
   submitAsync: submitCWAttack,
   getTaskStatus: getAttackTaskStatus,
