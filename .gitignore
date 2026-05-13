@@ -11,6 +11,7 @@ __pycache__/
 *$py.class
 venv/
 .env
+.env.production
 .venv
 env/
 instance/
@@ -27,6 +28,10 @@ yarn-error.log*
 # Runtime artifacts
 logs/
 outputs/
+celerybeat-schedule*
+
+# SSL certificates
+nginx/certbot/
 
 # Local model cache / checkpoints
 models/

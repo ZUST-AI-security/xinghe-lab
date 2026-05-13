@@ -1,35 +1,34 @@
-# 星河智安 (XingHe ZhiAn) - 前端Dockerfile
+# 星河智安 (XingHe ZhiAn) - 前端 Dockerfile
 # React + Ant Design + Nginx
 
 # 构建阶段
-FROM node:18-alpine as build
+FROM node:18-alpine AS build
 
-# 设置工作目录
 WORKDIR /app
 
-# 复制package文件
+# 复制 package 文件并安装依赖
 COPY package*.json ./
+RUN npm ci
 
-# 安装依赖
-RUN npm ci --only=production
-
-# 复制源代码
+# 复制源代码并构建
+# 生产环境 API 使用相对路径（由 Nginx 代理）
 COPY . .
-
-# 构建应用
-RUN npm run build
+ARG VITE_API_BASE_URL=
+RUN VITE_API_BASE_URL="${VITE_API_BASE_URL}" npm run build
 
 # 生产阶段
 FROM nginx:alpine
 
-# 复制自定义nginx配置
+# 复制自定义 nginx 配置（由 docker-compose 挂载覆盖）
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# 复制构建产物
-COPY --from=build /app/build /usr/share/nginx/html
+# 复制构建产物（Vite 输出到 dist 目录）
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# 暴露端口
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -qO- http://localhost:80/health || exit 1
+
 EXPOSE 80
 
-# 启动nginx
 CMD ["nginx", "-g", "daemon off;"]

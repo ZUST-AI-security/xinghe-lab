@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     password_min_length: int = 8
     max_login_attempts: int = 5
     lockout_duration_minutes: int = 15
-    default_reset_password: str = "Abc12345"
+    default_reset_password: str = "XingHe@Reset2026"
     admin_setup_token: Optional[str] = None  # 首次部署时设置，防止攻击者抢先注册管理员
 
     # 图片上传限制（base64 编码后最大字节数）

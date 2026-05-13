@@ -59,8 +59,6 @@ async def admin_dashboard(
         },
         "system": {
             "version": settings.app_version,
-            "debug": settings.debug,
-            "database": "sqlite" if settings.database_url.startswith("sqlite") else "postgresql",
         },
     }
 

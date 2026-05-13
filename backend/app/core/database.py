@@ -15,20 +15,31 @@ from .config import settings
 logger = logging.getLogger(__name__)
 
 # 创建数据库引擎
+# 生产环境强制关闭 SQL 日志，防止敏感数据泄露
+_sql_echo = settings.debug and settings.is_development
+
 if settings.database_url.startswith("sqlite"):
     engine = create_engine(
         settings.database_url,
         connect_args={"check_same_thread": False, "timeout": 20},
         poolclass=StaticPool,
-        echo=settings.debug,
+        echo=_sql_echo,
     )
+    # SQLite WAL 模式：更好的并发读写和崩溃恢复
+    from sqlalchemy import event
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
 else:
     engine = create_engine(
         settings.database_url,
         pool_size=10,
         max_overflow=20,
         pool_pre_ping=True,
-        echo=settings.debug,
+        echo=_sql_echo,
     )
 
 # 创建会话工厂
