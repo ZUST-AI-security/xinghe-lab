@@ -1,35 +1,25 @@
-# 星河智安 (XingHe ZhiAn) - 前端Dockerfile
-# React + Ant Design + Nginx
+FROM node:18-alpine AS build
 
-# 构建阶段
-FROM node:18-alpine as build
-
-# 设置工作目录
 WORKDIR /app
 
-# 复制package文件
 COPY package*.json ./
+RUN npm ci
 
-# 安装依赖
-RUN npm ci --only=production
+ARG VITE_API_BASE_URL
+ARG VITE_API_VERSION=v1
+ARG VITE_ENABLE_DEBUG=false
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
+    VITE_API_VERSION=$VITE_API_VERSION \
+    VITE_ENABLE_DEBUG=$VITE_ENABLE_DEBUG
 
-# 复制源代码
 COPY . .
-
-# 构建应用
 RUN npm run build
 
-# 生产阶段
 FROM nginx:alpine
 
-# 复制自定义nginx配置
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# 复制构建产物
-COPY --from=build /app/build /usr/share/nginx/html
-
-# 暴露端口
 EXPOSE 80
 
-# 启动nginx
 CMD ["nginx", "-g", "daemon off;"]

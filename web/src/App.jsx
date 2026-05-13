@@ -10,6 +10,8 @@ import { useAuthStore } from './store/authStore';
 
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
+import HomePage from './pages/Home';
+import AboutPage from './pages/About';
 import Dashboard from './pages/Dashboard';
 import TaskHistory from './pages/Dashboard/TaskHistory';
 import AdminDashboard from './pages/Admin/AdminDashboard';
@@ -23,6 +25,9 @@ import FGSMAttack from './pages/Attacks/FGSMAttack';
 import IFGSMAttack from './pages/Attacks/IFGSMAttack';
 import DeepFoolAttack from './pages/Attacks/DeepFoolAttack';
 import CompareMode from './pages/Attacks/CompareMode';
+import RobustnessPage from './pages/Robustness';
+import SensitivityPage from './pages/Sensitivity';
+import LeaderboardPage from './pages/Leaderboard';
 
 const FullPageSpinner = () => (
   <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
@@ -94,6 +99,25 @@ function App() {
         />
 
         <Routes>
+          {/* 公开路由：无需登录即可访问 */}
+          <Route
+            path="/"
+            element={(
+              <ErrorBoundary>
+                <HomePage />
+              </ErrorBoundary>
+            )}
+          />
+          <Route
+            path="/about"
+            element={(
+              <ErrorBoundary>
+                <AboutPage />
+              </ErrorBoundary>
+            )}
+          />
+
+          {/* 认证路由：已登录时重定向到 dashboard */}
           <Route
             path="/login"
             element={user && isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
@@ -103,13 +127,13 @@ function App() {
             element={user && isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />}
           />
 
+          {/* 受保护路由：需要登录 */}
           <Route
             path="/*"
             element={(
               <ProtectedRoute>
                 <MainLayout>
                   <Routes>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/tasks/history" element={<TaskHistory />} />
 
@@ -119,6 +143,9 @@ function App() {
                     <Route path="/attacks/cw" element={<CWAttack />} />
                     <Route path="/attacks/deepfool" element={<DeepFoolAttack />} />
                     <Route path="/attacks/compare" element={<CompareMode />} />
+                    <Route path="/robustness" element={<RobustnessPage />} />
+                    <Route path="/sensitivity" element={<SensitivityPage />} />
+                    <Route path="/leaderboard" element={<LeaderboardPage />} />
 
                     <Route
                       path="/admin/dashboard"

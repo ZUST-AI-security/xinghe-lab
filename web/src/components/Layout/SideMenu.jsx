@@ -4,11 +4,13 @@ import {
   AppstoreOutlined,
   BarChartOutlined,
   DashboardOutlined,
+  ExperimentOutlined,
   HistoryOutlined,
   SafetyOutlined,
   SettingOutlined,
   TeamOutlined,
   ThunderboltOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -38,6 +40,9 @@ const buildMenuItems = (isAdmin) => {
         { key: '/attacks/compare', label: '对比模式', icon: <BarChartOutlined /> },
       ],
     },
+    { key: '/robustness', icon: <ExperimentOutlined />, label: '鲁棒性评估' },
+    { key: '/sensitivity', icon: <BarChartOutlined />, label: '敏感性分析' },
+    { key: '/leaderboard', icon: <TrophyOutlined />, label: '鲁棒性排行榜' },
   ];
 
   if (isAdmin) {

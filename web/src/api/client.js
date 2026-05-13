@@ -7,7 +7,7 @@ import axios from 'axios';
 import { message } from 'antd';
 
 // API基础配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? 'http://localhost:8000' : '');
 const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG === 'true';
 

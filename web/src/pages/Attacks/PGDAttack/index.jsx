@@ -23,6 +23,7 @@ import ImageUploader from '../CWAttack/components/ImageUploader';
 import ParameterSlider from '../CWAttack/components/ParameterSlider';
 import ResultDisplay from '../CWAttack/components/ResultDisplay';
 import usePGDAttack from './hooks/usePGDAttack';
+import QueueStatus from '../../../components/common/QueueStatus';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -168,6 +169,8 @@ const PGDAttack = () => {
           <Switch checkedChildren="高级" unCheckedChildren="基础" checked={advancedMode} onChange={setAdvancedMode} size="small" />
         </Space>
       </div>
+
+      <QueueStatus />
 
       <Row gutter={24}>
         <Col span={10}>

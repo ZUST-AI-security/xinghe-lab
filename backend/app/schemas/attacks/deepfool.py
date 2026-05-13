@@ -42,6 +42,8 @@ class DeepFoolAsyncTaskResponse(BaseModel):
     """DeepFool 异步任务响应"""
     task_id: str = Field(..., description="任务 ID")
     status: str = Field(..., description="任务状态")
+    param_limited: bool = Field(False, description="参数是否被自动限制")
+    param_limit_reason: str = Field("", description="参数限制原因说明")
 
 
 class DeepFoolHistoryListResponse(BaseModel):

@@ -28,5 +28,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6.152.6",
     "pytest>=9.0.2",
 ]

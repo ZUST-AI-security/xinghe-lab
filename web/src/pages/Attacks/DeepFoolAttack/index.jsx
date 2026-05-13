@@ -22,6 +22,7 @@ import ImageUploader from '../CWAttack/components/ImageUploader';
 import ParameterSlider from '../CWAttack/components/ParameterSlider';
 import ResultDisplay from '../CWAttack/components/ResultDisplay';
 import useDeepFoolAttack from './hooks/useDeepFoolAttack';
+import QueueStatus from '../../../components/common/QueueStatus';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -113,6 +114,8 @@ const DeepFoolAttack = () => {
           <Switch checkedChildren="异步" unCheckedChildren="同步" checked={useAsync} onChange={setUseAsync} size="small" />
         </Space>
       </div>
+
+      <QueueStatus />
 
       <Row gutter={24}>
         <Col span={10}>

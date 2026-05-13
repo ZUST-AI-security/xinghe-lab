@@ -4,8 +4,8 @@
 """
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, NoDecode
-from typing import Annotated, List, Optional
+from pydantic_settings import BaseSettings
+from typing import List
 import os
 from pathlib import Path
 
@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     
     # 文件上传配置
     max_file_size_mb: int = 10
-    allowed_image_types: Annotated[List[str], NoDecode] = ["jpg", "jpeg", "png", "bmp", "tiff"]
+    allowed_image_types: List[str] | str = ["jpg", "jpeg", "png", "bmp", "tiff"]
     
     # 日志配置
     log_level: str = "INFO"
@@ -80,11 +80,18 @@ class Settings(BaseSettings):
     # API限流配置
     rate_limit_per_minute: int = 60
 
+    # 任务调度配置
+    task_queue_threshold: int = 5
+    max_concurrent_tasks_per_user: int = 2
+
     @field_validator("allowed_image_types", mode="before")
     @classmethod
     def parse_allowed_image_types(cls, value):
         if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
+            stripped_value = value.strip()
+            if not stripped_value:
+                return []
+            return [item.strip() for item in stripped_value.split(",") if item.strip()]
         return value
     
     def __init__(self, **kwargs):

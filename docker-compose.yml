@@ -1,0 +1,150 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-xinghe_lab}
+      POSTGRES_USER: ${POSTGRES_USER:-xinghe}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-xinghe_change_me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: alphaply712/xinghe-lab-backend:${IMAGE_TAG:-latest}
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DEBUG: ${DEBUG:-false}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-too}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-xinghe}:${POSTGRES_PASSWORD:-xinghe_change_me}@postgres:5432/${POSTGRES_DB:-xinghe_lab}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MODEL_CACHE_DIR: /app/models
+      TORCH_HOME: /app/models
+      LOG_FILE: /app/logs/app.log
+      ALLOWED_IMAGE_TYPES: ${ALLOWED_IMAGE_TYPES:-["jpg","jpeg","png","bmp","tiff"]}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:8080"]}
+      RUN_MIGRATIONS: "true"
+    volumes:
+      - backend_models:/app/models
+      - backend_outputs:/app/outputs
+      - backend_logs:/app/logs
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  celery:
+    image: alphaply712/xinghe-lab-backend:${IMAGE_TAG:-latest}
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      DEBUG: ${DEBUG:-false}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-too}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-xinghe}:${POSTGRES_PASSWORD:-xinghe_change_me}@postgres:5432/${POSTGRES_DB:-xinghe_lab}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MODEL_CACHE_DIR: /app/models
+      TORCH_HOME: /app/models
+      LOG_FILE: /app/logs/app.log
+      ALLOWED_IMAGE_TYPES: ${ALLOWED_IMAGE_TYPES:-["jpg","jpeg","png","bmp","tiff"]}
+      RUN_MIGRATIONS: "false"
+    volumes:
+      - backend_models:/app/models
+      - backend_outputs:/app/outputs
+      - backend_logs:/app/logs
+    command:
+      [
+        "celery",
+        "-A",
+        "app.core.celery_app",
+        "worker",
+        "--queues=high,default,low",
+        "--concurrency=${CELERY_CONCURRENCY:-1}",
+        "--loglevel=${CELERY_LOG_LEVEL:-info}",
+        "-O",
+        "fair"
+      ]
+
+  celery-beat:
+    image: alphaply712/xinghe-lab-backend:${IMAGE_TAG:-latest}
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      DEBUG: ${DEBUG:-false}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-too}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-xinghe}:${POSTGRES_PASSWORD:-xinghe_change_me}@postgres:5432/${POSTGRES_DB:-xinghe_lab}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MODEL_CACHE_DIR: /app/models
+      TORCH_HOME: /app/models
+      LOG_FILE: /app/logs/app.log
+      RUN_MIGRATIONS: "false"
+    volumes:
+      - backend_models:/app/models
+      - backend_outputs:/app/outputs
+      - backend_logs:/app/logs
+    command: ["celery", "-A", "app.core.celery_app", "beat", "--loglevel=${CELERY_LOG_LEVEL:-info}"]
+
+  web:
+    image: alphaply712/xinghe-lab-web:${IMAGE_TAG:-latest}
+    build:
+      context: ./web
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_API_VERSION: ${VITE_API_VERSION:-v1}
+        VITE_ENABLE_DEBUG: ${VITE_ENABLE_DEBUG:-false}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_models:
+  backend_outputs:
+  backend_logs:

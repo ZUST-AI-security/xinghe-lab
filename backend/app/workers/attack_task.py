@@ -15,6 +15,8 @@ import time
 import logging
 from typing import Any, Dict
 
+import numpy as np
+import cv2
 import torch
 
 from app.workers.celery_app import celery_app
@@ -129,6 +131,56 @@ def run_attack(
         original_summary = build_prediction_summary(model, metadata["original_probs"])
         adversarial_summary = build_prediction_summary(model, metadata["adv_probs"])
 
+        # Reconstruct orig_np early so it can be used for perturbation visualization
+        _orig_tensor = input_tensor.detach().clone()
+        _mean = getattr(model, "IMAGENET_MEAN", None) or getattr(model, "mean", None)
+        _std = getattr(model, "IMAGENET_STD", None) or getattr(model, "std", None)
+        if _mean is not None and _std is not None:
+            _mean_t = torch.tensor(_mean, device=_orig_tensor.device).view(1, 3, 1, 1)
+            _std_t = torch.tensor(_std, device=_orig_tensor.device).view(1, 3, 1, 1)
+            _orig_tensor = _orig_tensor * _std_t + _mean_t
+        _orig_tensor = torch.clamp(_orig_tensor, 0, 1)
+        _orig_np_vis = (_orig_tensor[0].cpu().numpy().transpose(1, 2, 0) * 255).astype("uint8")
+
+        # --- Perturbation Visualization ---
+
+        # 1. Amplified difference image (10× amplification, same size as original)
+        diff = np.abs(_orig_np_vis.astype(float) - adv_np.astype(float))
+        amplified = np.clip(diff * 10, 0, 255).astype(np.uint8)
+        amplified_diff_b64 = image_to_base64(amplified)
+
+        # 2. Frequency-domain analysis image (2D FFT magnitude spectrum difference)
+        def _compute_fft_diff(orig_rgb: "np.ndarray", adv_rgb: "np.ndarray") -> str:
+            """
+            Compute the log-normalized difference of FFT magnitude spectra between
+            the original and adversarial images.  Returns a base64-encoded PNG.
+            The output is a single-channel (grayscale) image resized to match the
+            input spatial dimensions.
+            """
+            orig_gray = cv2.cvtColor(orig_rgb, cv2.COLOR_RGB2GRAY).astype(float)
+            adv_gray = cv2.cvtColor(adv_rgb, cv2.COLOR_RGB2GRAY).astype(float)
+
+            fft_orig = np.abs(np.fft.fftshift(np.fft.fft2(orig_gray)))
+            fft_adv = np.abs(np.fft.fftshift(np.fft.fft2(adv_gray)))
+
+            diff_spectrum = np.log1p(np.abs(fft_adv - fft_orig))
+            max_val = diff_spectrum.max()
+            if max_val > 0:
+                normalized = (diff_spectrum / max_val * 255).astype(np.uint8)
+            else:
+                normalized = np.zeros_like(diff_spectrum, dtype=np.uint8)
+
+            # Resize to match original image spatial dimensions (H, W)
+            h, w = orig_rgb.shape[:2]
+            if normalized.shape != (h, w):
+                normalized = cv2.resize(normalized, (w, h), interpolation=cv2.INTER_LINEAR)
+
+            # Convert grayscale to RGB so image_to_base64 handles it uniformly
+            normalized_rgb = cv2.cvtColor(normalized, cv2.COLOR_GRAY2RGB)
+            return image_to_base64(normalized_rgb)
+
+        fft_diff_b64 = _compute_fft_diff(_orig_np_vis, adv_np)
+
         # --- File Storage Logic ---
         output_dir = os.path.join("outputs", "tasks", self.request.id)
         os.makedirs(output_dir, exist_ok=True)
@@ -150,15 +202,8 @@ def run_attack(
         # but for backward compatibility in polling, we will still return base64 for now, 
         # or just return paths. Returning base64 can make polling slow but it's what exists.
         
-        orig_tensor = input_tensor.detach().clone()
-        mean = getattr(model, "IMAGENET_MEAN", None) or getattr(model, "mean", None)
-        std = getattr(model, "IMAGENET_STD", None) or getattr(model, "std", None)
-        if mean is not None and std is not None:
-            mean_t = torch.tensor(mean, device=orig_tensor.device).view(1, 3, 1, 1)
-            std_t = torch.tensor(std, device=orig_tensor.device).view(1, 3, 1, 1)
-            orig_tensor = orig_tensor * std_t + mean_t
-        orig_tensor = torch.clamp(orig_tensor, 0, 1)
-        orig_np = (orig_tensor[0].cpu().numpy().transpose(1, 2, 0) * 255).astype("uint8")
+        # Reuse the already-denormalized original image array
+        orig_np = _orig_np_vis
         
         orig_img_pil = Image.fromarray(orig_np)
         orig_img_path = os.path.join(output_dir, "original_image.png")
@@ -171,6 +216,8 @@ def run_attack(
             "original_image": orig_img_base64, # Use preprocessed base64
             "adversarial_image": image_to_base64(adv_np),
             "heatmap": heatmap_img_bytes,
+            "amplified_diff": amplified_diff_b64,
+            "fft_diff": fft_diff_b64,
             "original_probs": metadata["original_probs"][0].tolist(),
             "adversarial_probs": metadata["adv_probs"][0].tolist(),
             "success": metadata["success_rate"] > 0.5,
@@ -206,6 +253,8 @@ def run_attack(
         record_result.pop("original_image", None)
         record_result.pop("adversarial_image", None)
         record_result.pop("heatmap", None)
+        record_result.pop("amplified_diff", None)
+        record_result.pop("fft_diff", None)
         task_record.result = record_result
         from sqlalchemy.sql import func
         task_record.completed_at = func.now()

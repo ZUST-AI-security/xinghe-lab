@@ -33,6 +33,7 @@ import ParameterSlider from './components/ParameterSlider';
 import ImageUploader from './components/ImageUploader';
 import ResultDisplay from './components/ResultDisplay';
 import useCWAttack from './hooks/useCWAttack';
+import QueueStatus from '../../../components/common/QueueStatus';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -315,6 +316,8 @@ const CWAttack = () => {
           />
         </Space>
       </div>
+
+      <QueueStatus />
 
       <Row gutter={24}>
         <Col span={10}>

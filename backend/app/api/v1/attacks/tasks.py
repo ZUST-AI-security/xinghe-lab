@@ -20,6 +20,21 @@ router = APIRouter(prefix="/tasks", tags=["Attack Tasks"])
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Queue status models
+# ---------------------------------------------------------------------------
+
+class QueueInfo(BaseModel):
+    pending: int
+    estimated_wait_seconds: float
+
+
+class QueueStatusResponse(BaseModel):
+    high: QueueInfo
+    default: QueueInfo
+    low: QueueInfo
+
+
 class TaskStatusResponse(BaseModel):
     task_id: str
     status: str
@@ -55,6 +70,35 @@ class TaskHistoryResponse(BaseModel):
 
 def _to_iso(value: Optional[datetime]) -> Optional[str]:
     return value.isoformat() if value else None
+
+
+# ---------------------------------------------------------------------------
+# Queue status endpoint (public — no authentication required)
+# ---------------------------------------------------------------------------
+
+@router.get("/queue-status", response_model=QueueStatusResponse)
+async def get_queue_status():
+    """
+    返回三个 Celery 队列（high、default、low）的当前状态。
+
+    包含每个队列的待处理任务数量和预估等待时间（秒）。
+    该端点无需用户登录即可访问（公开端点）。
+    """
+    from app.core.queue_monitor import get_queue_status
+
+    db = SessionLocal()
+    try:
+        status = get_queue_status(db)
+        return QueueStatusResponse(
+            high=QueueInfo(**status["high"]),
+            default=QueueInfo(**status["default"]),
+            low=QueueInfo(**status["low"]),
+        )
+    except Exception as exc:
+        logger.error("get_queue_status failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+    finally:
+        db.close()
 
 
 @router.get("/history", response_model=TaskHistoryResponse)

@@ -104,6 +104,9 @@ app.add_exception_handler(Exception, general_exception_handler)
 
 from app.api.v1 import admin, auth, captcha, models, users  # noqa: E402
 from app.api.v1.attacks import router as attacks_router  # noqa: E402
+from app.api.v1.leaderboard import router as leaderboard_router  # noqa: E402
+from app.api.v1.robustness import router as robustness_router  # noqa: E402
+from app.api.v1.sensitivity import router as sensitivity_router  # noqa: E402
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["用户管理"])
@@ -111,6 +114,9 @@ app.include_router(models.router, prefix="/api/v1/models", tags=["模型管理"]
 app.include_router(attacks_router, prefix="/api/v1/attacks", tags=["攻击算法"])
 app.include_router(captcha.router, prefix="/api/v1/captcha", tags=["验证码"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["系统管理"])
+app.include_router(robustness_router, prefix="/api/v1", tags=["鲁棒性评估"])
+app.include_router(sensitivity_router, prefix="/api/v1", tags=["敏感性分析"])
+app.include_router(leaderboard_router, prefix="/api/v1", tags=["排行榜"])
 
 
 @app.get("/", tags=["系统"])

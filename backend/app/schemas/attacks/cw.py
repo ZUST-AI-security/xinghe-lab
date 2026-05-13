@@ -48,6 +48,8 @@ class CWAttackResponse(BaseModel):
 class CWAsyncTaskResponse(BaseModel):
     task_id: str
     status: str
+    param_limited: bool = False
+    param_limit_reason: str = ""
 
 
 class CWTaskStatusResponse(BaseModel):

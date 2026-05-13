@@ -144,12 +144,33 @@ export const useAttackRunner = ({
     try {
       const response = await submitAsync(requestData);
       setTaskId(response.task_id);
+
+      // 若后端因队列繁忙自动限制了参数，向用户展示警告提示
+      if (response.param_limited) {
+        const reason = response.param_limit_reason || '部分参数已被自动限制';
+        message.warning(`${attackName} 参数已被自动限制：${reason}`);
+      }
+
       pollTask(response.task_id, requestData);
       return response;
     } catch (requestError) {
       setLoading(false);
       setStatus(FAILED_STATUS);
       setStatusMessage('');
+
+      // HTTP 429：并发任务数超限
+      if (requestError.response?.status === 429) {
+        const responseData = requestError.response?.data || {};
+        const activeTasks = responseData.active_tasks;
+        const detail = responseData.detail || '';
+        const tipMsg = activeTasks !== undefined
+          ? `当前已有 ${activeTasks} 个任务在运行，请等待任务完成后再提交`
+          : detail || '当前任务数已达上限，请等待任务完成后再提交';
+        setError(tipMsg);
+        message.warning(tipMsg);
+        throw requestError;
+      }
+
       setError(getRequestErrorMessage(requestError, `${attackName}任务提交失败`));
       throw requestError;
     }

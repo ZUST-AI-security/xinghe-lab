@@ -15,6 +15,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 import torch
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -123,20 +124,41 @@ async def run_fgsm_sync(
 async def submit_fgsm_async(
     request: FGSMAttackRequest,
     current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """
     Submit FGSM attack as a Celery task and return a task_id for polling.
     Poll status at GET /attacks/tasks/{task_id}.
+    FGSM is a single-step algorithm → routed to the 'high' priority queue.
     """
     try:
         from app.workers.attack_task import run_attack
+        from app.core.task_scheduler import evaluate_complexity, get_queue_name, check_concurrent_limit
+        from app.core.config import settings
 
-        task = run_attack.delay(
-            algorithm="fgsm",
-            model_name=request.model_name or "resnet100_imagenet",
-            image=request.image,
-            params=request.params.model_dump(),
-            user_id=current_user.id,
+        # 并发任务数限制检查
+        active_count = check_concurrent_limit(current_user.id, db)
+        if active_count >= settings.max_concurrent_tasks_per_user:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": f"当前已有 {active_count} 个任务在运行，请等待任务完成后再提交",
+                    "active_tasks": active_count,
+                },
+            )
+
+        priority = evaluate_complexity("fgsm", request.params.model_dump())
+        queue_name = get_queue_name(priority)
+
+        task = run_attack.apply_async(
+            kwargs=dict(
+                algorithm="fgsm",
+                model_name=request.model_name or "resnet100_imagenet",
+                image=request.image,
+                params=request.params.model_dump(),
+                user_id=current_user.id,
+            ),
+            queue=queue_name,
         )
         return FGSMAsyncTaskResponse(task_id=task.id, status="pending")
 

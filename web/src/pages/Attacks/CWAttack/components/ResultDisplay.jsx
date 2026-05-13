@@ -26,6 +26,7 @@ import {
 import ComparisonSlider from '../../../../components/Visualization/ComparisonSlider';
 import Heatmap from '../../../../components/Visualization/Heatmap';
 import ConfidenceChart from '../../../../components/Visualization/ConfidenceChart';
+import PerturbationViewer from '../../../../components/Visualization/PerturbationViewer';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -287,18 +288,21 @@ const ResultDisplay = ({
 
         <TabPane tab="扰动分析" key="3">
           <Row gutter={[16, 16]}>
-            {result.heatmap && (
-              <Col span={12}>
-                <Card size="small" title="扰动热力图">
-                  <Heatmap
-                    image={result.heatmap}
-                    title="攻击扰动分布"
-                  />
-                </Card>
-              </Col>
-            )}
-            
-            <Col span={result.heatmap ? 12 : 24}>
+            <Col span={24}>
+              <Card size="small" title="扰动可视化">
+                <PerturbationViewer
+                  heatmap={result.heatmap}
+                  amplifiedDiff={result.amplified_diff}
+                  fftDiff={result.fft_diff}
+                  width="100%"
+                  height={280}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Col span={24}>
               <Card size="small" title="扰动统计">
                 <Descriptions bordered column={1} size="small">
                   <Descriptions.Item label="攻击状态">

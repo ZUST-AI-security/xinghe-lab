@@ -13,6 +13,7 @@ from typing import Any, Dict
 import numpy as np
 import torch
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -133,18 +134,61 @@ async def run_deepfool_sync(
 async def submit_deepfool_async(
     request: DeepFoolAttackRequest,
     current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
-    """提交 DeepFool 攻击为 Celery 异步任务。"""
+    """提交 DeepFool 攻击为 Celery 异步任务。
+    DeepFool 为优化算法 → 路由到 'low' 优先级队列。
+    """
     try:
         from app.workers.attack_task import run_attack
-        task = run_attack.delay(
-            algorithm="deepfool",
-            model_name=request.model_name or "resnet100_imagenet",
-            image=request.image,
-            params=request.params.model_dump(),
-            user_id=current_user.id,
+        from app.core.task_scheduler import (
+            apply_param_limits,
+            check_concurrent_limit,
+            evaluate_complexity,
+            get_low_queue_depth,
+            get_queue_name,
         )
-        return DeepFoolAsyncTaskResponse(task_id=task.id, status="pending")
+        from app.core.config import settings
+
+        # 并发任务数限制检查
+        active_count = check_concurrent_limit(current_user.id, db)
+        if active_count >= settings.max_concurrent_tasks_per_user:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": f"当前已有 {active_count} 个任务在运行，请等待任务完成后再提交",
+                    "active_tasks": active_count,
+                },
+            )
+
+        priority = evaluate_complexity("deepfool", request.params.model_dump())
+        queue_name = get_queue_name(priority)
+
+        # 检查队列深度并按需限制参数
+        queue_depth = get_low_queue_depth()
+        limited_params, param_limited, param_limit_reason = apply_param_limits(
+            algorithm="deepfool",
+            params=request.params.model_dump(),
+            queue_depth=queue_depth,
+            threshold=settings.task_queue_threshold,
+        )
+
+        task = run_attack.apply_async(
+            kwargs=dict(
+                algorithm="deepfool",
+                model_name=request.model_name or "resnet100_imagenet",
+                image=request.image,
+                params=limited_params,
+                user_id=current_user.id,
+            ),
+            queue=queue_name,
+        )
+        return DeepFoolAsyncTaskResponse(
+            task_id=task.id,
+            status="pending",
+            param_limited=param_limited,
+            param_limit_reason=param_limit_reason,
+        )
     except Exception as e:
         logger.error(f"DeepFool task submit failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"任务提交失败: {e}")
