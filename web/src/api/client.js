@@ -143,8 +143,10 @@ apiClient.interceptors.response.use(
         case 429:
           if (data.require_captcha) {
             window.dispatchEvent(new CustomEvent('showCaptcha', { detail: { originalRequest }}));
-          } else {
-            message.error('请求过于频繁，请稍后再试');
+          } else if (!data.active_tasks) {
+            // 仅在非并发限制的 429（如频率限制）时显示通用提示
+            // 并发限制（含 active_tasks 字段）由各攻击页面自行处理
+            message.error(data.detail || '请求过于频繁，请稍后再试');
           }
           break;
         case 500:

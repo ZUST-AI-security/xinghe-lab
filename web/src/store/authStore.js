@@ -14,7 +14,7 @@ const useAuthStore = create(
       user: null,
       token: null,
       refreshToken: null,
-      loading: false,
+      loading: true,   // 初始为 true，避免认证检查完成前短暂渲染受保护内容
       isAuthenticated: false,
 
       login: async (credentials) => {

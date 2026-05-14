@@ -19,6 +19,7 @@ import UserManagement from './pages/Admin/UserManagement';
 import AttackHistory from './pages/Admin/AttackHistory';
 import SystemLogs from './pages/Admin/SystemLogs';
 import SystemConfig from './pages/Admin/SystemConfig';
+import FileManagement from './pages/Admin/FileManagement';
 import CWAttack from './pages/Attacks/CWAttack';
 import PGDAttack from './pages/Attacks/PGDAttack';
 import FGSMAttack from './pages/Attacks/FGSMAttack';
@@ -184,6 +185,14 @@ function App() {
                       element={(
                         <AdminRoute>
                           <SystemConfig />
+                        </AdminRoute>
+                      )}
+                    />
+                    <Route
+                      path="/admin/files"
+                      element={(
+                        <AdminRoute>
+                          <FileManagement />
                         </AdminRoute>
                       )}
                     />

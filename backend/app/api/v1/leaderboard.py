@@ -12,7 +12,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import func, case
+from sqlalchemy import func, case as sa_case
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -77,7 +77,10 @@ async def get_leaderboard(
             AttackHistory.model_name,
             func.count(AttackHistory.id).label("total_attacks"),
             func.sum(
-                case((AttackHistory.success == True, 1), else_=0)
+                sa_case(
+                    (AttackHistory.success == True, 1),
+                    else_=0,
+                )
             ).label("success_count"),
             func.avg(AttackHistory.success_rate).label("avg_success_rate"),
             func.avg(AttackHistory.l2_norm).label("avg_l2_norm"),

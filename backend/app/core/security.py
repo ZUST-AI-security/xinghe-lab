@@ -210,19 +210,6 @@ async def get_current_active_user(
     
     return current_user
 
-async def get_current_admin_user(
-    current_user: User = Depends(get_current_active_user),
-) -> User:
-    """
-    获取当前管理员用户
-    """
-    if current_user.role != "admin" and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="权限不足，需要管理员权限"
-        )
-    return current_user
-
 def require_role(*allowed_roles: str):
     """
     角色权限依赖工厂，用于限制端点只允许特定角色访问。

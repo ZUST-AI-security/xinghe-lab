@@ -2,11 +2,14 @@
 
 ## Introduction
 
-本文档描述「星河智安 AI 安全攻击可视化平台」的一批增强功能需求，涵盖四个方向：
+本文档描述「星河智安 AI 安全攻击可视化平台」的一批增强功能需求，涵盖六个方向：
+
 1. **公开首页与关于页面** — 无需登录即可访问的平台门户，展示平台介绍、算法、团队信息；
 2. **多算法对比实验** — 将现有双面板对比模式扩展为最多 4 个算法同时对比，并增强参数编辑与结果指标；
 3. **AI 安全创新功能** — 对抗样本鲁棒性评估、扰动可视化增强、攻击参数敏感性分析、模型鲁棒性排行榜；
-4. **后端任务处理优化** — 自适应资源分配、耗时任务参数限制、任务队列状态感知、并发任务数限制。
+4. **后端任务处理优化** — 自适应资源分配、耗时任务参数限制、任务队列状态感知、并发任务数限制；
+5. **用户体验优化** — 修复队列状态 API 路由、移除同步/异步切换、移动端响应式布局、任务结果查看；
+6. **文件管理** — 上传图片复用机制、管理员后台文件管理功能。
 
 平台归属：浙江科技大学大数据与智能安全实验室（星河智安实验室）。
 
@@ -28,6 +31,9 @@
 - **Admin（管理员）**：拥有 admin 角色的用户。
 - **ProtectedRoute（受保护路由）**：需要登录才能访问的前端路由。
 - **PublicRoute（公开路由）**：无需登录即可访问的前端路由。
+- **UploadedFile（上传文件）**：用户上传到平台的图片文件，存储于服务器并可被复用。
+- **FileManager（文件管理器）**：管理员用于查看、删除平台所有上传文件的后台功能模块。
+- **MyTasks（我的任务）**：用户查看自己历史攻击任务及其结果的页面。
 
 ---
 
@@ -244,3 +250,98 @@
 4. THE Platform 的并发任务上限 SHALL 可通过后端配置文件（`Settings`）中的 `max_concurrent_tasks_per_user` 字段进行调整，默认值为 2。
 5. THE Platform 的并发任务限制 SHALL 适用于所有攻击算法的提交端点（`/api/v1/attacks/*/submit`）。
 6. WHEN 用户的某个 AttackTask 完成或失败，THE Platform SHALL 将对应 TaskRecord 状态更新为终态（`completed` 或 `failed`），使该任务不再计入活跃任务数。
+
+---
+
+### Requirement 15：修复队列状态 API 路由注册
+
+**User Story:** 作为用户，我希望进入实验界面时不出现「请求的资源不存在」错误，以便正常查看队列状态并提交任务。
+
+#### Acceptance Criteria
+
+1. THE Platform 后端 SHALL 正确注册 `GET /api/v1/tasks/queue-status` 端点，使其在 FastAPI 路由表中可被访问。
+2. WHEN 前端请求 `GET /api/v1/tasks/queue-status`，THE Platform SHALL 返回 HTTP 200 及队列状态数据，而非 HTTP 404。
+3. THE Platform SHALL 确保 `tasks` 路由器已在 `backend/app/main.py` 中通过 `app.include_router` 正确挂载，前缀为 `/api/v1`。
+4. IF `queue-status` 端点路由注册正确但 Redis 连接失败，THEN THE Platform SHALL 返回 HTTP 503 及错误说明，而非 HTTP 404。
+5. THE Platform SHALL 在后端启动日志中可见 `/api/v1/tasks/queue-status` 路由条目，以便运维人员验证注册状态。
+
+---
+
+### Requirement 16：移除同步/异步切换，默认异步模式
+
+**User Story:** 作为用户，我希望攻击任务界面直接使用异步模式，不需要手动切换，以便简化操作流程。
+
+#### Acceptance Criteria
+
+1. THE Platform 前端 SHALL 移除所有攻击算法提交页面（FGSM、I-FGSM、PGD、C&W、DeepFool）中的同步/异步切换按钮或开关控件。
+2. THE Platform 前端 SHALL 所有攻击任务提交均默认使用异步模式（调用 `/submit` 端点并轮询任务状态）。
+3. WHEN 用户点击提交按钮，THE Platform SHALL 直接提交异步任务并展示任务进度轮询界面，不再提供同步执行选项。
+4. THE Platform 后端 SHALL 保留同步执行相关端点（如有），但前端不再暴露该入口。
+5. THE Platform 的对比模式（CompareMode）SHALL 同样移除同步/异步切换，默认异步并发提交所有面板任务。
+
+---
+
+### Requirement 17：前端移动端响应式布局优化
+
+**User Story:** 作为移动端用户，我希望平台界面在手机和平板上能正常显示和操作，以便在移动设备上使用平台功能。
+
+#### Acceptance Criteria
+
+1. THE Platform 前端 SHALL 使用 Ant Design 5 的响应式栅格系统（`Row`/`Col` 的 `xs`/`sm`/`md`/`lg` 断点）重构主要页面布局。
+2. THE Platform 的侧边导航栏 SHALL 在移动端（屏幕宽度 < 768px）自动折叠为抽屉式（Drawer）或汉堡菜单，不遮挡主内容区域。
+3. THE Platform 的攻击参数表单 SHALL 在移动端以单列布局展示，Slider 控件宽度自适应屏幕宽度。
+4. THE Platform 的对比结果表格 SHALL 在移动端支持横向滚动，不出现内容截断。
+5. THE Platform 的图片展示区域（原始图、对抗图、热力图）SHALL 在移动端自适应宽度，保持图片比例不变形。
+6. THE Platform 的公开首页（`/`）和关于页面（`/about`）SHALL 在移动端正确响应，各区块垂直堆叠展示。
+7. WHEN 屏幕宽度 < 768px，THE Platform SHALL 隐藏非必要的辅助信息列，保留核心操作控件和结果展示。
+8. THE Platform 的所有按钮和可交互元素 SHALL 在移动端满足最小触控目标尺寸（44×44px），以确保可操作性。
+
+---
+
+### Requirement 18：我的任务页面查看结果
+
+**User Story:** 作为用户，我希望在「我的任务」页面查看历史任务的完整攻击结果，以便回顾和对比不同实验的输出。
+
+#### Acceptance Criteria
+
+1. THE Platform SHALL 在「我的任务」页面（`/tasks` 或 `/my-tasks`）为每条任务记录提供「查看结果」入口（按钮或链接）。
+2. WHEN 用户点击「查看结果」，THE Platform SHALL 展示该任务的完整结果，包括：原始图像、对抗图像、热力图、攻击指标（L2 范数、Linf 范数、攻击成功率、置信度、执行耗时）。
+3. WHEN 任务状态为 `completed`，THE Platform SHALL 启用「查看结果」按钮；WHEN 任务状态为 `pending` 或 `running`，THE Platform SHALL 禁用该按钮并显示当前状态。
+4. WHEN 任务状态为 `failed`，THE Platform SHALL 在结果区域显示失败原因，而非空白页面。
+5. THE Platform SHALL 支持在「我的任务」页面直接内联展示结果（展开行或侧边抽屉），无需跳转新页面。
+6. THE Platform 的任务结果展示 SHALL 复用现有的 `PerturbationViewer` 组件（热力图、差值放大图、频域分析图三视图）。
+7. THE Platform SHALL 在「我的任务」页面提供任务列表的分页功能，每页默认展示 10 条记录。
+
+---
+
+### Requirement 19：上传图片复用机制
+
+**User Story:** 作为用户，我希望能够复用之前上传过的图片，而不必每次都重新上传，以便节省时间并减少服务器存储占用。
+
+#### Acceptance Criteria
+
+1. THE Platform 后端 SHALL 在用户上传图片时，计算图片的 SHA-256 哈希值，若该哈希已存在于 `UploadedFile` 表中（同一用户），则直接返回已有文件记录，不重复存储文件。
+2. THE Platform 前端 SHALL 在各攻击算法提交页面的图片上传区域下方，提供「从我的图片库选择」入口，展示该用户历史上传的图片缩略图列表。
+3. WHEN 用户从图片库选择图片，THE Platform SHALL 将该图片填充到当前上传区域，效果与重新上传相同。
+4. THE Platform 的图片库 SHALL 展示图片缩略图、上传时间和文件名，支持按上传时间倒序排列。
+5. THE Platform 后端 SHALL 提供 `GET /api/v1/files/my-uploads` 端点（需认证），返回当前用户的历史上传文件列表（含文件 ID、文件名、上传时间、文件大小、缩略图 URL）。
+6. THE Platform 后端 SHALL 提供 `POST /api/v1/files/upload` 端点（需认证），处理图片上传并执行去重逻辑，返回文件 ID 和访问 URL。
+7. THE UploadedFile 记录 SHALL 包含以下字段：`id`、`user_id`、`filename`、`file_path`、`file_hash`（SHA-256）、`file_size`、`created_at`。
+8. WHEN 用户删除某张图片（通过图片库管理），THE Platform SHALL 检查该文件是否被其他任务引用；IF 存在引用，THEN THE Platform SHALL 仅标记为用户不可见，不物理删除文件。
+
+---
+
+### Requirement 20：管理员后台文件管理
+
+**User Story:** 作为管理员，我希望在后台管理界面查看和管理所有用户上传的文件，以便监控存储使用情况并清理无用文件。
+
+#### Acceptance Criteria
+
+1. THE Platform 后端 SHALL 提供 `GET /api/v1/admin/files` 端点（需 Admin 角色），支持分页和按用户/上传时间筛选，返回所有用户的上传文件列表。
+2. THE Platform 后端 SHALL 提供 `DELETE /api/v1/admin/files/{file_id}` 端点（需 Admin 角色），允许管理员物理删除指定文件及其数据库记录。
+3. WHEN 管理员删除文件时，THE Platform SHALL 检查该文件是否被任务记录引用；IF 存在引用，THE Platform SHALL 在响应中返回警告信息，并要求管理员确认强制删除。
+4. THE Platform 前端管理员页面 SHALL 新增「文件管理」标签页，展示文件列表表格，包含：文件名、上传用户、文件大小、上传时间、操作（删除）列。
+5. THE Platform 的文件管理页面 SHALL 展示存储统计信息：总文件数、总存储占用（MB）、各用户存储占用排行（Top 10）。
+6. THE Platform 的文件管理页面 SHALL 支持批量删除：管理员可勾选多个文件后一键删除。
+7. WHEN 管理员执行删除操作，THE Platform SHALL 要求二次确认（Ant Design `Modal.confirm`），防止误操作。
+8. THE Platform 后端 SHALL 提供 `GET /api/v1/admin/files/stats` 端点（需 Admin 角色），返回存储统计数据。

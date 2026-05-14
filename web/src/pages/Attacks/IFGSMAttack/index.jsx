@@ -8,7 +8,6 @@ import {
   Progress,
   Row,
   Space,
-  Switch,
   Tag,
   Tooltip,
   Typography,
@@ -29,7 +28,6 @@ const { Title, Paragraph, Text } = Typography;
 
 const IFGSMAttack = () => {
   const [imageUrl, setImageUrl] = useState(null);
-  const [useAsync, setUseAsync] = useState(true);
   const [params, setParams] = useState({
     epsilon: 0.03,
     alpha: 0.01,
@@ -72,11 +70,7 @@ const IFGSMAttack = () => {
       model_name: 'resnet100_imagenet',
       params,
     };
-    if (useAsync) {
-      runAttack(requestData);
-      return;
-    }
-    runSyncAttack(requestData);
+    runAttack(requestData);
   };
 
   const handleReset = () => {
@@ -96,8 +90,8 @@ const IFGSMAttack = () => {
   const currentStatus = statusConfig[status] || statusConfig.idle;
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ padding: '16px 24px' }}>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <Title level={2} style={{ margin: 0 }}>
             I-FGSM 攻击算法
@@ -113,14 +107,13 @@ const IFGSMAttack = () => {
         <Space>
           <Text type="secondary">状态:</Text>
           <Badge status={currentStatus.color} text={currentStatus.text} />
-          <Switch checkedChildren="异步" unCheckedChildren="同步" checked={useAsync} onChange={setUseAsync} size="small" />
         </Space>
       </div>
 
       <QueueStatus />
 
-      <Row gutter={24}>
-        <Col span={10}>
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={10}>
           <Card
             title="参数配置"
             variant="borderless"
@@ -173,7 +166,7 @@ const IFGSMAttack = () => {
 
             <Space size="middle">
               <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAttack} loading={loading} disabled={!imageUrl || isRunning} size="large">
-                {useAsync ? '提交异步任务' : '同步执行'}
+                提交任务
               </Button>
               {canCancel && (
                 <Button icon={<StopOutlined />} onClick={cancel} danger>
@@ -202,7 +195,7 @@ const IFGSMAttack = () => {
           </Card>
         </Col>
 
-        <Col span={14}>
+        <Col xs={24} lg={14}>
           <ResultDisplay
             result={result}
             originalImageUrl={imageUrl}

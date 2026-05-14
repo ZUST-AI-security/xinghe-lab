@@ -52,7 +52,6 @@ const DEFAULT_CW_PARAMS = {
 const CWAttack = () => {
   const [imageUrl, setImageUrl] = useState(null);
   const [advancedMode, setAdvancedMode] = useState(false);
-  const [useAsync, setUseAsync] = useState(true);
   const [params, setParams] = useState(DEFAULT_CW_PARAMS);
 
   const {
@@ -231,18 +230,11 @@ const CWAttack = () => {
       message.warning('请先上传图片');
       return;
     }
-
-    const attackParams = {
+    runAttack({
       image: imageUrl,
       model_name: 'resnet100_imagenet',
       params,
-    };
-
-    if (useAsync) {
-      runAttack(attackParams);
-    } else {
-      runSyncAttack(attackParams);
-    }
+    });
   };
 
   const handleReset = () => {
@@ -283,8 +275,8 @@ const CWAttack = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ padding: '16px 24px' }}>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <Title level={2} style={{ margin: 0 }}>
             C&W 攻击算法
@@ -297,16 +289,9 @@ const CWAttack = () => {
           </Paragraph>
         </div>
 
-        <Space>
+        <Space wrap>
           <Text type="secondary">状态</Text>
           {renderStatusIndicator()}
-          <Switch
-            checkedChildren="异步"
-            unCheckedChildren="同步"
-            checked={useAsync}
-            onChange={setUseAsync}
-            size="small"
-          />
           <Switch
             checkedChildren="高级"
             unCheckedChildren="基础"
@@ -319,8 +304,8 @@ const CWAttack = () => {
 
       <QueueStatus />
 
-      <Row gutter={24}>
-        <Col span={10}>
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={10}>
           <Card
             title="参数配置"
             variant="borderless"
@@ -403,7 +388,7 @@ const CWAttack = () => {
               </Text>
             </div>
 
-            <Space size="middle">
+            <Space size="middle" wrap>
               <Button
                 type="primary"
                 icon={<PlayCircleOutlined />}
@@ -412,7 +397,7 @@ const CWAttack = () => {
                 disabled={!imageUrl || isRunning}
                 size="large"
               >
-                {useAsync ? '提交异步任务' : '同步执行'}
+                提交任务
               </Button>
 
               {canCancel && (
@@ -476,7 +461,7 @@ const CWAttack = () => {
           </Card>
         </Col>
 
-        <Col span={14}>
+        <Col xs={24} lg={14}>
           <ResultDisplay
             result={result}
             originalImageUrl={imageUrl}

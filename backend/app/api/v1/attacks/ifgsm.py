@@ -85,7 +85,7 @@ async def run_ifgsm_sync(
         adversarial_summary = build_prediction_summary(model, metadata["adv_probs"])
         elapsed = time.time() - start_time
 
-        # 记录攻击历史
+        # 记录攻击历史（同步端点无认证，user_id 记为 0 表示匿名）
         try:
             db.add(AttackHistory(
                 user_id=0,

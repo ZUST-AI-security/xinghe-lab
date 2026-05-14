@@ -575,8 +575,15 @@ const CompareMode = () => {
     intervalsRef.current.clear();
 
     try {
-      await Promise.all(panels.map((panel, index) => submitOne(index, panel)));
-      message.success(`已并发提交 ${panels.length} 个任务，请等待结果`);
+      const results = await Promise.allSettled(panels.map((panel, index) => submitOne(index, panel)));
+      const failedCount = results.filter(r => r.status === 'rejected').length;
+      if (failedCount === 0) {
+        message.success(`已并发提交 ${panels.length} 个任务，请等待结果`);
+      } else if (failedCount < panels.length) {
+        message.warning(`${panels.length - failedCount} 个任务已提交，${failedCount} 个提交失败`);
+      } else {
+        message.error('所有任务提交失败');
+      }
     } catch (error) {
       message.error(error.message || '任务提交失败');
     }

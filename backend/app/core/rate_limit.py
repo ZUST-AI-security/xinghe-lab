@@ -20,19 +20,23 @@ class RateLimitExceeded(HTTPException):
 
 def check_rate_limit(key: str, limit: int = 5, window: int = 60) -> bool:
     """Return True when the current request is still within the rate limit."""
-    current_time = time.time()
-    window_start = current_time - window
-    request_member = f"{current_time:.6f}"
+    try:
+        current_time = time.time()
+        window_start = current_time - window
+        request_member = f"{current_time:.6f}"
 
-    pipeline = redis_client.pipeline()
-    pipeline.zremrangebyscore(key, 0, window_start)
-    pipeline.zcard(key)
-    pipeline.zadd(key, {request_member: current_time})
-    pipeline.expire(key, window)
-    results = pipeline.execute()
+        pipeline = redis_client.pipeline()
+        pipeline.zremrangebyscore(key, 0, window_start)
+        pipeline.zcard(key)
+        pipeline.zadd(key, {request_member: current_time})
+        pipeline.expire(key, window)
+        results = pipeline.execute()
 
-    request_count = results[1]
-    return request_count < limit
+        request_count = results[1]
+        return request_count < limit
+    except Exception:
+        # Redis 不可用时放行请求，避免影响正常业务
+        return True
 
 
 async def rate_limiter_dependency(request: Request):

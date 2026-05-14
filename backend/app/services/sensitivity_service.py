@@ -310,8 +310,19 @@ class SensitivityService:
             client.setex(key, SCAN_TTL, json.dumps(scan_record))
             logger.debug("Saved scan record to Redis (key=%s, ttl=%ds)", key, SCAN_TTL)
         except Exception as exc:
-            logger.error("Failed to save scan record to Redis: %s", exc, exc_info=True)
-            raise
+            # Redis 保存失败时记录错误，但不抛出异常
+            # 此时 Celery 任务已提交，scan_id 将无法查询结果
+            logger.error(
+                "Failed to save scan record to Redis (scan_id=%s): %s. "
+                "Tasks have been submitted but results will be unqueryable.",
+                scan_id,
+                exc,
+                exc_info=True,
+            )
+            raise ValidationError(
+                f"扫描任务已提交但无法保存扫描记录（Redis 不可用），请稍后重试",
+                details={"scan_id": scan_id},
+            )
 
     def _load_scan_from_redis(self, scan_id: str) -> Optional[Dict[str, Any]]:
         """Load a scan record from Redis. Returns None if not found."""

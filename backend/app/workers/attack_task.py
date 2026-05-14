@@ -18,6 +18,7 @@ from typing import Any, Dict
 import numpy as np
 import cv2
 import torch
+from PIL import Image
 
 from app.workers.celery_app import celery_app
 from app.utils.image_utils import base64_to_image, image_to_base64
@@ -185,8 +186,6 @@ def run_attack(
         output_dir = os.path.join("outputs", "tasks", self.request.id)
         os.makedirs(output_dir, exist_ok=True)
         
-        adv_img_bytes = base64_to_image(image_to_base64(adv_np))
-        from PIL import Image
         adv_img_copy = Image.fromarray(adv_np)
         
         adv_img_path = os.path.join(output_dir, "adversarial_image.png")
@@ -247,6 +246,7 @@ def run_attack(
         
         # --- Update Task Record ---
         import copy
+        from datetime import datetime, timezone
         task_record.status = "completed"
         record_result = copy.deepcopy(result)
         # Avoid saving gigantic base64 in database
@@ -256,8 +256,7 @@ def run_attack(
         record_result.pop("amplified_diff", None)
         record_result.pop("fft_diff", None)
         task_record.result = record_result
-        from sqlalchemy.sql import func
-        task_record.completed_at = func.now()
+        task_record.completed_at = datetime.now(timezone.utc)
         db.add(
             AttackHistory(
                 user_id=user_id,

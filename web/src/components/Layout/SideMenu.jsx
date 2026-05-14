@@ -5,6 +5,7 @@ import {
   BarChartOutlined,
   DashboardOutlined,
   ExperimentOutlined,
+  FileOutlined,
   HistoryOutlined,
   SafetyOutlined,
   SettingOutlined,
@@ -56,6 +57,7 @@ const buildMenuItems = (isAdmin) => {
         { key: '/admin/attack-history', icon: <HistoryOutlined />, label: '攻击历史' },
         { key: '/admin/logs', icon: <AppstoreOutlined />, label: '系统日志' },
         { key: '/admin/config', icon: <SettingOutlined />, label: '系统配置' },
+        { key: '/admin/files', icon: <FileOutlined />, label: '文件管理' },
       ],
     });
   }

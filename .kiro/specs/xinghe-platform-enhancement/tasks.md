@@ -32,6 +32,20 @@ T19 (排行榜后端)
   └─► T20 (排行榜前端)
 
 T21 (PBT 测试)  — 依赖 T4, T5, T6, T10, T11, T13, T17
+
+T22 (修复 queue-status 路由)
+  └─► T14 (前端队列状态，已有)
+
+T23 (移除同步/异步切换)
+
+T24 (移动端响应式布局)
+
+T25 (UploadedFile 模型 + 文件上传 API)
+  └─► T26 (图片库前端组件)
+  └─► T27 (管理员文件管理后端)
+        └─► T28 (管理员文件管理前端)
+
+T29 (我的任务结果查看)  — 依赖 T8, T9
 ```
 
 ---
@@ -290,3 +304,99 @@ T21 (PBT 测试)  — 依赖 T4, T5, T6, T10, T11, T13, T17
     - P6：`submit_scan` 提交的任务数等于 `steps`，且 `1 ≤ steps ≤ 20`
   - **验收**：所有 PBT 属性通过；测试可在 CI 中运行
   - **关联需求**：Requirement 3, 4, 5, 9, 11, 12, 13
+
+- [x] 22. 修复 queue-status API 路由注册
+  - 检查 `backend/app/main.py`，确认 `tasks` 路由器是否已通过 `app.include_router` 挂载
+  - 若未挂载，在 `main.py` 中添加：`app.include_router(tasks_router, prefix="/api/v1")`
+  - 检查 `backend/app/api/v1/attacks/tasks.py` 中 `GET /tasks/queue-status` 端点的路由定义，确保路径正确
+  - 启动后端并访问 `/docs`，验证 `/api/v1/tasks/queue-status` 出现在路由列表中
+  - 若 Redis 连接失败，确保端点返回 HTTP 503 而非 404
+  - **验收**：前端进入实验界面不再出现 404；`/docs` 中可见该端点；Redis 不可用时返回 503
+  - **关联需求**：Requirement 15
+
+- [x] 23. 移除同步/异步切换按钮，默认异步模式
+  - 检索前端各攻击页面（`web/src/pages/Attacks/` 下的 FGSM、IFGSM、PGD、CW、DeepFool 页面）中的同步/异步切换控件（Switch、Radio、Select 等）
+  - 删除切换控件及相关状态变量（如 `isAsync`、`mode` 等）
+  - 确保所有提交逻辑统一走异步路径（调用 `/submit` 端点 + 轮询任务状态）
+  - 同步更新 `CompareMode.jsx`，移除其中的同步/异步切换逻辑
+  - 删除前端中调用同步执行端点（如 `/run` 或 `/execute`）的代码路径（保留后端端点不删除）
+  - **验收**：所有攻击页面无切换按钮；提交后直接进入异步轮询流程；对比模式同样正常
+  - **关联需求**：Requirement 16
+
+- [x] 24. 前端移动端响应式布局优化
+  - 重构 `web/src/components/Layout/MainLayout.jsx`（或对应布局组件）：
+    - 侧边栏在 `xs`/`sm`（< 768px）断点下改为 Ant Design `Drawer` 组件，通过汉堡菜单按钮触发
+    - 顶部导航栏添加汉堡菜单图标（`MenuOutlined`），点击展开/收起侧边抽屉
+  - 重构各攻击算法参数表单：使用 `Row`/`Col` 响应式栅格，`xs={24} md={12}` 布局
+  - 重构对比结果表格（`CompareMode.jsx`）：添加 `scroll={{ x: 'max-content' }}` 支持横向滚动
+  - 重构图片展示区域：使用 `max-width: 100%` + `height: auto` 确保图片自适应
+  - 重构公开首页（`Home/index.jsx`）各区块：`xs={24} sm={12} lg={6}` 响应式卡片布局
+  - 检查所有按钮和可交互元素，确保移动端触控目标 ≥ 44×44px（通过 CSS `min-height`/`min-width` 保证）
+  - 在移动端（< 768px）隐藏表格中的辅助列（如参数详情列），保留核心列
+  - **验收**：在 375px 宽度下主要页面无横向溢出；侧边栏正确折叠为抽屉；图片不变形；按钮可正常点击
+  - **关联需求**：Requirement 17
+
+- [x] 25. 后端 UploadedFile 模型与文件上传 API
+  - 新建 Alembic 迁移：创建 `uploaded_files` 表，字段：`id`（UUID）、`user_id`（FK）、`filename`、`file_path`、`file_hash`（SHA-256，索引）、`file_size`、`is_deleted`（软删除标志）、`created_at`
+  - 在 `backend/app/models/` 中新建 `UploadedFile` SQLAlchemy 模型
+  - 新建 `backend/app/api/v1/files.py`，实现：
+    - `POST /api/v1/files/upload`（需认证）：接收图片文件，计算 SHA-256，若同用户已有相同哈希则返回已有记录，否则保存文件并创建记录；返回 `{ file_id, filename, url, is_reused }`
+    - `GET /api/v1/files/my-uploads`（需认证）：返回当前用户的文件列表（分页，按 `created_at` 倒序），含缩略图 URL
+    - `DELETE /api/v1/files/{file_id}`（需认证）：软删除（设置 `is_deleted=True`），若文件被任务引用则仅标记不可见，不物理删除
+  - 在 `backend/app/main.py` 中注册 `files` 路由器
+  - 文件存储路径：`backend/uploads/{user_id}/{file_hash[:8]}_{filename}`
+  - **验收**：重复上传同一图片返回 `is_reused: true`；文件列表按时间倒序；被引用文件软删除后不影响任务结果
+  - **关联需求**：Requirement 19
+
+- [x] 26. 前端图片库组件与复用入口
+  - 新建 `web/src/components/upload/ImageLibrary.jsx`：
+    - 调用 `GET /api/v1/files/my-uploads` 获取图片列表
+    - 以缩略图网格形式展示（Ant Design `Image.PreviewGroup` + 自定义网格）
+    - 每张图片显示文件名和上传时间
+    - 点击图片触发 `onSelect(fileId, imageBase64)` 回调
+    - 支持分页加载（每页 12 张）
+  - 新建 `web/src/api/files.js`，封装文件相关 API 调用（`uploadImage`、`getMyUploads`、`deleteFile`）
+  - 修改各攻击算法页面的图片上传区域：
+    - 在 `ImageUploader` 下方添加「从图片库选择」按钮，点击弹出 `ImageLibrary` Modal
+    - 选择后将图片 base64 填充到上传区域，与直接上传效果一致
+  - 修改 `POST /api/v1/files/upload` 调用：上传成功后刷新图片库缓存
+  - **验收**：图片库正确展示历史图片；选择图片后表单中图片正确填充；重复上传同一图片不增加新条目
+  - **关联需求**：Requirement 19
+
+- [x] 27. 管理员后台文件管理 API
+  - 在 `backend/app/api/v1/admin.py` 中新增以下端点（均需 Admin 角色）：
+    - `GET /api/v1/admin/files`：分页返回所有用户的上传文件列表，支持 `?user_id=` 和 `?page=` 查询参数
+    - `DELETE /api/v1/admin/files/{file_id}`：物理删除文件及数据库记录；若文件被任务引用，响应中包含 `has_references: true` 和引用任务数量，需前端二次确认后携带 `?force=true` 参数再次请求
+    - `DELETE /api/v1/admin/files/batch`：批量删除，请求体为 `{ file_ids: [uuid, ...] }`
+    - `GET /api/v1/admin/files/stats`：返回 `{ total_files, total_size_mb, top_users: [{user_id, username, file_count, total_size_mb}] }`（Top 10 用户）
+  - **验收**：非管理员访问返回 403；物理删除后文件从磁盘移除；stats 数据准确
+  - **关联需求**：Requirement 20
+
+- [x] 28. 管理员后台文件管理前端页面
+  - 在现有管理员页面（`web/src/pages/Admin/` 或对应路径）中新增「文件管理」标签页
+  - 实现文件列表表格（Ant Design `Table`）：
+    - 列：文件名、上传用户、文件大小（KB/MB）、上传时间、操作（删除）
+    - 支持行选择（`rowSelection`）用于批量删除
+    - 支持分页（`pagination`）
+  - 实现存储统计卡片区域：总文件数、总存储占用、Top 10 用户存储排行（Ant Design `Table` 或列表）
+  - 实现删除确认流程：
+    - 单个删除：`Modal.confirm` 二次确认
+    - 若后端返回 `has_references: true`，展示额外警告「该文件被 N 个任务引用，强制删除将影响任务结果查看」，确认后携带 `force=true` 重新请求
+    - 批量删除：勾选后点击「批量删除」按钮，`Modal.confirm` 确认
+  - **验收**：文件列表正确展示；删除有二次确认；被引用文件有额外警告；统计数据正确
+  - **关联需求**：Requirement 20
+
+- [x] 29. 我的任务页面查看结果功能
+  - 检查现有「我的任务」页面路径（`web/src/pages/Tasks/` 或类似路径），了解当前任务列表实现
+  - 在任务列表每行添加「查看结果」按钮：
+    - `completed` 状态：按钮可用，点击展开结果
+    - `pending`/`running` 状态：按钮禁用，显示当前状态 Badge
+    - `failed` 状态：按钮可用，点击展示失败原因
+  - 实现结果展示方式（优先使用 Ant Design `Table` 的可展开行 `expandable`）：
+    - 展开行内容：原始图像、对抗图像、`PerturbationViewer`（热力图/差值放大图/频域分析图三视图）
+    - 攻击指标表格：L2 范数、Linf 范数、攻击成功率、原始置信度、对抗置信度、执行耗时
+    - 失败任务展示错误信息
+  - 确保后端 `GET /api/v1/tasks/{task_id}` 或任务列表端点返回完整结果数据（含图像 base64 和指标）
+  - 在任务列表添加分页（每页 10 条，`Pagination` 组件）
+  - **验收**：completed 任务可展开查看完整结果；failed 任务显示错误原因；分页正常工作；PerturbationViewer 三视图可切换
+  - **关联需求**：Requirement 18

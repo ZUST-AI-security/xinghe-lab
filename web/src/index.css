@@ -301,3 +301,77 @@ a {
     padding: 20px;
   }
 }
+
+/* ===== 移动端响应式增强 ===== */
+
+@media (max-width: 768px) {
+  .xh-content {
+    padding: 12px;
+  }
+
+  .xh-content-inner {
+    gap: 12px;
+  }
+
+  /* 攻击页面标题区域 */
+  .ant-typography h2.ant-typography {
+    font-size: 20px !important;
+  }
+
+  /* 确保按钮触控目标足够大 */
+  .ant-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .ant-btn.ant-btn-sm {
+    min-height: 32px;
+    min-width: 32px;
+  }
+
+  /* 表格横向滚动 */
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+
+  /* 图片自适应 */
+  .xh-result-image {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* 队列状态卡片在移动端垂直排列 */
+  .xh-queue-col {
+    margin-bottom: 8px;
+  }
+
+  /* 侧边栏抽屉内容 */
+  .ant-drawer-body {
+    padding: 0;
+  }
+
+  /* 卡片内边距缩小 */
+  .ant-card-body {
+    padding: 16px;
+  }
+
+  /* 参数滑块在移动端全宽 */
+  .ant-slider {
+    width: 100%;
+  }
+
+  /* 隐藏移动端非必要列 */
+  .xh-hide-mobile {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .xh-content {
+    padding: 8px;
+  }
+
+  .ant-card {
+    border-radius: 12px;
+  }
+}

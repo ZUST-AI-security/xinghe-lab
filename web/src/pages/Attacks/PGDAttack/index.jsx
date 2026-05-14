@@ -30,7 +30,6 @@ const { Title, Paragraph, Text } = Typography;
 const PGDAttack = () => {
   const [imageUrl, setImageUrl] = useState(null);
   const [advancedMode, setAdvancedMode] = useState(false);
-  const [useAsync, setUseAsync] = useState(true);
   const [params, setParams] = useState({
     epsilon: 0.03,
     alpha: 0.01,
@@ -49,7 +48,6 @@ const PGDAttack = () => {
     setError,
     status,
     runAttack,
-    runSyncAttack,
     cancel,
     reset,
     saveResult,
@@ -78,7 +76,7 @@ const PGDAttack = () => {
     num_iter: {
       label: '迭代次数',
       description: 'PGD 迭代轮数。',
-      tips: '同步模式会由后端自动截断到演示上限。',
+      tips: '迭代次数越多攻击效果越强，但耗时也越长。',
       range: { min: 5, max: 200 },
       step: 1,
       unit: '次',
@@ -112,20 +110,12 @@ const PGDAttack = () => {
   };
 
   const handleRunAttack = () => {
-    if (!imageUrl) {
-      return;
-    }
-    const requestData = {
+    if (!imageUrl) return;
+    runAttack({
       image: imageUrl,
       model_name: 'resnet100_imagenet',
       params,
-    };
-
-    if (useAsync) {
-      runAttack(requestData);
-      return;
-    }
-    runSyncAttack(requestData);
+    });
   };
 
   const handleReset = () => {
@@ -148,8 +138,8 @@ const PGDAttack = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ padding: '16px 24px' }}>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <Title level={2} style={{ margin: 0 }}>
             PGD 攻击算法
@@ -158,22 +148,27 @@ const PGDAttack = () => {
             </Tooltip>
           </Title>
           <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-            基于 live OpenAPI 的 PGD 活跃链路，复用当前主线上传、轮询和结果展示结构。
+            基于投影梯度下降的迭代对抗攻击，攻击效果强且可控。
           </Paragraph>
         </div>
 
-        <Space>
+        <Space wrap>
           <Text type="secondary">状态:</Text>
           {renderStatusIndicator()}
-          <Switch checkedChildren="异步" unCheckedChildren="同步" checked={useAsync} onChange={setUseAsync} size="small" />
-          <Switch checkedChildren="高级" unCheckedChildren="基础" checked={advancedMode} onChange={setAdvancedMode} size="small" />
+          <Switch
+            checkedChildren="高级"
+            unCheckedChildren="基础"
+            checked={advancedMode}
+            onChange={setAdvancedMode}
+            size="small"
+          />
         </Space>
       </div>
 
       <QueueStatus />
 
-      <Row gutter={24}>
-        <Col span={10}>
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={10}>
           <Card
             title="参数配置"
             variant="borderless"
@@ -190,7 +185,12 @@ const PGDAttack = () => {
               <Text strong style={{ display: 'block', marginBottom: 8 }}>快速预设</Text>
               <Space wrap>
                 {presets.map((preset) => (
-                  <Tag key={preset.name} style={{ cursor: 'pointer' }} onClick={() => setParams(preset.params)} color={JSON.stringify(params) === JSON.stringify(preset.params) ? 'blue' : 'default'}>
+                  <Tag
+                    key={preset.name}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setParams(preset.params)}
+                    color={JSON.stringify(params) === JSON.stringify(preset.params) ? 'blue' : 'default'}
+                  >
                     {preset.name}
                   </Tag>
                 ))}
@@ -215,24 +215,48 @@ const PGDAttack = () => {
             <div style={{ marginBottom: 24 }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>攻击模式</Text>
               <Space wrap>
-                <Tag color={params.targeted ? 'purple' : 'blue'} onClick={() => setParams((prev) => ({ ...prev, targeted: !prev.targeted }))} style={{ cursor: 'pointer' }}>
+                <Tag
+                  color={params.targeted ? 'purple' : 'blue'}
+                  onClick={() => setParams((prev) => ({ ...prev, targeted: !prev.targeted }))}
+                  style={{ cursor: 'pointer' }}
+                >
                   {params.targeted ? '定向攻击' : '非定向攻击'}
                 </Tag>
-                <Tag color={params.random_start ? 'green' : 'default'} onClick={() => setParams((prev) => ({ ...prev, random_start: !prev.random_start }))} style={{ cursor: 'pointer' }}>
+                <Tag
+                  color={params.random_start ? 'green' : 'default'}
+                  onClick={() => setParams((prev) => ({ ...prev, random_start: !prev.random_start }))}
+                  style={{ cursor: 'pointer' }}
+                >
                   {params.random_start ? '随机初始化开启' : '随机初始化关闭'}
                 </Tag>
                 {advancedMode && (
                   <>
-                    <Tag color={params.norm === 'linf' ? 'geekblue' : 'default'} onClick={() => setParams((prev) => ({ ...prev, norm: 'linf' }))} style={{ cursor: 'pointer' }}>
+                    <Tag
+                      color={params.norm === 'linf' ? 'geekblue' : 'default'}
+                      onClick={() => setParams((prev) => ({ ...prev, norm: 'linf' }))}
+                      style={{ cursor: 'pointer' }}
+                    >
                       Linf
                     </Tag>
-                    <Tag color={params.norm === 'l2' ? 'geekblue' : 'default'} onClick={() => setParams((prev) => ({ ...prev, norm: 'l2' }))} style={{ cursor: 'pointer' }}>
+                    <Tag
+                      color={params.norm === 'l2' ? 'geekblue' : 'default'}
+                      onClick={() => setParams((prev) => ({ ...prev, norm: 'l2' }))}
+                      style={{ cursor: 'pointer' }}
+                    >
                       L2
                     </Tag>
-                    <Tag color={params.loss_type === 'ce' ? 'gold' : 'default'} onClick={() => setParams((prev) => ({ ...prev, loss_type: 'ce' }))} style={{ cursor: 'pointer' }}>
+                    <Tag
+                      color={params.loss_type === 'ce' ? 'gold' : 'default'}
+                      onClick={() => setParams((prev) => ({ ...prev, loss_type: 'ce' }))}
+                      style={{ cursor: 'pointer' }}
+                    >
                       CE Loss
                     </Tag>
-                    <Tag color={params.loss_type === 'dlr' ? 'gold' : 'default'} onClick={() => setParams((prev) => ({ ...prev, loss_type: 'dlr' }))} style={{ cursor: 'pointer' }}>
+                    <Tag
+                      color={params.loss_type === 'dlr' ? 'gold' : 'default'}
+                      onClick={() => setParams((prev) => ({ ...prev, loss_type: 'dlr' }))}
+                      style={{ cursor: 'pointer' }}
+                    >
                       DLR Loss
                     </Tag>
                   </>
@@ -240,9 +264,16 @@ const PGDAttack = () => {
               </Space>
             </div>
 
-            <Space size="middle">
-              <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAttack} loading={loading} disabled={!imageUrl || isRunning} size="large">
-                {useAsync ? '提交异步任务' : '同步执行'}
+            <Space size="middle" wrap>
+              <Button
+                type="primary"
+                icon={<PlayCircleOutlined />}
+                onClick={handleRunAttack}
+                loading={loading}
+                disabled={!imageUrl || isRunning}
+                size="large"
+              >
+                提交任务
               </Button>
               {canCancel && (
                 <Button icon={<StopOutlined />} onClick={cancel} danger>
@@ -271,7 +302,7 @@ const PGDAttack = () => {
           </Card>
         </Col>
 
-        <Col span={14}>
+        <Col xs={24} lg={14}>
           <ResultDisplay
             result={result}
             originalImageUrl={imageUrl}

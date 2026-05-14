@@ -97,6 +97,11 @@ class Settings(BaseSettings):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._ensure_directories()
+        if not self.is_development:
+            if self.jwt_secret_key == "your-jwt-secret-key-here":
+                raise ValueError("生产环境必须设置 JWT_SECRET_KEY 环境变量")
+            if self.secret_key == "your-secret-key-here-change-in-production":
+                raise ValueError("生产环境必须设置 SECRET_KEY 环境变量")
     
     def _ensure_directories(self):
         """确保必要的目录存在"""

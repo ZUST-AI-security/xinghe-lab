@@ -96,7 +96,8 @@ async def get_queue_status():
         )
     except Exception as exc:
         logger.error("get_queue_status failed: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(exc))
+        # Redis 不可用时返回 503（Requirement 15）
+        raise HTTPException(status_code=503, detail=f"队列状态服务暂不可用: {exc}")
     finally:
         db.close()
 
@@ -208,6 +209,22 @@ async def get_task_status(
     """Poll the status and result of a submitted attack task."""
     try:
         from celery.result import AsyncResult
+
+        # 通过 TaskRecord 验证任务归属（防止越权查询）
+        db = SessionLocal()
+        try:
+            record = db.query(TaskRecord).filter(
+                TaskRecord.result.contains({"task_id": task_id})
+            ).first()
+            # 若找到记录且不属于当前用户，拒绝访问
+            if record and record.user_id != current_user.id:
+                raise HTTPException(status_code=403, detail="无权访问该任务")
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # TaskRecord 查询失败时不阻断，降级为仅 Celery 状态查询
+        finally:
+            db.close()
 
         task = AsyncResult(task_id, app=celery_app)
         state = (task.state or "PENDING").upper()
