@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Badge,
@@ -21,13 +21,21 @@ import {
 import ImageUploader from '../CWAttack/components/ImageUploader';
 import ParameterSlider from '../CWAttack/components/ParameterSlider';
 import ResultDisplay from '../CWAttack/components/ResultDisplay';
+import DetectionResultDisplay from '../shared/DetectionResultDisplay';
+import ModelSelector from '../shared/ModelSelector';
 import useIFGSMAttack from './hooks/useIFGSMAttack';
 import QueueStatus from '../../../components/common/QueueStatus';
 
 const { Title, Paragraph, Text } = Typography;
 
+const MODEL_TYPE_FALLBACK = {
+  resnet100_imagenet: 'classification',
+  yolov8: 'detection',
+};
+
 const IFGSMAttack = () => {
   const [imageUrl, setImageUrl] = useState(null);
+  const [modelName, setModelName] = useState('resnet100_imagenet');
   const [params, setParams] = useState({
     epsilon: 0.03,
     alpha: 0.01,
@@ -52,9 +60,27 @@ const IFGSMAttack = () => {
     canCancel,
   } = useIFGSMAttack();
 
-  const handleImageChange = (file) => {
+  const isDetectionTask = MODEL_TYPE_FALLBACK[modelName] === 'detection';
+
+  useEffect(() => {
+    if (isDetectionTask) {
+      setParams((prev) => ({
+        ...prev,
+        epsilon: prev.epsilon < 0.02 ? 0.04 : prev.epsilon,
+        alpha: prev.alpha < 0.005 ? 0.008 : prev.alpha,
+        num_iterations: prev.num_iterations < 20 ? 20 : prev.num_iterations,
+        targeted: false,
+      }));
+    }
+  }, [isDetectionTask]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleImageChange = (file, dataUrl) => {
     if (!file) {
       setImageUrl(null);
+      return false;
+    }
+    if (dataUrl) {
+      setImageUrl(dataUrl);
       return false;
     }
     const reader = new FileReader();
@@ -65,12 +91,11 @@ const IFGSMAttack = () => {
 
   const handleRunAttack = () => {
     if (!imageUrl) return;
-    const requestData = {
+    runAttack({
       image: imageUrl,
-      model_name: 'resnet100_imagenet',
+      model_name: modelName,
       params,
-    };
-    runAttack(requestData);
+    });
   };
 
   const handleReset = () => {
@@ -88,6 +113,8 @@ const IFGSMAttack = () => {
     failed: { color: 'error', text: '失败' },
   };
   const currentStatus = statusConfig[status] || statusConfig.idle;
+  const resultTaskType = result?.metadata?.task_type
+    || (isDetectionTask ? 'detection' : 'classification');
 
   return (
     <div style={{ padding: '16px 24px' }}>
@@ -100,7 +127,9 @@ const IFGSMAttack = () => {
             </Tooltip>
           </Title>
           <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-            基于 FGSM 的迭代版本，每次施加较小的扰动并限制在 epsilon 球内，攻击效果更优。
+            {isDetectionTask
+              ? '迭代 vanish 攻击：让 YOLO 检测框消失或类别错乱。'
+              : '基于 FGSM 的迭代版本，每次施加较小的扰动并限制在 epsilon 球内，攻击效果更优。'}
           </Paragraph>
         </div>
 
@@ -119,6 +148,13 @@ const IFGSMAttack = () => {
             variant="borderless"
             extra={<Button icon={<ReloadOutlined />} onClick={handleReset} disabled={isRunning} size="small" />}
           >
+            <ModelSelector
+              value={modelName}
+              onChange={setModelName}
+              supportedTaskTypes={['classification', 'detection']}
+              disabled={isRunning}
+            />
+
             <div style={{ marginBottom: 24 }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>待攻击图片</Text>
               <ImageUploader onImageChange={handleImageChange} disabled={isRunning} maxSize={10} />
@@ -157,12 +193,14 @@ const IFGSMAttack = () => {
               disabled={isRunning}
             />
 
-            <div style={{ marginBottom: 24 }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>攻击模式</Text>
-              <Tag color={params.targeted ? 'purple' : 'blue'} onClick={() => setParams((prev) => ({ ...prev, targeted: !prev.targeted }))} style={{ cursor: 'pointer' }}>
-                {params.targeted ? '定向攻击' : '非定向攻击'}
-              </Tag>
-            </div>
+            {!isDetectionTask && (
+              <div style={{ marginBottom: 24 }}>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>攻击模式</Text>
+                <Tag color={params.targeted ? 'purple' : 'blue'} onClick={() => setParams((prev) => ({ ...prev, targeted: !prev.targeted }))} style={{ cursor: 'pointer' }}>
+                  {params.targeted ? '定向攻击' : '非定向攻击'}
+                </Tag>
+              </div>
+            )}
 
             <Space size="middle">
               <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAttack} loading={loading} disabled={!imageUrl || isRunning} size="large">
@@ -196,13 +234,22 @@ const IFGSMAttack = () => {
         </Col>
 
         <Col xs={24} lg={14}>
-          <ResultDisplay
-            result={result}
-            originalImageUrl={imageUrl}
-            onSaveResult={() => saveResult('I-FGSM attack')}
-            onExportData={exportData}
-            loading={loading}
-          />
+          {resultTaskType === 'detection' ? (
+            <DetectionResultDisplay
+              result={result}
+              originalImageUrl={imageUrl}
+              onSaveResult={() => saveResult('I-FGSM detection flow')}
+              onExportData={exportData}
+            />
+          ) : (
+            <ResultDisplay
+              result={result}
+              originalImageUrl={imageUrl}
+              onSaveResult={() => saveResult('I-FGSM attack')}
+              onExportData={exportData}
+              loading={loading}
+            />
+          )}
         </Col>
       </Row>
     </div>

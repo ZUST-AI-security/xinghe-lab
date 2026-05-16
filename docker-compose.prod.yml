@@ -45,13 +45,14 @@ services:
       MODEL_CACHE_DIR: /app/models
       TORCH_HOME: /app/models
       LOG_FILE: /app/logs/app.log
-      ALLOWED_IMAGE_TYPES: ${ALLOWED_IMAGE_TYPES:-["jpg","jpeg","png","bmp","tiff"]}
+      ALLOWED_IMAGE_TYPES: ${ALLOWED_IMAGE_TYPES:-jpg,jpeg,png,bmp,tiff}
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:8080"]}
       RUN_MIGRATIONS: "true"
     volumes:
       - backend_models:/app/models
       - backend_outputs:/app/outputs
       - backend_logs:/app/logs
+      - backend_uploads:/app/uploads
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     healthcheck:
@@ -78,12 +79,13 @@ services:
       MODEL_CACHE_DIR: /app/models
       TORCH_HOME: /app/models
       LOG_FILE: /app/logs/app.log
-      ALLOWED_IMAGE_TYPES: ${ALLOWED_IMAGE_TYPES:-["jpg","jpeg","png","bmp","tiff"]}
+      ALLOWED_IMAGE_TYPES: ${ALLOWED_IMAGE_TYPES:-jpg,jpeg,png,bmp,tiff}
       RUN_MIGRATIONS: "false"
     volumes:
       - backend_models:/app/models
       - backend_outputs:/app/outputs
       - backend_logs:/app/logs
+      - backend_uploads:/app/uploads
     command:
       [
         "celery",
@@ -91,7 +93,7 @@ services:
         "app.core.celery_app",
         "worker",
         "--queues=high,default,low",
-        "--concurrency=${CELERY_CONCURRENCY:-1}",
+        "--concurrency=${CELERY_CONCURRENCY:-2}",
         "--loglevel=${CELERY_LOG_LEVEL:-info}",
         "-O",
         "fair"
@@ -119,6 +121,7 @@ services:
       - backend_models:/app/models
       - backend_outputs:/app/outputs
       - backend_logs:/app/logs
+      - backend_uploads:/app/uploads
     command: ["celery", "-A", "app.core.celery_app", "beat", "--loglevel=${CELERY_LOG_LEVEL:-info}"]
 
   web:
@@ -136,3 +139,4 @@ volumes:
   backend_models:
   backend_outputs:
   backend_logs:
+  backend_uploads:

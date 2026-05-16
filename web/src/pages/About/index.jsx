@@ -9,6 +9,7 @@ import {
   Card,
   Col,
   Divider,
+  Grid,
   Row,
   Spin,
   Tag,
@@ -33,17 +34,25 @@ import axios from 'axios';
 import PublicNavbar from '../../components/Layout/PublicNavbar';
 
 const { Title, Paragraph, Text, Link } = Typography;
+const { useBreakpoint } = Grid;
+
+const useIsMobile = () => {
+  const screens = useBreakpoint();
+  return !screens.md;
+};
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? 'http://localhost:8000' : '');
 
 /* ─────────────────────────────────────────────
    LabIntroSection — 实验室介绍 + 主页链接
 ───────────────────────────────────────────── */
-const LabIntroSection = () => (
+const LabIntroSection = () => {
+  const isMobile = useIsMobile();
+  return (
   <section
     style={{
       background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1677ff 100%)',
-      padding: '80px 24px 96px',
+      padding: isMobile ? '56px 16px 64px' : '80px 24px 96px',
       textAlign: 'center',
       position: 'relative',
       overflow: 'hidden',
@@ -53,10 +62,10 @@ const LabIntroSection = () => (
     <div
       style={{
         position: 'absolute',
-        top: -80,
-        right: -80,
-        width: 320,
-        height: 320,
+        top: isMobile ? -60 : -80,
+        right: isMobile ? -80 : -80,
+        width: isMobile ? 200 : 320,
+        height: isMobile ? 200 : 320,
         borderRadius: '50%',
         background: 'rgba(22, 119, 255, 0.15)',
         pointerEvents: 'none',
@@ -65,10 +74,10 @@ const LabIntroSection = () => (
     <div
       style={{
         position: 'absolute',
-        bottom: -60,
-        left: -60,
-        width: 240,
-        height: 240,
+        bottom: isMobile ? -40 : -60,
+        left: isMobile ? -60 : -60,
+        width: isMobile ? 160 : 240,
+        height: isMobile ? 160 : 240,
         borderRadius: '50%',
         background: 'rgba(96, 165, 250, 0.1)',
         pointerEvents: 'none',
@@ -96,10 +105,11 @@ const LabIntroSection = () => (
         level={1}
         style={{
           color: '#ffffff',
-          fontSize: 'clamp(26px, 4vw, 42px)',
+          fontSize: 'clamp(22px, 5.5vw, 42px)',
           fontWeight: 800,
-          lineHeight: 1.2,
+          lineHeight: 1.25,
           margin: '0 0 16px',
+          wordBreak: 'break-word',
         }}
       >
         浙江科技大学
@@ -110,7 +120,7 @@ const LabIntroSection = () => (
       <Paragraph
         style={{
           color: 'rgba(226, 232, 240, 0.85)',
-          fontSize: 15,
+          fontSize: isMobile ? 14 : 15,
           lineHeight: 1.9,
           maxWidth: 680,
           margin: '0 auto 28px',
@@ -153,7 +163,8 @@ const LabIntroSection = () => (
       </a>
     </div>
   </section>
-);
+  );
+};
 
 /* ─────────────────────────────────────────────
    ResearchSection — 研究方向列表
@@ -209,10 +220,12 @@ const RESEARCH_DIRECTIONS = [
   },
 ];
 
-const ResearchSection = () => (
-  <section style={{ padding: '72px 24px', background: '#f8fafc' }}>
+const ResearchSection = () => {
+  const isMobile = useIsMobile();
+  return (
+  <section style={{ padding: isMobile ? '48px 16px' : '72px 24px', background: '#f8fafc' }}>
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: 48 }}>
+      <div style={{ textAlign: 'center', marginBottom: isMobile ? 32 : 48 }}>
         <Tag
           style={{
             background: '#e8f1ff',
@@ -228,15 +241,15 @@ const ResearchSection = () => (
         >
           RESEARCH DIRECTIONS
         </Tag>
-        <Title level={2} style={{ margin: '0 0 12px', color: '#0f172a' }}>
+        <Title level={2} style={{ margin: '0 0 12px', color: '#0f172a', fontSize: isMobile ? 24 : 30 }}>
           研究方向
         </Title>
-        <Paragraph style={{ color: '#64748b', fontSize: 15, margin: 0 }}>
+        <Paragraph style={{ color: '#64748b', fontSize: isMobile ? 14 : 15, margin: 0 }}>
           聚焦 AI 安全前沿，构建完整的对抗攻防研究体系
         </Paragraph>
       </div>
 
-      <Row gutter={[24, 24]}>
+      <Row gutter={[isMobile ? 16 : 24, isMobile ? 16 : 24]}>
         {RESEARCH_DIRECTIONS.map((item) => (
           <Col key={item.title} xs={24} sm={12} lg={8}>
             <Card
@@ -246,7 +259,7 @@ const ResearchSection = () => (
                 border: '1px solid #e5e7eb',
                 boxShadow: '0 4px 16px rgba(15,23,42,0.06)',
               }}
-              styles={{ body: { padding: 24 } }}
+              styles={{ body: { padding: isMobile ? 18 : 24 } }}
               hoverable
             >
               <div
@@ -263,7 +276,7 @@ const ResearchSection = () => (
               >
                 {item.icon}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                 <Title level={5} style={{ margin: 0, color: '#0f172a' }}>
                   {item.title}
                 </Title>
@@ -283,7 +296,8 @@ const ResearchSection = () => (
       </Row>
     </div>
   </section>
-);
+  );
+};
 
 /* ─────────────────────────────────────────────
    TechStackSection — 平台技术栈说明
@@ -339,10 +353,12 @@ const TECH_STACK = [
   },
 ];
 
-const TechStackSection = () => (
-  <section style={{ padding: '72px 24px', background: '#ffffff' }}>
+const TechStackSection = () => {
+  const isMobile = useIsMobile();
+  return (
+  <section style={{ padding: isMobile ? '48px 16px' : '72px 24px', background: '#ffffff' }}>
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: 48 }}>
+      <div style={{ textAlign: 'center', marginBottom: isMobile ? 32 : 48 }}>
         <Tag
           style={{
             background: '#f9f0ff',
@@ -358,15 +374,15 @@ const TechStackSection = () => (
         >
           TECH STACK
         </Tag>
-        <Title level={2} style={{ margin: '0 0 12px', color: '#0f172a' }}>
+        <Title level={2} style={{ margin: '0 0 12px', color: '#0f172a', fontSize: isMobile ? 24 : 30 }}>
           平台技术栈
         </Title>
-        <Paragraph style={{ color: '#64748b', fontSize: 15, margin: 0 }}>
+        <Paragraph style={{ color: '#64748b', fontSize: isMobile ? 14 : 15, margin: 0 }}>
           基于现代化技术栈构建，兼顾性能、可扩展性与开发体验
         </Paragraph>
       </div>
 
-      <Row gutter={[24, 24]}>
+      <Row gutter={[isMobile ? 16 : 24, isMobile ? 16 : 24]}>
         {TECH_STACK.map((stack) => (
           <Col key={stack.category} xs={24} sm={12}>
             <Card
@@ -376,7 +392,7 @@ const TechStackSection = () => (
                 border: '1px solid #e5e7eb',
                 boxShadow: '0 4px 16px rgba(15,23,42,0.05)',
               }}
-              styles={{ body: { padding: 24 } }}
+              styles={{ body: { padding: isMobile ? 18 : 24 } }}
             >
               {/* 分类标题 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
@@ -424,12 +440,14 @@ const TechStackSection = () => (
       </Row>
     </div>
   </section>
-);
+  );
+};
 
 /* ─────────────────────────────────────────────
    VersionSection — 版本信息（从 /info 动态获取）
 ───────────────────────────────────────────── */
 const VersionSection = () => {
+  const isMobile = useIsMobile();
   const [versionInfo, setVersionInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -452,7 +470,7 @@ const VersionSection = () => {
   return (
     <section
       style={{
-        padding: '72px 24px',
+        padding: isMobile ? '48px 16px' : '72px 24px',
         background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
       }}
     >
@@ -473,7 +491,7 @@ const VersionSection = () => {
           VERSION INFO
         </Tag>
 
-        <Title level={2} style={{ color: '#ffffff', margin: '0 0 40px' }}>
+        <Title level={2} style={{ color: '#ffffff', margin: '0 0 40px', fontSize: isMobile ? 24 : 30 }}>
           平台版本信息
         </Title>
 
@@ -603,26 +621,31 @@ const VersionSection = () => {
 /* ─────────────────────────────────────────────
    Footer
 ───────────────────────────────────────────── */
-const PageFooter = () => (
+const PageFooter = () => {
+  const isMobile = useIsMobile();
+  return (
   <footer
     style={{
-      padding: '24px',
+      padding: isMobile ? '20px 16px' : '24px',
       background: '#0f172a',
       textAlign: 'center',
       borderTop: '1px solid rgba(255,255,255,0.08)',
     }}
   >
-    <Text style={{ color: 'rgba(148,163,184,0.7)', fontSize: 13 }}>
-      © {new Date().getFullYear()} 浙江科技大学大数据与智能安全实验室 · 星河智安 AI 安全攻击可视化平台
+    <Text style={{ color: 'rgba(148,163,184,0.7)', fontSize: isMobile ? 12 : 13, lineHeight: 1.7, display: 'block' }}>
+      © {new Date().getFullYear()} 浙江科技大学大数据与智能安全实验室
+      {isMobile ? <br /> : ' · '}
+      星河智安 AI 安全攻击可视化平台
     </Text>
   </footer>
-);
+  );
+};
 
 /* ─────────────────────────────────────────────
    AboutPage（组合）
 ───────────────────────────────────────────── */
 const AboutPage = () => (
-  <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+  <div style={{ minHeight: '100vh', background: '#f8fafc', overflowX: 'hidden' }}>
     <PublicNavbar />
     <main>
       <LabIntroSection />

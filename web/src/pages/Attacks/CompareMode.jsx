@@ -42,9 +42,11 @@ import { submitFGSMAttack, getAttackTaskStatus as getFGSMTaskStatus } from '../.
 import { submitPGDAttack, getAttackTaskStatus as getPGDTaskStatus } from '../../api/attacks/pgd';
 import { submitIFGSMAttack, getAttackTaskStatus as getIFGSMTaskStatus } from '../../api/attacks/ifgsm';
 import { submitDeepFoolAttack, getAttackTaskStatus as getDeepFoolTaskStatus } from '../../api/attacks/deepfool';
+import { uploadImage } from '../../api/files';
 import AlgorithmParamEditor, { DEFAULT_PARAMS } from '../../components/params/AlgorithmParamEditor';
 import ExportButtons from '../../components/export/ExportButtons';
 import PerturbationViewer from '../../components/Visualization/PerturbationViewer';
+import ModelSelector from './shared/ModelSelector';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -80,9 +82,18 @@ const algorithmConfig = {
 
 // ─── 面板初始状态工厂 ────────────────────────────────────────────────────────
 
+const ALGO_TASK_TYPES = {
+  fgsm: ['classification', 'detection'],
+  ifgsm: ['classification', 'detection'],
+  pgd: ['classification', 'detection'],
+  cw: ['classification'],
+  deepfool: ['classification'],
+};
+
 const createPanel = (algorithm = 'fgsm') => ({
   id: Date.now() + Math.random(), // 唯一标识，用于 key
   algorithm,
+  modelName: 'resnet100_imagenet',
   params: { ...DEFAULT_PARAMS[algorithm] },
   taskId: null,
   status: 'idle',
@@ -101,6 +112,17 @@ const formatPrediction = (prediction) => {
     if (prediction.label) return String(prediction.label);
   }
   return '-';
+};
+
+// 通用：用于结果区图片，避免被文本选中变蓝/被拖动
+const noSelectImgStyle = {
+  width: '100%',
+  borderRadius: 12,
+  border: '1px solid #e5e7eb',
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
+  WebkitUserDrag: 'none',
+  pointerEvents: 'none',
 };
 
 /**
@@ -253,7 +275,8 @@ const ResultPreview = ({ panel, image }) => (
             <img
               src={panel.result.original_image || image}
               alt="original"
-              style={{ width: '100%', borderRadius: 12, border: '1px solid #e5e7eb' }}
+              draggable={false}
+              style={noSelectImgStyle}
             />
             <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 4 }}>
               原始图像
@@ -263,7 +286,8 @@ const ResultPreview = ({ panel, image }) => (
             <img
               src={panel.result.adversarial_image}
               alt="adversarial"
-              style={{ width: '100%', borderRadius: 12, border: '1px solid #e5e7eb' }}
+              draggable={false}
+              style={noSelectImgStyle}
             />
             <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 4 }}>
               对抗样本
@@ -508,7 +532,7 @@ const CompareMode = () => {
 
     const response = await submit({
       image: imageUrl,
-      model_name: 'resnet100_imagenet',
+      model_name: panel.modelName || 'resnet100_imagenet',
       params: panel.params,
     });
 
@@ -591,7 +615,12 @@ const CompareMode = () => {
 
   const handleUpload = (file) => {
     const reader = new FileReader();
-    reader.onload = (event) => setImageUrl(event.target.result);
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      setImageUrl(dataUrl);
+      // 记录到后端文件库（静默）
+      uploadImage(dataUrl, file.name, file.type || 'image/png').catch(() => {});
+    };
     reader.readAsDataURL(file);
     return false;
   };
@@ -648,7 +677,16 @@ const CompareMode = () => {
             <img
               src={imageUrl}
               alt="upload"
-              style={{ maxWidth: 220, borderRadius: 14, border: '1px solid #e5e7eb' }}
+              draggable={false}
+              style={{
+                maxWidth: 220,
+                borderRadius: 14,
+                border: '1px solid #e5e7eb',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                WebkitUserDrag: 'none',
+                pointerEvents: 'none',
+              }}
             />
           </div>
         )}
@@ -694,6 +732,13 @@ const CompareMode = () => {
                   onChange={(value) => handleAlgorithmChange(index, value)}
                   style={{ width: '100%' }}
                   disabled={panel.status !== 'idle'}
+                />
+                <ModelSelector
+                  value={panel.modelName}
+                  onChange={(id) => updatePanel(index, (prev) => ({ ...prev, modelName: id }))}
+                  supportedTaskTypes={ALGO_TASK_TYPES[panel.algorithm] || ['classification']}
+                  disabled={panel.status !== 'idle'}
+                  renderHint={() => null}
                 />
                 <AlgorithmParamEditor
                   algorithm={panel.algorithm}

@@ -20,6 +20,7 @@ import {
 import ImageUploader from '../CWAttack/components/ImageUploader';
 import ParameterSlider from '../CWAttack/components/ParameterSlider';
 import ResultDisplay from '../CWAttack/components/ResultDisplay';
+import ModelSelector from '../shared/ModelSelector';
 import useDeepFoolAttack from './hooks/useDeepFoolAttack';
 import QueueStatus from '../../../components/common/QueueStatus';
 
@@ -27,6 +28,7 @@ const { Title, Paragraph, Text } = Typography;
 
 const DeepFoolAttack = () => {
   const [imageUrl, setImageUrl] = useState(null);
+  const [modelName, setModelName] = useState('resnet100_imagenet');
   const [params, setParams] = useState({
     max_iter: 50,
     overshoot: 0.02,
@@ -50,9 +52,13 @@ const DeepFoolAttack = () => {
     canCancel,
   } = useDeepFoolAttack();
 
-  const handleImageChange = (file) => {
+  const handleImageChange = (file, dataUrl) => {
     if (!file) {
       setImageUrl(null);
+      return false;
+    }
+    if (dataUrl) {
+      setImageUrl(dataUrl);
       return false;
     }
     const reader = new FileReader();
@@ -65,7 +71,7 @@ const DeepFoolAttack = () => {
     if (!imageUrl) return;
     runAttack({
       image: imageUrl,
-      model_name: 'resnet100_imagenet',
+      model_name: modelName,
       params,
     });
   };
@@ -97,7 +103,7 @@ const DeepFoolAttack = () => {
             </Tooltip>
           </Title>
           <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-            最小 L2 扰动攻击——迭代投影至最近决策边界，生成视觉几乎不可察的对抗样本。
+            最小 L2 扰动攻击——基于决策边界几何分析，仅适配图像分类模型；攻击 YOLO 等检测模型请改用 PGD/FGSM/I-FGSM。
           </Paragraph>
         </div>
 
@@ -116,6 +122,14 @@ const DeepFoolAttack = () => {
             variant="borderless"
             extra={<Button icon={<ReloadOutlined />} onClick={handleReset} disabled={isRunning} size="small" />}
           >
+            <ModelSelector
+              value={modelName}
+              onChange={setModelName}
+              supportedTaskTypes={['classification']}
+              disabled={isRunning}
+              renderHint={() => null}
+            />
+
             <div style={{ marginBottom: 24 }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>待攻击图片</Text>
               <ImageUploader onImageChange={handleImageChange} disabled={isRunning} maxSize={10} />

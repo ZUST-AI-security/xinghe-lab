@@ -28,7 +28,7 @@ class PGDAlgorithm(BaseAlgorithm):
     display_name = "PGD Attack"
     description = "Projected Gradient Descent — iterative L∞/L2 adversarial attack"
     category = "gradient"
-    supported_task_types = ["classification"]
+    supported_task_types = ["classification", "detection"]
 
     # ------------------------------------------------------------------ helpers
 
@@ -106,22 +106,52 @@ class PGDAlgorithm(BaseAlgorithm):
         """
         Generate PGD adversarial examples.
 
-        Args:
-            model:       loaded BaseModel instance
-            images:      preprocessed input tensor [B, C, H, W] (normalised)
-            labels:      ground-truth class indices [B]
-            epsilon:     maximum perturbation magnitude
-            alpha:       per-step size
-            num_iter:    number of PGD steps
-            targeted:    if True, attacks toward `labels`; else away from them
-            random_start: initialise with random perturbation inside epsilon-ball
-            loss_type:   'ce' (cross-entropy) or 'dlr' (difference of logits ratio)
-            norm:        'linf' or 'l2'
-
-        Returns:
-            (adv_images_pixel, metadata)
-            adv_images_pixel: de-normalised pixel-space tensor [B, C, H, W] in [0,1]
+        分类任务：标准 PGD（CE / DLR 损失）
+        检测任务（YOLO）：vanish 攻击 — 通过 model.compute_attack_loss() 最小化目标置信度
         """
+        model_type = getattr(model, "model_type", "classification")
+        if hasattr(model, "get_model_type"):
+            try:
+                model_type = model.get_model_type() or model_type
+            except Exception:  # noqa: BLE001
+                pass
+
+        if model_type == "detection":
+            return self._generate_detection(
+                model=model,
+                images=images,
+                epsilon=epsilon,
+                alpha=alpha,
+                num_iter=num_iter,
+                random_start=random_start,
+                norm=norm,
+            )
+        return self._generate_classification(
+            model=model,
+            images=images,
+            labels=labels,
+            epsilon=epsilon,
+            alpha=alpha,
+            num_iter=num_iter,
+            targeted=targeted,
+            random_start=random_start,
+            loss_type=loss_type,
+            norm=norm,
+        )
+
+    def _generate_classification(
+        self,
+        model: Any,
+        images: torch.Tensor,
+        labels: torch.Tensor,
+        epsilon: float,
+        alpha: float,
+        num_iter: int,
+        targeted: bool,
+        random_start: bool,
+        loss_type: str,
+        norm: str,
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         start = time.time()
         raw_model = model._model
         if raw_model is None:
@@ -251,6 +281,122 @@ class PGDAlgorithm(BaseAlgorithm):
             "loss_type": loss_type,
             "history": history,
             "time_elapsed": time.time() - start,
+        }
+
+    # ------------------------------------------------------------------ detection branch
+
+    def _generate_detection(
+        self,
+        model: Any,
+        images: torch.Tensor,
+        epsilon: float,
+        alpha: float,
+        num_iter: int,
+        random_start: bool,
+        norm: str,
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+        """
+        Vanish 攻击：通过 model.compute_attack_loss 最小化目标置信度。
+        YOLO 的输入已是 [0,1] 像素空间，无 mean/std 归一化。
+        """
+        start = time.time()
+        device = model.device
+        images = images.to(device).detach()
+        batch = images.size(0)
+
+        if random_start:
+            if norm == "linf":
+                delta = torch.empty_like(images).uniform_(-epsilon, epsilon)
+            else:
+                delta = torch.randn_like(images)
+                norms = torch.norm(delta.reshape(batch, -1), dim=1, keepdim=True).view(batch, 1, 1, 1)
+                delta = delta / (norms + 1e-8) * epsilon
+            adv = torch.clamp(images + delta, 0.0, 1.0).detach()
+        else:
+            adv = images.clone().detach()
+
+        # 原始检测
+        orig_dets = model.predict(images)["detections"][0]
+
+        history = {"losses": [], "l2_norms": [], "linf_norms": []}
+
+        for step in range(num_iter):
+            adv.requires_grad_(True)
+            # vanish 损失：让模型对所有候选框 max-class-prob 越低越好
+            # 算法侧"最小化"损失等价于令 grad 反向
+            loss = model.compute_attack_loss(adv, mode="vanish")
+            grad = torch.autograd.grad(loss, adv, retain_graph=False)[0]
+
+            with torch.no_grad():
+                if norm == "linf":
+                    # 减号：朝 loss 减小方向走（让置信度下降）
+                    adv_new = adv - alpha * grad.sign()
+                else:
+                    g_norms = torch.norm(grad.reshape(batch, -1), dim=1, keepdim=True).view(batch, 1, 1, 1)
+                    adv_new = adv - alpha * grad / (g_norms + 1e-8)
+
+                delta = adv_new - images
+                if norm == "linf":
+                    delta = self._project_linf(delta, epsilon)
+                else:
+                    delta = self._project_l2(delta, epsilon)
+                adv = torch.clamp(images + delta, 0.0, 1.0).detach()
+
+            if step % max(1, num_iter // 10) == 0 or step == num_iter - 1:
+                pert = (adv - images).reshape(batch, -1)
+                history["losses"].append(float(loss.detach().cpu().item()))
+                history["l2_norms"].append(torch.norm(pert, p=2, dim=1).mean().item())
+                history["linf_norms"].append(torch.norm(pert, p=float("inf"), dim=1).mean().item())
+
+        # 攻击后检测
+        adv_dets = model.predict(adv)["detections"][0]
+
+        # 攻击成功率（vanish 攻击）：消失/位移检测框比例
+        # 简化：(orig_count - adv_count) / max(orig_count, 1)
+        orig_count = len(orig_dets)
+        adv_count = len(adv_dets)
+        vanish_rate = max(0.0, (orig_count - adv_count) / max(orig_count, 1))
+        success_rate = float(vanish_rate)
+
+        pert = (adv - images).reshape(batch, -1)
+        l2_norm = torch.norm(pert, p=2, dim=1)
+        linf_norm = torch.norm(pert, p=float("inf"), dim=1)
+
+        # 扰动热力图（与分类分支一致格式）
+        heatmap = torch.abs(adv - images).mean(dim=1, keepdim=True)
+        heatmap = (heatmap - heatmap.min()) / (heatmap.max() - heatmap.min() + 1e-8)
+
+        # 检测任务没有 logits 概率，构造与分类格式兼容的 dummy probs（保留接口形状）
+        # 同时在 metadata 里塞入 detections 字段，让前端展示 bbox
+        dummy_probs = torch.zeros((batch, 1))
+
+        logger.info(
+            "PGD-detection done — orig=%d boxes, adv=%d boxes, vanish=%.2f%% t=%.2fs",
+            orig_count, adv_count, vanish_rate * 100, time.time() - start,
+        )
+
+        return adv.detach(), {
+            "heatmap": heatmap.cpu(),
+            "original_probs": dummy_probs,
+            "adv_probs": dummy_probs,
+            "success_rate": success_rate,
+            "avg_l2_norm": l2_norm.mean().item(),
+            "avg_linf_norm": linf_norm.mean().item(),
+            "epsilon": float(epsilon),
+            "alpha": float(alpha),
+            "num_iter": num_iter,
+            "targeted": False,
+            "norm": norm,
+            "loss_type": "vanish",
+            "history": history,
+            "time_elapsed": time.time() - start,
+            # 检测专属字段
+            "task_type": "detection",
+            "original_detections": orig_dets,
+            "adversarial_detections": adv_dets,
+            "vanish_rate": vanish_rate,
+            "orig_box_count": orig_count,
+            "adv_box_count": adv_count,
         }
 
     # ------------------------------------------------------------------ schema

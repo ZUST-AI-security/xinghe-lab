@@ -55,12 +55,15 @@ const ImageLibrary = ({ open, onClose, onSelect }) => {
   const [selecting, setSelecting] = useState(null); // 正在加载的 file_id
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 12, total: 0 });
+  // 缩略图 URL 加载失败时的兜底缓存：file_id -> base64 data url
+  const [fallbackData, setFallbackData] = useState({});
 
   const fetchUploads = useCallback(async (page = 1, size = 12) => {
     setLoading(true);
     try {
       const data = await getMyUploads(page, size);
       setItems(data.items || []);
+      setFallbackData({});
       setPagination({ current: data.page, pageSize: data.size, total: data.total });
     } catch {
       message.error('获取图片库失败');
@@ -68,6 +71,18 @@ const ImageLibrary = ({ open, onClose, onSelect }) => {
       setLoading(false);
     }
   }, []);
+
+  // 静态缩略图加载失败时（例如 nginx 没代理 /uploads，或 dev 环境无代理），
+  // 走带认证的 /files/image/:id 接口拉 base64 兜底，确保图片库永远能预览。
+  const handleThumbnailError = async (item) => {
+    if (fallbackData[item.file_id]) return;
+    try {
+      const result = await getImageAsBase64(item.file_id);
+      setFallbackData((prev) => ({ ...prev, [item.file_id]: result.data_url }));
+    } catch {
+      // 静默失败，保留 antd Image 默认 fallback
+    }
+  };
 
   useEffect(() => {
     if (open) {
@@ -146,10 +161,11 @@ const ImageLibrary = ({ open, onClose, onSelect }) => {
                         }}
                       >
                         <Image
-                          src={toAbsoluteUrl(item.thumbnail_url)}
+                          src={fallbackData[item.file_id] || toAbsoluteUrl(item.thumbnail_url)}
                           alt={item.filename}
                           style={{ maxWidth: '100%', maxHeight: 100, objectFit: 'contain' }}
                           preview={false}
+                          onError={() => handleThumbnailError(item)}
                           fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
                         />
                       </div>

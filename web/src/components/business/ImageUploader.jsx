@@ -1,6 +1,8 @@
-import React, { useRef } from 'react';
-import { Typography, Space, theme } from 'antd';
-import { InboxOutlined } from '@ant-design/icons';
+import React, { useRef, useState } from 'react';
+import { Typography, Space, Button, theme } from 'antd';
+import { InboxOutlined, FolderOpenOutlined } from '@ant-design/icons';
+import ImageLibrary from '../upload/ImageLibrary';
+import { uploadImage } from '../../api/files';
 
 const { Text, Paragraph } = Typography;
 const { useToken } = theme;
@@ -8,13 +10,24 @@ const { useToken } = theme;
 const ImageUploader = ({ onUpload, preview }) => {
   const fileInputRef = useRef(null);
   const { token } = useToken();
+  const [libraryOpen, setLibraryOpen] = useState(false);
+
+  const handleLibrarySelect = (dataUrl) => {
+    if (onUpload) {
+      const pseudoFile = new File([''], 'library-image.png', { type: 'image/png' });
+      onUpload(pseudoFile, dataUrl);
+    }
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        onUpload(file, reader.result);
+        const dataUrl = reader.result;
+        onUpload(file, dataUrl);
+        // 记录到后端文件库（静默）
+        uploadImage(dataUrl, file.name, file.type || 'image/png').catch(() => {});
       };
       reader.readAsDataURL(file);
     }
@@ -67,6 +80,24 @@ const ImageUploader = ({ onUpload, preview }) => {
         style={{ display: 'none' }} 
         accept="image/*"
         onChange={handleFileChange}
+      />
+
+      <div style={{ marginTop: 8 }}>
+        <Button
+          type="dashed"
+          icon={<FolderOpenOutlined />}
+          size="small"
+          onClick={(e) => { e.stopPropagation(); setLibraryOpen(true); }}
+          style={{ width: '100%' }}
+        >
+          从图片库选择
+        </Button>
+      </div>
+
+      <ImageLibrary
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        onSelect={handleLibrarySelect}
       />
     </div>
   );

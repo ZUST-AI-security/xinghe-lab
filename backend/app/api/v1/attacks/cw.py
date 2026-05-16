@@ -156,6 +156,10 @@ async def submit_cw_async(
             get_queue_name,
         )
         from app.core.config import settings
+        from app.utils.upload_recorder import record_attack_image
+
+        # 记录上传图片到文件库
+        record_attack_image(db, current_user.id, request.image)
 
         # 并发任务数限制检查
         active_count = check_concurrent_limit(current_user.id, db)

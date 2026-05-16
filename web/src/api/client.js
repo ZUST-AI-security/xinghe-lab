@@ -58,6 +58,16 @@ apiClient.interceptors.request.use(
   }
 );
 
+// 请求是否需要登录态：受保护接口失败才会触发跳转
+// /api/v1/auth/* 走自身错误流，不重试
+const isAuthEndpoint = (url = '') => /\/auth\/(login|refresh|register)/.test(url);
+
+// 当前是否在公开路由（首页、关于、登录、注册）
+const isOnPublicRoute = () => {
+  const path = window.location.pathname;
+  return path === '/' || path === '/about' || path === '/login' || path === '/register';
+};
+
 // 响应拦截器
 apiClient.interceptors.response.use(
   (response) => {
@@ -95,7 +105,11 @@ apiClient.interceptors.response.use(
     }
 
     // 处理401未授权错误
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401
+      && !originalRequest._retry
+      && !isAuthEndpoint(originalRequest?.url)
+    ) {
       originalRequest._retry = true;
 
       try {
@@ -107,18 +121,24 @@ apiClient.interceptors.response.use(
             { refresh_token: refreshToken }
           );
 
-          const { access_token } = response.data;
+          const { access_token, refresh_token: newRefresh } = response.data;
           localStorage.setItem('access_token', access_token);
+          if (newRefresh) {
+            localStorage.setItem('refresh_token', newRefresh);
+          }
 
           // 重新发送原始请求
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
           return apiClient(originalRequest);
         }
       } catch (refreshError) {
-        // 刷新失败，清除token并跳转到登录页
+        // 刷新失败：清除 token；
+        // 仅在受保护页面才硬跳转，公开页静默失败让 UI 自行处理（避免首页被踢）
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
+        if (!isOnPublicRoute()) {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }
@@ -132,7 +152,10 @@ apiClient.interceptors.response.use(
           message.error(data.detail || '请求参数错误');
           break;
         case 401:
-          message.error('认证失败，请重新登录');
+          // 仅在非公开页提示，避免首页/关于页等出现"认证失败"打扰
+          if (!isOnPublicRoute() && !isAuthEndpoint(originalRequest?.url)) {
+            message.error('认证失败，请重新登录');
+          }
           break;
         case 403:
           message.error('权限不足');

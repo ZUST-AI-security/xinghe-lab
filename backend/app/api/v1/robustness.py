@@ -14,7 +14,9 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from celery.result import AsyncResult
+from sqlalchemy.orm import Session
 
+from app.core.database import get_db
 from app.core.security import get_current_active_user
 from app.models.user import User
 from app.workers.celery_app import celery_app
@@ -52,6 +54,19 @@ class RobustnessResultResponse(BaseModel):
     defenses: Optional[List[str]] = None
     time_elapsed: Optional[float] = None
     error: Optional[str] = None
+    # 新增：详情（每个 algorithm/defense 的 Top-5 与图像 URL 等）
+    details: Optional[Dict[str, Any]] = None
+    meta: Optional[Dict[str, Any]] = None
+    task_id: Optional[str] = None
+
+
+class RobustnessCellResponse(BaseModel):
+    """单元格详情：算法 × 防御 的完整可视化数据"""
+    algorithm: str
+    defense: str
+    original: Dict[str, Any]
+    adversarial: Dict[str, Any]
+    defended: Dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
@@ -62,6 +77,7 @@ class RobustnessResultResponse(BaseModel):
 async def submit_robustness_evaluation(
     request: RobustnessEvaluateRequest,
     current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """
     Submit a robustness evaluation task.
@@ -77,6 +93,10 @@ async def submit_robustness_evaluation(
     """
     try:
         from app.workers.robustness_task import run_robustness_evaluation
+        from app.utils.upload_recorder import record_attack_image
+
+        # 记录上传图片到文件库
+        record_attack_image(db, current_user.id, request.image)
 
         # Validate algorithms list
         if not request.algorithms:
@@ -133,6 +153,9 @@ async def get_robustness_result(
                 algorithms=result.get("algorithms"),
                 defenses=result.get("defenses"),
                 time_elapsed=result.get("time_elapsed"),
+                details=result.get("details"),
+                meta=result.get("meta"),
+                task_id=result.get("task_id"),
                 error=None,
             )
 

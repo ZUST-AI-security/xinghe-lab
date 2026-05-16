@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Badge,
@@ -22,14 +22,23 @@ import {
 import ImageUploader from '../CWAttack/components/ImageUploader';
 import ParameterSlider from '../CWAttack/components/ParameterSlider';
 import ResultDisplay from '../CWAttack/components/ResultDisplay';
+import DetectionResultDisplay from '../shared/DetectionResultDisplay';
+import ModelSelector from '../shared/ModelSelector';
 import usePGDAttack from './hooks/usePGDAttack';
 import QueueStatus from '../../../components/common/QueueStatus';
 
 const { Title, Paragraph, Text } = Typography;
 
+// 已知模型 → 任务类型映射兜底（接口返回里也有 model_type，优先用接口数据）
+const MODEL_TYPE_FALLBACK = {
+  resnet100_imagenet: 'classification',
+  yolov8: 'detection',
+};
+
 const PGDAttack = () => {
   const [imageUrl, setImageUrl] = useState(null);
   const [advancedMode, setAdvancedMode] = useState(false);
+  const [modelName, setModelName] = useState('resnet100_imagenet');
   const [params, setParams] = useState({
     epsilon: 0.03,
     alpha: 0.01,
@@ -56,11 +65,29 @@ const PGDAttack = () => {
     canCancel,
   } = usePGDAttack();
 
+  const isDetectionTask = MODEL_TYPE_FALLBACK[modelName] === 'detection';
+
+  // 当切换到检测任务时，自动收紧默认参数（YOLO 输入 [0,1]，扰动尺度可以放大）
+  useEffect(() => {
+    if (isDetectionTask) {
+      setParams((prev) => ({
+        ...prev,
+        epsilon: prev.epsilon < 0.02 ? 0.04 : prev.epsilon,
+        alpha: prev.alpha < 0.005 ? 0.008 : prev.alpha,
+        num_iter: prev.num_iter < 20 ? 20 : prev.num_iter,
+        targeted: false,
+        loss_type: 'ce', // 检测任务后端走 vanish loss，loss_type 字段被忽略
+      }));
+    }
+  }, [isDetectionTask]);
+
   const paramSpecs = {
     epsilon: {
       label: '扰动上限 epsilon',
       description: 'PGD 的最大扰动约束。',
-      tips: '常见 ImageNet 演示范围是 0.01 - 0.05。',
+      tips: isDetectionTask
+        ? 'YOLO 检测攻击常见 0.02 - 0.08，扰动过小不足以让模型漏检。'
+        : '常见 ImageNet 演示范围是 0.01 - 0.05。',
       range: { min: 0.001, max: 0.5 },
       step: 0.001,
       unit: '',
@@ -83,24 +110,43 @@ const PGDAttack = () => {
     },
   };
 
-  const presets = [
-    {
-      name: '默认参数',
-      params: { epsilon: 0.03, alpha: 0.01, num_iter: 40, targeted: false, random_start: true, loss_type: 'ce', norm: 'linf' },
-    },
-    {
-      name: '高成功率',
-      params: { epsilon: 0.05, alpha: 0.01, num_iter: 60, targeted: false, random_start: true, loss_type: 'ce', norm: 'linf' },
-    },
-    {
-      name: '低扰动',
-      params: { epsilon: 0.015, alpha: 0.005, num_iter: 30, targeted: false, random_start: true, loss_type: 'dlr', norm: 'l2' },
-    },
-  ];
+  const presets = isDetectionTask
+    ? [
+        {
+          name: '默认 (YOLO)',
+          params: { epsilon: 0.04, alpha: 0.008, num_iter: 20, targeted: false, random_start: true, loss_type: 'ce', norm: 'linf' },
+        },
+        {
+          name: '强攻击',
+          params: { epsilon: 0.08, alpha: 0.012, num_iter: 40, targeted: false, random_start: true, loss_type: 'ce', norm: 'linf' },
+        },
+        {
+          name: '低扰动',
+          params: { epsilon: 0.02, alpha: 0.004, num_iter: 30, targeted: false, random_start: true, loss_type: 'ce', norm: 'l2' },
+        },
+      ]
+    : [
+        {
+          name: '默认参数',
+          params: { epsilon: 0.03, alpha: 0.01, num_iter: 40, targeted: false, random_start: true, loss_type: 'ce', norm: 'linf' },
+        },
+        {
+          name: '高成功率',
+          params: { epsilon: 0.05, alpha: 0.01, num_iter: 60, targeted: false, random_start: true, loss_type: 'ce', norm: 'linf' },
+        },
+        {
+          name: '低扰动',
+          params: { epsilon: 0.015, alpha: 0.005, num_iter: 30, targeted: false, random_start: true, loss_type: 'dlr', norm: 'l2' },
+        },
+      ];
 
-  const handleImageChange = (file) => {
+  const handleImageChange = (file, dataUrl) => {
     if (!file) {
       setImageUrl(null);
+      return false;
+    }
+    if (dataUrl) {
+      setImageUrl(dataUrl);
       return false;
     }
     const reader = new FileReader();
@@ -113,7 +159,7 @@ const PGDAttack = () => {
     if (!imageUrl) return;
     runAttack({
       image: imageUrl,
-      model_name: 'resnet100_imagenet',
+      model_name: modelName,
       params,
     });
   };
@@ -137,6 +183,10 @@ const PGDAttack = () => {
     return <Badge status={config.color} text={config.text} />;
   };
 
+  // 根据 result 中的 task_type 自动选择展示组件（兼容老结果，按当前模型判断）
+  const resultTaskType = result?.metadata?.task_type
+    || (isDetectionTask ? 'detection' : 'classification');
+
   return (
     <div style={{ padding: '16px 24px' }}>
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
@@ -148,7 +198,7 @@ const PGDAttack = () => {
             </Tooltip>
           </Title>
           <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-            基于投影梯度下降的迭代对抗攻击，攻击效果强且可控。
+            基于投影梯度下降的迭代对抗攻击，{isDetectionTask ? '当前对 YOLO 检测模型施加 vanish 攻击（让目标消失）。' : '攻击效果强且可控。'}
           </Paragraph>
         </div>
 
@@ -176,6 +226,14 @@ const PGDAttack = () => {
               <Button icon={<ReloadOutlined />} onClick={handleReset} disabled={isRunning} size="small" />
             )}
           >
+            {/* 目标模型 */}
+            <ModelSelector
+              value={modelName}
+              onChange={setModelName}
+              supportedTaskTypes={['classification', 'detection']}
+              disabled={isRunning}
+            />
+
             <div style={{ marginBottom: 24 }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>待攻击图片</Text>
               <ImageUploader onImageChange={handleImageChange} disabled={isRunning} maxSize={10} />
@@ -212,57 +270,88 @@ const PGDAttack = () => {
               />
             ))}
 
-            <div style={{ marginBottom: 24 }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>攻击模式</Text>
-              <Space wrap>
-                <Tag
-                  color={params.targeted ? 'purple' : 'blue'}
-                  onClick={() => setParams((prev) => ({ ...prev, targeted: !prev.targeted }))}
-                  style={{ cursor: 'pointer' }}
-                >
-                  {params.targeted ? '定向攻击' : '非定向攻击'}
-                </Tag>
-                <Tag
-                  color={params.random_start ? 'green' : 'default'}
-                  onClick={() => setParams((prev) => ({ ...prev, random_start: !prev.random_start }))}
-                  style={{ cursor: 'pointer' }}
-                >
-                  {params.random_start ? '随机初始化开启' : '随机初始化关闭'}
-                </Tag>
-                {advancedMode && (
-                  <>
-                    <Tag
-                      color={params.norm === 'linf' ? 'geekblue' : 'default'}
-                      onClick={() => setParams((prev) => ({ ...prev, norm: 'linf' }))}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      Linf
-                    </Tag>
-                    <Tag
-                      color={params.norm === 'l2' ? 'geekblue' : 'default'}
-                      onClick={() => setParams((prev) => ({ ...prev, norm: 'l2' }))}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      L2
-                    </Tag>
-                    <Tag
-                      color={params.loss_type === 'ce' ? 'gold' : 'default'}
-                      onClick={() => setParams((prev) => ({ ...prev, loss_type: 'ce' }))}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      CE Loss
-                    </Tag>
-                    <Tag
-                      color={params.loss_type === 'dlr' ? 'gold' : 'default'}
-                      onClick={() => setParams((prev) => ({ ...prev, loss_type: 'dlr' }))}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      DLR Loss
-                    </Tag>
-                  </>
-                )}
-              </Space>
-            </div>
+            {/* 检测任务下隐藏 targeted/loss_type 选项（后端会忽略），保留 norm 选择 */}
+            {!isDetectionTask && (
+              <div style={{ marginBottom: 24 }}>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>攻击模式</Text>
+                <Space wrap>
+                  <Tag
+                    color={params.targeted ? 'purple' : 'blue'}
+                    onClick={() => setParams((prev) => ({ ...prev, targeted: !prev.targeted }))}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {params.targeted ? '定向攻击' : '非定向攻击'}
+                  </Tag>
+                  <Tag
+                    color={params.random_start ? 'green' : 'default'}
+                    onClick={() => setParams((prev) => ({ ...prev, random_start: !prev.random_start }))}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {params.random_start ? '随机初始化开启' : '随机初始化关闭'}
+                  </Tag>
+                  {advancedMode && (
+                    <>
+                      <Tag
+                        color={params.norm === 'linf' ? 'geekblue' : 'default'}
+                        onClick={() => setParams((prev) => ({ ...prev, norm: 'linf' }))}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        Linf
+                      </Tag>
+                      <Tag
+                        color={params.norm === 'l2' ? 'geekblue' : 'default'}
+                        onClick={() => setParams((prev) => ({ ...prev, norm: 'l2' }))}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        L2
+                      </Tag>
+                      <Tag
+                        color={params.loss_type === 'ce' ? 'gold' : 'default'}
+                        onClick={() => setParams((prev) => ({ ...prev, loss_type: 'ce' }))}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        CE Loss
+                      </Tag>
+                      <Tag
+                        color={params.loss_type === 'dlr' ? 'gold' : 'default'}
+                        onClick={() => setParams((prev) => ({ ...prev, loss_type: 'dlr' }))}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        DLR Loss
+                      </Tag>
+                    </>
+                  )}
+                </Space>
+              </div>
+            )}
+            {isDetectionTask && advancedMode && (
+              <div style={{ marginBottom: 24 }}>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>扰动范数</Text>
+                <Space wrap>
+                  <Tag
+                    color={params.norm === 'linf' ? 'geekblue' : 'default'}
+                    onClick={() => setParams((prev) => ({ ...prev, norm: 'linf' }))}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    Linf
+                  </Tag>
+                  <Tag
+                    color={params.norm === 'l2' ? 'geekblue' : 'default'}
+                    onClick={() => setParams((prev) => ({ ...prev, norm: 'l2' }))}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    L2
+                  </Tag>
+                  <Tag
+                    color={params.random_start ? 'green' : 'default'}
+                    onClick={() => setParams((prev) => ({ ...prev, random_start: !prev.random_start }))}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {params.random_start ? '随机初始化开启' : '随机初始化关闭'}
+                  </Tag>
+                </Space>
+              </div>
+            )}
 
             <Space size="middle" wrap>
               <Button
@@ -303,13 +392,22 @@ const PGDAttack = () => {
         </Col>
 
         <Col xs={24} lg={14}>
-          <ResultDisplay
-            result={result}
-            originalImageUrl={imageUrl}
-            onSaveResult={() => saveResult('PGD active flow')}
-            onExportData={exportData}
-            loading={loading}
-          />
+          {resultTaskType === 'detection' ? (
+            <DetectionResultDisplay
+              result={result}
+              originalImageUrl={imageUrl}
+              onSaveResult={() => saveResult('PGD detection flow')}
+              onExportData={exportData}
+            />
+          ) : (
+            <ResultDisplay
+              result={result}
+              originalImageUrl={imageUrl}
+              onSaveResult={() => saveResult('PGD active flow')}
+              onExportData={exportData}
+              loading={loading}
+            />
+          )}
         </Col>
       </Row>
     </div>

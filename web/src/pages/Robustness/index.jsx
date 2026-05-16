@@ -35,6 +35,7 @@ import {
 
 import ImageUploader from '../../components/business/ImageUploader';
 import { getRobustnessResult, submitRobustnessEvaluation } from '../../api/robustness';
+import CellDetailModal from './CellDetailModal';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -83,7 +84,7 @@ const getHeatmapStyle = (rate) => {
 
 // ─── RobustnessMatrix 子组件 ──────────────────────────────────────────────────
 
-const RobustnessMatrix = ({ matrix, algorithms, defenses }) => {
+const RobustnessMatrix = ({ matrix, algorithms, defenses, onCellClick }) => {
   if (!matrix || !algorithms || !defenses) return null;
 
   const defenseColumns = [
@@ -104,8 +105,12 @@ const RobustnessMatrix = ({ matrix, algorithms, defenses }) => {
       dataIndex: defense,
       key: defense,
       width: 140,
-      render: (rate) => (
-        <div style={getHeatmapStyle(rate)}>
+      render: (rate, row) => (
+        <div
+          style={{ ...getHeatmapStyle(rate), cursor: onCellClick ? 'pointer' : 'default' }}
+          onClick={() => onCellClick?.(row.algorithm, defense)}
+          title="点击查看详情"
+        >
           {rate !== null && rate !== undefined ? `${(rate * 100).toFixed(1)}%` : '—'}
         </div>
       ),
@@ -145,6 +150,7 @@ const RobustnessMatrix = ({ matrix, algorithms, defenses }) => {
             <div style={{ width: 16, height: 16, borderRadius: 3, background: 'rgb(255,77,79)' }} />
             <Text type="secondary" style={{ fontSize: 12 }}>高成功率（防御无效）</Text>
           </Space>
+          <Text type="secondary" style={{ fontSize: 12 }}>· 点击单元格查看详情</Text>
         </Space>
       </div>
       <Table
@@ -170,6 +176,9 @@ const RobustnessPage = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // A 任务：单元格点击 → Modal 详情
+  const [activeCell, setActiveCell] = useState(null); // { algorithm, defense }
 
   const pollTimerRef = useRef(null);
 
@@ -459,6 +468,7 @@ const RobustnessPage = () => {
                 matrix={result.matrix}
                 algorithms={result.algorithms}
                 defenses={result.defenses}
+                onCellClick={(alg, def) => setActiveCell({ algorithm: alg, defense: def })}
               />
             </>
           )}
@@ -485,6 +495,15 @@ const RobustnessPage = () => {
           )}
         </Col>
       </Row>
+
+      <CellDetailModal
+        open={!!activeCell}
+        onClose={() => setActiveCell(null)}
+        algorithm={activeCell?.algorithm}
+        defense={activeCell?.defense}
+        algoDetails={activeCell ? result?.details?.[activeCell.algorithm] : null}
+        meta={result?.meta}
+      />
     </div>
   );
 };

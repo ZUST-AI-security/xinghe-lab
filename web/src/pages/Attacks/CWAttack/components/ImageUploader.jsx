@@ -4,8 +4,10 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Upload, message, Image, Progress, Typography } from 'antd';
-import { InboxOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Upload, message, Image, Progress, Typography, Button } from 'antd';
+import { InboxOutlined, DeleteOutlined, FolderOpenOutlined } from '@ant-design/icons';
+import ImageLibrary from '../../../../components/upload/ImageLibrary';
+import { uploadImage } from '../../../../api/files';
 
 const { Dragger } = Upload;
 const { Text } = Typography;
@@ -36,6 +38,21 @@ const ImageUploader = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+
+  // 从图片库选择
+  const handleLibrarySelect = (dataUrl) => {
+    setPreviewUrl(dataUrl);
+    const pseudoFile = new File([''], 'library-image.png', { type: 'image/png' });
+    pseudoFile._dataUrl = dataUrl;
+    setImageFile(pseudoFile);
+    if (onImageChange) {
+      onImageChange(pseudoFile, dataUrl);
+    }
+    if (onImageIdChange) {
+      onImageIdChange(pseudoFile.name);
+    }
+  };
 
   // 验证文件
   const validateFile = useCallback((file) => {
@@ -55,15 +72,6 @@ const ImageUploader = ({
     return true;
   }, [acceptTypes, maxSize]);
 
-  // 生成预览URL
-  const generatePreview = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setPreviewUrl(e.target.result);
-    };
-    reader.readAsDataURL(file);
-  };
-
   // 处理文件上传
   const handleUpload = useCallback((file) => {
     if (!validateFile(file)) {
@@ -73,39 +81,33 @@ const ImageUploader = ({
     setUploading(true);
     setUploadProgress(0);
 
-    // 模拟上传进度
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + 10;
-      });
-    }, 100);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const dataUrl = e.target.result;
+      setUploadProgress(50);
 
-    // 模拟上传完成
-    setTimeout(() => {
-      clearInterval(progressInterval);
+      // 记录到后端文件库（静默，不阻塞主流程）
+      try {
+        await uploadImage(dataUrl, file.name, file.type || 'image/png');
+      } catch {
+        // 上传记录失败不影响攻击流程
+      }
+
       setUploadProgress(100);
-      
-      // 生成预览
-      generatePreview(file);
-      
-      // 保存文件信息
+      setPreviewUrl(dataUrl);
       setImageFile(file);
-      
-      // 回调父组件
+
       if (onImageChange) {
-        onImageChange(file);
+        onImageChange(file, dataUrl);
       }
       if (onImageIdChange) {
         onImageIdChange(file.name);
       }
-      
+
       setUploading(false);
       message.success('图片上传成功');
-    }, 1500);
+    };
+    reader.readAsDataURL(file);
 
     return false; // 阻止默认上传行为
   }, [onImageChange, onImageIdChange, validateFile]);
@@ -211,6 +213,26 @@ const ImageUploader = ({
           </Text>
         </div>
       )}
+
+      {!disabled && !previewUrl && (
+        <div style={{ marginTop: 8 }}>
+          <Button
+            type="dashed"
+            icon={<FolderOpenOutlined />}
+            size="small"
+            onClick={() => setLibraryOpen(true)}
+            style={{ width: '100%' }}
+          >
+            从图片库选择
+          </Button>
+        </div>
+      )}
+
+      <ImageLibrary
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        onSelect={handleLibrarySelect}
+      />
     </div>
   );
 };

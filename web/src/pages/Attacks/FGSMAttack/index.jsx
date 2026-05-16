@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Badge,
@@ -21,13 +21,21 @@ import {
 import ImageUploader from '../CWAttack/components/ImageUploader';
 import ParameterSlider from '../CWAttack/components/ParameterSlider';
 import ResultDisplay from '../CWAttack/components/ResultDisplay';
+import DetectionResultDisplay from '../shared/DetectionResultDisplay';
+import ModelSelector from '../shared/ModelSelector';
 import useFGSMAttack from './hooks/useFGSMAttack';
 import QueueStatus from '../../../components/common/QueueStatus';
 
 const { Title, Paragraph, Text } = Typography;
 
+const MODEL_TYPE_FALLBACK = {
+  resnet100_imagenet: 'classification',
+  yolov8: 'detection',
+};
+
 const FGSMAttack = () => {
   const [imageUrl, setImageUrl] = useState(null);
+  const [modelName, setModelName] = useState('resnet100_imagenet');
   const [params, setParams] = useState({
     epsilon: 0.03,
     targeted: false,
@@ -50,9 +58,22 @@ const FGSMAttack = () => {
     canCancel,
   } = useFGSMAttack();
 
-  const handleImageChange = (file) => {
+  const isDetectionTask = MODEL_TYPE_FALLBACK[modelName] === 'detection';
+
+  // 切到检测任务时把 epsilon 默认值放大一些（YOLO 输入 [0,1] 像素空间）
+  useEffect(() => {
+    if (isDetectionTask && params.epsilon < 0.02) {
+      setParams((prev) => ({ ...prev, epsilon: 0.04, targeted: false }));
+    }
+  }, [isDetectionTask]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleImageChange = (file, dataUrl) => {
     if (!file) {
       setImageUrl(null);
+      return false;
+    }
+    if (dataUrl) {
+      setImageUrl(dataUrl);
       return false;
     }
     const reader = new FileReader();
@@ -62,15 +83,12 @@ const FGSMAttack = () => {
   };
 
   const handleRunAttack = () => {
-    if (!imageUrl) {
-      return;
-    }
-    const requestData = {
+    if (!imageUrl) return;
+    runAttack({
       image: imageUrl,
-      model_name: 'resnet100_imagenet',
+      model_name: modelName,
       params,
-    };
-    runAttack(requestData);
+    });
   };
 
   const handleReset = () => {
@@ -88,6 +106,8 @@ const FGSMAttack = () => {
     failed: { color: 'error', text: '失败' },
   };
   const currentStatus = statusConfig[status] || statusConfig.idle;
+  const resultTaskType = result?.metadata?.task_type
+    || (isDetectionTask ? 'detection' : 'classification');
 
   return (
     <div style={{ padding: '16px 24px' }}>
@@ -100,7 +120,9 @@ const FGSMAttack = () => {
             </Tooltip>
           </Title>
           <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-            轻量级攻击链路，已按 live OpenAPI 接入当前活跃前端结构。
+            {isDetectionTask
+              ? '单步 vanish 攻击：让 YOLO 漏检目标。'
+              : '轻量级攻击链路，已按 live OpenAPI 接入当前活跃前端结构。'}
           </Paragraph>
         </div>
 
@@ -119,6 +141,13 @@ const FGSMAttack = () => {
             variant="borderless"
             extra={<Button icon={<ReloadOutlined />} onClick={handleReset} disabled={isRunning} size="small" />}
           >
+            <ModelSelector
+              value={modelName}
+              onChange={setModelName}
+              supportedTaskTypes={['classification', 'detection']}
+              disabled={isRunning}
+            />
+
             <div style={{ marginBottom: 24 }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>待攻击图片</Text>
               <ImageUploader onImageChange={handleImageChange} disabled={isRunning} maxSize={10} />
@@ -127,7 +156,9 @@ const FGSMAttack = () => {
             <ParameterSlider
               label="扰动上限 epsilon"
               description="FGSM 单步更新的 L-infinity 扰动上界。"
-              tips="值越大越容易成功，但图像变化也更明显。"
+              tips={isDetectionTask
+                ? 'YOLO 单步攻击通常需要 0.03 - 0.08 才能让目标消失。'
+                : '值越大越容易成功，但图像变化也更明显。'}
               value={params.epsilon}
               onChange={(value) => setParams((prev) => ({ ...prev, epsilon: value }))}
               range={{ min: 0, max: 0.2 }}
@@ -135,12 +166,14 @@ const FGSMAttack = () => {
               disabled={isRunning}
             />
 
-            <div style={{ marginBottom: 24 }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>攻击模式</Text>
-              <Tag color={params.targeted ? 'purple' : 'blue'} onClick={() => setParams((prev) => ({ ...prev, targeted: !prev.targeted }))} style={{ cursor: 'pointer' }}>
-                {params.targeted ? '定向攻击' : '非定向攻击'}
-              </Tag>
-            </div>
+            {!isDetectionTask && (
+              <div style={{ marginBottom: 24 }}>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>攻击模式</Text>
+                <Tag color={params.targeted ? 'purple' : 'blue'} onClick={() => setParams((prev) => ({ ...prev, targeted: !prev.targeted }))} style={{ cursor: 'pointer' }}>
+                  {params.targeted ? '定向攻击' : '非定向攻击'}
+                </Tag>
+              </div>
+            )}
 
             <Space size="middle">
               <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAttack} loading={loading} disabled={!imageUrl || isRunning} size="large">
@@ -174,13 +207,22 @@ const FGSMAttack = () => {
         </Col>
 
         <Col xs={24} lg={14}>
-          <ResultDisplay
-            result={result}
-            originalImageUrl={imageUrl}
-            onSaveResult={() => saveResult('FGSM active flow')}
-            onExportData={exportData}
-            loading={loading}
-          />
+          {resultTaskType === 'detection' ? (
+            <DetectionResultDisplay
+              result={result}
+              originalImageUrl={imageUrl}
+              onSaveResult={() => saveResult('FGSM detection flow')}
+              onExportData={exportData}
+            />
+          ) : (
+            <ResultDisplay
+              result={result}
+              originalImageUrl={imageUrl}
+              onSaveResult={() => saveResult('FGSM active flow')}
+              onExportData={exportData}
+              loading={loading}
+            />
+          )}
         </Col>
       </Row>
     </div>

@@ -63,6 +63,7 @@ def run_robustness_evaluation(
             algorithms=algorithms,
             model_id=model_id,
             db=db,
+            task_id=self.request.id,
         )
 
         self.update_state(state="PROGRESS", meta={"progress": 100, "status": "Completed"})
@@ -94,3 +95,12 @@ def run_robustness_evaluation(
 
     finally:
         db.close()
+        # 与 attack_task 保持一致：清理推理产生的中间张量与显存碎片
+        try:
+            import gc
+            import torch
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:  # noqa: BLE001
+            pass

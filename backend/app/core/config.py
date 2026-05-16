@@ -32,10 +32,12 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/xinghelab"
     
     # JWT配置
+    # access token 默认 4 小时（240 分钟），refresh token 默认 30 天
+    # 修订理由：原 30 分钟在常规研究/实验场景过短，且双 token 机制本身允许长期会话
     jwt_secret_key: str = "your-jwt-secret-key-here"
     jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 30
-    jwt_refresh_token_expire_days: int = 7
+    jwt_access_token_expire_minutes: int = 240
+    jwt_refresh_token_expire_days: int = 30
     
     # Redis配置
     redis_url: str = "redis://localhost:6379/0"

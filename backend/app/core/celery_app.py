@@ -63,7 +63,11 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     worker_prefetch_multiplier=1,
-    worker_max_tasks_per_child=50,
+    # 模型缓存优化（4H8G 服务器上 ResNet152 ~250MB + YOLOv8n ~6MB）：
+    # 让 worker 进程长时间存活，跨任务复用已加载到显存/内存的模型。
+    # 设为 0 表示永不回收（最大化模型缓存命中率），但需依赖 attack_task 内的内存监控避免泄漏。
+    # 默认 200，每 200 个任务回收一次进程，给 GC + 文件句柄清理留出节奏。
+    worker_max_tasks_per_child=200,
     task_acks_late=True,
     result_expires=3600,
     task_soft_time_limit=1800,

@@ -54,6 +54,7 @@ services:
       - backend_models:/app/models
       - backend_outputs:/app/outputs
       - backend_logs:/app/logs
+      - backend_uploads:/app/uploads
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     healthcheck:
@@ -88,6 +89,7 @@ services:
       - backend_models:/app/models
       - backend_outputs:/app/outputs
       - backend_logs:/app/logs
+      - backend_uploads:/app/uploads
     command:
       [
         "celery",
@@ -125,6 +127,7 @@ services:
       - backend_models:/app/models
       - backend_outputs:/app/outputs
       - backend_logs:/app/logs
+      - backend_uploads:/app/uploads
     command: ["celery", "-A", "app.core.celery_app", "beat", "--loglevel=${CELERY_LOG_LEVEL:-info}"]
 
   web:
@@ -148,3 +151,4 @@ volumes:
   backend_models:
   backend_outputs:
   backend_logs:
+  backend_uploads:

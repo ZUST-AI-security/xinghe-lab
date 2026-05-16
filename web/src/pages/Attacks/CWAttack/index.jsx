@@ -32,6 +32,7 @@ import {
 import ParameterSlider from './components/ParameterSlider';
 import ImageUploader from './components/ImageUploader';
 import ResultDisplay from './components/ResultDisplay';
+import ModelSelector from '../shared/ModelSelector';
 import useCWAttack from './hooks/useCWAttack';
 import QueueStatus from '../../../components/common/QueueStatus';
 
@@ -52,6 +53,7 @@ const DEFAULT_CW_PARAMS = {
 const CWAttack = () => {
   const [imageUrl, setImageUrl] = useState(null);
   const [advancedMode, setAdvancedMode] = useState(false);
+  const [modelName, setModelName] = useState('resnet100_imagenet');
   const [params, setParams] = useState(DEFAULT_CW_PARAMS);
 
   const {
@@ -193,9 +195,13 @@ const CWAttack = () => {
     },
   ];
 
-  const handleImageChange = (file) => {
+  const handleImageChange = (file, dataUrl) => {
     if (!file) {
       setImageUrl(null);
+      return false;
+    }
+    if (dataUrl) {
+      setImageUrl(dataUrl);
       return false;
     }
     const reader = new FileReader();
@@ -232,7 +238,7 @@ const CWAttack = () => {
     }
     runAttack({
       image: imageUrl,
-      model_name: 'resnet100_imagenet',
+      model_name: modelName,
       params,
     });
   };
@@ -285,7 +291,7 @@ const CWAttack = () => {
             </Tooltip>
           </Title>
           <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-            面向 ImageNet 分类模型的优化型对抗攻击。C&W 质量高，但计算量也明显更大。
+            优化型对抗攻击。C&W 基于 logits 求解，仅适配图像分类模型；选择 YOLO 等检测模型时，请改用 PGD/FGSM/I-FGSM 等支持检测的算法。
           </Paragraph>
         </div>
 
@@ -320,6 +326,14 @@ const CWAttack = () => {
               </Tooltip>
             }
           >
+            <ModelSelector
+              value={modelName}
+              onChange={setModelName}
+              supportedTaskTypes={['classification']}
+              disabled={isRunning}
+              renderHint={(model) => null}
+            />
+
             <div style={{ marginBottom: 24 }}>
               <Text strong style={{ marginBottom: 8, display: 'block' }}>
                 待攻击图片

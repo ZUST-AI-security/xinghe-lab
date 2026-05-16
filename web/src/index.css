@@ -25,6 +25,11 @@ body,
   min-height: 100%;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   font-family: 'Plus Jakarta Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -68,29 +73,58 @@ a {
 }
 
 .xh-sidebar.ant-layout-sider {
-  min-height: 100vh;
+  height: 100vh;
   background: var(--xh-sidebar) !important;
   box-shadow: 14px 0 34px rgba(15, 23, 42, 0.12);
 }
 
 .xh-sidebar .ant-layout-sider-children {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   flex-direction: column;
   background: var(--xh-sidebar);
-}
-
-.xh-side-brand {
-  flex: 0 0 auto;
-  background: var(--xh-sidebar);
+  overflow: hidden;
 }
 
 .xh-side-menu.ant-menu,
 .xh-side-menu.ant-menu-light,
 .xh-side-menu.ant-menu-inline {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--xh-sidebar) !important;
   border-inline-end: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.xh-side-menu.ant-menu::-webkit-scrollbar,
+.xh-sidebar .ant-layout-sider-children::-webkit-scrollbar,
+.xh-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.xh-sidebar,
+.xh-sidebar .ant-layout-sider-children {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.xh-sidebar *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.xh-sidebar * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.xh-side-brand {
+  flex: 0 0 auto;
+  background: var(--xh-sidebar);
 }
 
 .xh-side-menu.ant-menu .ant-menu-item,
@@ -374,4 +408,30 @@ a {
   .ant-card {
     border-radius: 12px;
   }
+}
+
+/* ===== 公开页面（首页/关于）移动端微调 ===== */
+@media (max-width: 768px) {
+  /* Hero 段落字号兜底 */
+  .ant-typography h1.ant-typography {
+    line-height: 1.25;
+  }
+
+  /* Card 在窄屏 hover 不再放大，避免横向溢出 */
+  .ant-card.ant-card-hoverable:hover {
+    transform: none;
+  }
+
+  /* 抽屉关闭按钮触控区域 */
+  .ant-drawer-header .ant-drawer-close {
+    padding: 12px;
+  }
+}
+
+/* ===== 防止结果区/图片预览被框选成蓝色（攻击对比模式等） ===== */
+.xh-no-select-img,
+.xh-no-select-img img {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
 }

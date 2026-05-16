@@ -4,10 +4,13 @@ I-FGSM (Iterative FGSM / BIM) adversarial attack algorithm.
 Adapted from origin/i-fgsm branch to fit the current stateless registry
 architecture where model is passed to generate() rather than bound in __init__.
 
-Paper: "Adversarial examples in the physical world" (Kurakin et al., 2017)
+现在同时支持 classification 与 detection 任务：
+  · classification 走标准 BIM/CE
+  · detection (YOLO) 走多步 vanish 攻击
 """
 
 import logging
+import time
 from typing import Any, Dict, Tuple
 
 import torch
@@ -23,7 +26,7 @@ class IFGSMAlgorithm(BaseAlgorithm):
     display_name = "I-FGSM Attack"
     description = "Iterative FGSM (BIM) — 多步迭代 L∞ 对抗攻击"
     category = "gradient"
-    supported_task_types = ["classification"]
+    supported_task_types = ["classification", "detection"]
 
     def _get_normalization(self, model):
         mean = getattr(model, "IMAGENET_MEAN", None) or getattr(model, "mean", None)
@@ -42,6 +45,13 @@ class IFGSMAlgorithm(BaseAlgorithm):
             return images
         return images * std + mean
 
+    @staticmethod
+    def _is_detection_model(model: Any) -> bool:
+        try:
+            return (model.get_model_type() or "classification") == "detection"
+        except Exception:  # noqa: BLE001
+            return getattr(model, "model_type", "classification") == "detection"
+
     def generate(
         self,
         model: Any,
@@ -53,6 +63,29 @@ class IFGSMAlgorithm(BaseAlgorithm):
         targeted: bool = False,
         **kwargs,
     ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+        if self._is_detection_model(model):
+            return self._generate_detection(
+                model=model, images=images,
+                epsilon=epsilon, alpha=alpha, num_iterations=num_iterations,
+            )
+        return self._generate_classification(
+            model=model, images=images, labels=labels,
+            epsilon=epsilon, alpha=alpha, num_iterations=num_iterations,
+            targeted=targeted,
+        )
+
+    # ------------------------------------------------------------------ classification
+
+    def _generate_classification(
+        self,
+        model: Any,
+        images: torch.Tensor,
+        labels: torch.Tensor,
+        epsilon: float,
+        alpha: float,
+        num_iterations: int,
+        targeted: bool,
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         device = model.device
         images = images.to(device).detach()
         labels = labels.to(device)
@@ -63,7 +96,6 @@ class IFGSMAlgorithm(BaseAlgorithm):
 
         batch_size = images.size(0)
 
-        # 原始预测
         with torch.no_grad():
             orig_logits = raw_model(images)
             orig_probs = torch.softmax(orig_logits, dim=1)
@@ -79,26 +111,21 @@ class IFGSMAlgorithm(BaseAlgorithm):
         else:
             target_labels = orig_labels.clone()
 
-        # 迭代攻击
         adv_images = images.clone()
 
         for _ in range(num_iterations):
             adv_images.requires_grad_(True)
             logits = raw_model(adv_images)
 
+            loss = F.cross_entropy(logits, target_labels)
+            grad = torch.autograd.grad(loss, adv_images, create_graph=False)[0]
             if targeted:
-                loss = F.cross_entropy(logits, target_labels)
-                grad = torch.autograd.grad(loss, adv_images, create_graph=False)[0]
                 adv_images = adv_images.detach() - alpha * grad.sign()
             else:
-                loss = F.cross_entropy(logits, target_labels)
-                grad = torch.autograd.grad(loss, adv_images, create_graph=False)[0]
                 adv_images = adv_images.detach() + alpha * grad.sign()
 
-            # 投影到 epsilon 球内
             adv_images = torch.clamp(adv_images, images - epsilon, images + epsilon)
 
-            # 投影到有效像素范围
             mean, std = self._get_normalization(model)
             if mean is not None:
                 adv_images = torch.max(
@@ -110,7 +137,6 @@ class IFGSMAlgorithm(BaseAlgorithm):
 
             adv_images = adv_images.detach()
 
-        # 最终评估
         with torch.no_grad():
             adv_logits = raw_model(adv_images)
             adv_probs = torch.softmax(adv_logits, dim=1)
@@ -142,6 +168,73 @@ class IFGSMAlgorithm(BaseAlgorithm):
             "alpha": float(alpha),
             "num_iterations": int(num_iterations),
             "targeted": bool(targeted),
+        }
+
+    # ------------------------------------------------------------------ detection
+
+    def _generate_detection(
+        self,
+        model: Any,
+        images: torch.Tensor,
+        epsilon: float,
+        alpha: float,
+        num_iterations: int,
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+        start = time.time()
+        device = model.device
+        images = images.to(device).detach()
+        batch = images.size(0)
+
+        orig_dets = model.predict(images)["detections"][0]
+
+        adv = images.clone().detach()
+        for _ in range(num_iterations):
+            adv.requires_grad_(True)
+            loss = model.compute_attack_loss(adv, mode="vanish")
+            grad = torch.autograd.grad(loss, adv, create_graph=False)[0]
+            with torch.no_grad():
+                adv_new = adv - alpha * grad.sign()
+                # 投影到 epsilon 球内（基于原图）
+                delta = torch.clamp(adv_new - images, -epsilon, epsilon)
+                adv = torch.clamp(images + delta, 0.0, 1.0).detach()
+
+        adv_dets = model.predict(adv)["detections"][0]
+        orig_count = len(orig_dets)
+        adv_count = len(adv_dets)
+        vanish_rate = max(0.0, (orig_count - adv_count) / max(orig_count, 1))
+
+        pert = (adv - images).reshape(batch, -1)
+        l2_norm = torch.norm(pert, p=2, dim=1)
+        linf_norm = torch.norm(pert, p=float("inf"), dim=1)
+
+        heatmap = torch.abs(adv - images).mean(dim=1, keepdim=True)
+        heatmap = (heatmap - heatmap.min()) / (heatmap.max() - heatmap.min() + 1e-8)
+
+        dummy_probs = torch.zeros((batch, 1))
+
+        logger.info(
+            "I-FGSM-detection done — orig=%d boxes, adv=%d boxes, vanish=%.2f%% t=%.2fs",
+            orig_count, adv_count, vanish_rate * 100, time.time() - start,
+        )
+
+        return adv.detach(), {
+            "heatmap": heatmap.cpu(),
+            "original_probs": dummy_probs,
+            "adv_probs": dummy_probs,
+            "success_rate": float(vanish_rate),
+            "avg_l2_norm": l2_norm.mean().item(),
+            "avg_linf_norm": linf_norm.mean().item(),
+            "epsilon": float(epsilon),
+            "alpha": float(alpha),
+            "num_iterations": int(num_iterations),
+            "targeted": False,
+            "task_type": "detection",
+            "original_detections": orig_dets,
+            "adversarial_detections": adv_dets,
+            "vanish_rate": vanish_rate,
+            "orig_box_count": orig_count,
+            "adv_box_count": adv_count,
+            "time_elapsed": time.time() - start,
         }
 
     @classmethod

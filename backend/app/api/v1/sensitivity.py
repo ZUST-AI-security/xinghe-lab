@@ -119,6 +119,10 @@ async def submit_sensitivity_scan(
     Validation errors (invalid steps or param range) return HTTP 422.
     """
     try:
+        # 记录上传图片到文件库
+        from app.utils.upload_recorder import record_attack_image
+        record_attack_image(db, current_user.id, request.image)
+
         # Additional cross-field validation: param_min < param_max
         if request.param_min >= request.param_max:
             raise HTTPException(

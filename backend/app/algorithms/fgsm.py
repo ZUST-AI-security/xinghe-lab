@@ -5,10 +5,13 @@ Migrated from services/attacks/fgsm.py with the following key changes:
 - Model is passed to generate() rather than bound in __init__
 - Uses model._model (the raw nn.Module) directly for gradient computation
   so that no_grad() in predict() doesn't block gradient flow
-- No decorator-based registry — registered explicitly in __init__.py
+- 现在同时支持 classification 与 detection 任务：
+  · classification 走标准 CE-based FGSM
+  · detection (YOLO) 走单步 vanish 攻击（让目标置信度下降）
 """
 
 import logging
+import time
 from typing import Any, Dict, Tuple
 
 import torch
@@ -24,7 +27,9 @@ class FGSMAlgorithm(BaseAlgorithm):
     display_name = "FGSM Attack"
     description = "Fast Gradient Sign Method — single-step L∞ adversarial attack"
     category = "gradient"
-    supported_task_types = ["classification"]
+    supported_task_types = ["classification", "detection"]
+
+    # ------------------------------------------------------------------ helpers
 
     def _get_normalization(self, model):
         mean = getattr(model, "IMAGENET_MEAN", None) or getattr(model, "mean", None)
@@ -43,6 +48,15 @@ class FGSMAlgorithm(BaseAlgorithm):
             return images
         return images * std + mean
 
+    @staticmethod
+    def _is_detection_model(model: Any) -> bool:
+        try:
+            return (model.get_model_type() or "classification") == "detection"
+        except Exception:  # noqa: BLE001
+            return getattr(model, "model_type", "classification") == "detection"
+
+    # ------------------------------------------------------------------ generate
+
     def generate(
         self,
         model: Any,
@@ -51,6 +65,22 @@ class FGSMAlgorithm(BaseAlgorithm):
         epsilon: float = 0.03,
         targeted: bool = False,
         **kwargs,
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+        if self._is_detection_model(model):
+            return self._generate_detection(model=model, images=images, epsilon=epsilon)
+        return self._generate_classification(
+            model=model, images=images, labels=labels, epsilon=epsilon, targeted=targeted
+        )
+
+    # ------------------------------------------------------------------ classification
+
+    def _generate_classification(
+        self,
+        model: Any,
+        images: torch.Tensor,
+        labels: torch.Tensor,
+        epsilon: float,
+        targeted: bool,
     ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         device = model.device
         images = images.to(device).detach()
@@ -66,7 +96,6 @@ class FGSMAlgorithm(BaseAlgorithm):
         else:
             target_labels = labels
 
-        # Use model._model directly so gradient flows (predict() wraps no_grad)
         raw_model = model._model
         if raw_model is None:
             raise RuntimeError("Model is not loaded; call model.load() first")
@@ -83,7 +112,6 @@ class FGSMAlgorithm(BaseAlgorithm):
 
         adv_images = adv_images.detach()
 
-        # Clamp in the normalized or pixel domain
         mean, std = self._get_normalization(model)
         if mean is not None:
             adv_images = torch.max(
@@ -126,6 +154,69 @@ class FGSMAlgorithm(BaseAlgorithm):
             "epsilon": float(epsilon),
             "targeted": bool(targeted),
             "iterations": 1,
+        }
+
+    # ------------------------------------------------------------------ detection (vanish)
+
+    def _generate_detection(
+        self,
+        model: Any,
+        images: torch.Tensor,
+        epsilon: float,
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+        """单步 vanish 攻击：FGSM 对 model.compute_attack_loss 求一次梯度。"""
+        start = time.time()
+        device = model.device
+        images = images.to(device).detach()
+        batch = images.size(0)
+
+        # 原始检测
+        orig_dets = model.predict(images)["detections"][0]
+
+        images.requires_grad_(True)
+        loss = model.compute_attack_loss(images, mode="vanish")
+        grad = torch.autograd.grad(loss, images, create_graph=False)[0]
+
+        # 朝 loss 减小方向走（让置信度下降）
+        adv = images.detach() - epsilon * grad.sign()
+        adv = torch.clamp(adv, 0.0, 1.0)
+
+        adv_dets = model.predict(adv)["detections"][0]
+        orig_count = len(orig_dets)
+        adv_count = len(adv_dets)
+        vanish_rate = max(0.0, (orig_count - adv_count) / max(orig_count, 1))
+
+        pert = (adv - images.detach()).reshape(batch, -1)
+        l2_norm = torch.norm(pert, p=2, dim=1)
+        linf_norm = torch.norm(pert, p=float("inf"), dim=1)
+
+        heatmap = torch.abs(adv - images.detach()).mean(dim=1, keepdim=True)
+        heatmap = (heatmap - heatmap.min()) / (heatmap.max() - heatmap.min() + 1e-8)
+
+        dummy_probs = torch.zeros((batch, 1))
+
+        logger.info(
+            "FGSM-detection done — orig=%d boxes, adv=%d boxes, vanish=%.2f%% t=%.2fs",
+            orig_count, adv_count, vanish_rate * 100, time.time() - start,
+        )
+
+        return adv.detach(), {
+            "heatmap": heatmap.cpu(),
+            "original_probs": dummy_probs,
+            "adv_probs": dummy_probs,
+            "success_rate": float(vanish_rate),
+            "avg_l2_norm": l2_norm.mean().item(),
+            "avg_linf_norm": linf_norm.mean().item(),
+            "epsilon": float(epsilon),
+            "targeted": False,
+            "iterations": 1,
+            "task_type": "detection",
+            "original_detections": orig_dets,
+            "adversarial_detections": adv_dets,
+            "vanish_rate": vanish_rate,
+            "orig_box_count": orig_count,
+            "adv_box_count": adv_count,
+            "time_elapsed": time.time() - start,
         }
 
     @classmethod
