@@ -32,12 +32,7 @@ export const refreshToken = async (refreshToken) => {
 
 // 获取当前用户信息
 export const getCurrentUser = async () => {
-  console.log('🔍 获取当前用户信息...');
-  const token = localStorage.getItem('access_token');
-  console.log('🎫 当前token:', token ? '存在' : '不存在');
-  
   const response = await api.get('/users/me');
-  console.log('✅ 用户信息获取成功:', response.data);
   return response.data;
 };
 

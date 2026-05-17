@@ -12,6 +12,7 @@ import {
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 
 import { getAttackHistory } from '../../api/admin';
+import FloatUp from '../../components/Aceternity/FloatUp';
 
 const { Title, Paragraph } = Typography;
 
@@ -104,17 +105,18 @@ const AttackHistory = () => {
 
   return (
     <div className="xh-page-shell">
-      <Card className="xh-page-banner" bordered={false}>
-        <div className="xh-page-kicker">ATTACK HISTORY</div>
-        <Title level={2} className="xh-page-title">
-          全站攻击历史
-        </Title>
-        <Paragraph className="xh-page-desc">
-          管理员可以按用户、算法和状态筛选全站攻击记录，查看执行表现与历史结果。
-        </Paragraph>
-      </Card>
+      <FloatUp>
+        <Card className="xh-page-banner" bordered={false} style={{ borderRadius: 24 }}>
+          <div className="xh-page-kicker">ATTACK HISTORY</div>
+          <Title level={2} className="xh-page-title">全站攻击历史</Title>
+          <Paragraph className="xh-page-desc">
+            管理员可以按用户、算法和状态筛选全站攻击记录，查看执行表现与历史结果。
+          </Paragraph>
+        </Card>
+      </FloatUp>
 
-      <Card className="xh-admin-table-card" bordered={false}>
+      <FloatUp delay={0.1}>
+        <Card className="xh-admin-table-card" bordered={false} style={{ borderRadius: 20 }}>
         <div className="xh-toolbar">
           <div className="xh-toolbar-filters">
             <Input
@@ -163,6 +165,7 @@ const AttackHistory = () => {
           }}
         />
       </Card>
+      </FloatUp>
     </div>
   );
 };

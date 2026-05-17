@@ -49,8 +49,8 @@ const NeonSlider = ({
             strong 
             style={{ 
               fontFamily: 'monospace', 
-              color: '#1890ff',
-              background: 'rgba(24,144,255,0.1)',
+              color: 'var(--xh-primary)',
+              background: 'var(--xh-primary-soft)',
               padding: '2px 8px',
               borderRadius: 6,
               fontSize: 12

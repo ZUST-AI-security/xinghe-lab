@@ -146,26 +146,26 @@ apiClient.interceptors.response.use(
       
       switch (status) {
         case 400:
-          msg.error(data.detail || '请求参数错误');
+          msg.error(data.detail || '输入有误，请检查后重试');
           break;
         case 401:
-          msg.error('认证失败，请重新登录');
+          msg.error('登录已过期，请重新登录');
           break;
         case 403:
-          msg.error('权限不足');
+          msg.error('没有操作权限，请联系管理员');
           break;
         case 404:
-          msg.error('请求的资源不存在');
+          msg.error('找不到请求的内容，可能已被删除');
           break;
         case 429:
           if (data.require_captcha) {
             window.dispatchEvent(new CustomEvent('showCaptcha', { detail: { originalRequest }}));
           } else {
-            msg.error('请求过于频繁，请稍后再试');
+            msg.error('操作太频繁，请稍后再试');
           }
           break;
         case 500:
-          msg.error('服务器内部错误');
+          msg.error('服务器出错了，请稍后重试');
           break;
         default:
           msg.error(data.detail || `请求失败 (${status})`);

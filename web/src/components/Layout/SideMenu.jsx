@@ -11,6 +11,7 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 import { useAuthStore } from '../../store/authStore';
 
@@ -106,7 +107,9 @@ const SideMenu = ({
       >
         <Space direction="vertical" size={10} style={{ width: '100%' }}>
           <Space align="center" size={12}>
-            <div
+            <motion.div
+              whileHover={{ scale: 1.08, rotate: 3 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 18 }}
               style={{
                 width: 42,
                 height: 42,
@@ -117,10 +120,11 @@ const SideMenu = ({
                 color: '#fff',
                 fontWeight: 800,
                 fontSize: 18,
+                boxShadow: '0 4px 16px rgba(22,119,255,0.3)',
               }}
             >
               星
-            </div>
+            </motion.div>
             {(!collapsed || mobile) && (
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fbff' }}>

@@ -37,8 +37,7 @@ const ComparisonSlider = ({
 
   // 交换图片
   const handleSwap = () => {
-    // 这里需要父组件支持图片交换
-    console.log('Swap images');
+    // TODO: needs parent support for image swap
   };
 
   // 放大
@@ -82,9 +81,9 @@ const ComparisonSlider = ({
     height: isFullscreen ? '100vh' : height,
     position: 'relative',
     overflow: 'hidden',
-    border: '1px solid #d9d9d9',
+    border: '1px solid var(--xh-border)',
     borderRadius: '8px',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'var(--xh-bg)',
   };
 
   const imageStyle = {
@@ -102,7 +101,7 @@ const ComparisonSlider = ({
     left: `${position}%`,
     width: '2px',
     height: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: 'var(--xh-surface)',
     cursor: 'ew-resize',
     zIndex: 10,
     boxShadow: '0 0 4px rgba(0,0,0,0.3)',
@@ -122,17 +121,21 @@ const ComparisonSlider = ({
     <div className="comparison-slider">
       {/* 控制按钮 */}
       {showControls && (
-        <div style={{ 
-          marginBottom: '12px', 
-          display: 'flex', 
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
+        <div
+          style={{
+            marginBottom: '12px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+          role="toolbar"
+          aria-label="图片对比控制"
+        >
           <Space>
-            <span style={{ fontWeight: 500, color: '#262626' }}>
+            <span style={{ fontWeight: 500, color: 'var(--xh-text)' }}>
               图片对比
             </span>
-            <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+            <span style={{ fontSize: '12px', color: 'var(--xh-text-secondary)' }}>
               缩放: {(zoom * 100).toFixed(0)}%
             </span>
           </Space>
@@ -175,11 +178,16 @@ const ComparisonSlider = ({
       )}
 
       {/* 对比容器 */}
-      <div ref={containerRef} style={containerStyle}>
+      <div
+        ref={containerRef}
+        style={containerStyle}
+        role="img"
+        aria-label={`${leftLabel} 与 ${rightLabel} 的对比视图，当前显示 ${Math.round(position)}% ${leftLabel}`}
+      >
         {/* 左侧图片 */}
         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-          <img 
-            src={leftImage} 
+          <img
+            src={leftImage}
             alt={leftLabel}
             style={leftImageStyle}
             draggable={false}
@@ -188,8 +196,8 @@ const ComparisonSlider = ({
 
         {/* 右侧图片 */}
         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-          <img 
-            src={rightImage} 
+          <img
+            src={rightImage}
             alt={rightLabel}
             style={rightImageStyle}
             draggable={false}
@@ -197,9 +205,26 @@ const ComparisonSlider = ({
         </div>
 
         {/* 滑块 */}
-        <div 
+        <div
           ref={sliderRef}
           style={sliderStyle}
+          role="slider"
+          aria-label="图片对比分割线"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(position)}
+          aria-valuetext={`${Math.round(position)}% ${leftLabel}`}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            const step = e.shiftKey ? 10 : 2;
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+              e.preventDefault();
+              setPosition(prev => Math.max(0, prev - step));
+            } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+              e.preventDefault();
+              setPosition(prev => Math.min(100, prev + step));
+            }
+          }}
           onMouseDown={(e) => {
             const startX = e.clientX;
             const startPos = position;
@@ -228,7 +253,7 @@ const ComparisonSlider = ({
             transform: 'translate(-50%, -50%)',
             width: '24px',
             height: '24px',
-            backgroundColor: '#1890ff',
+            backgroundColor: 'var(--xh-primary)',
             borderRadius: '50%',
             border: '2px solid #fff',
             cursor: 'ew-resize',
@@ -236,9 +261,9 @@ const ComparisonSlider = ({
         </div>
 
         {/* 标签 */}
-        <div style={{ 
-          position: 'absolute', 
-          top: '12px', 
+        <div style={{
+          position: 'absolute',
+          top: '12px',
           left: '12px',
           backgroundColor: 'rgba(0,0,0,0.7)',
           color: '#fff',
@@ -250,9 +275,9 @@ const ComparisonSlider = ({
           {leftLabel}
         </div>
 
-        <div style={{ 
-          position: 'absolute', 
-          top: '12px', 
+        <div style={{
+          position: 'absolute',
+          top: '12px',
           right: '12px',
           backgroundColor: 'rgba(0,0,0,0.7)',
           color: '#fff',

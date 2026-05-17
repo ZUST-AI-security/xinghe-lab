@@ -51,11 +51,20 @@ const CaptchaModal = ({ open, onVerify, onCancel }) => {
         >
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
                 {loading ? <Spin /> : (
-                    <img 
-                        src={captchaImage} 
-                        alt="captcha" 
-                        style={{ cursor: 'pointer', border: '1px solid #d9d9d9', borderRadius: 4 }}
+                    <img
+                        src={captchaImage}
+                        alt="图形验证码，点击刷新"
+                        style={{ cursor: 'pointer', border: '1px solid var(--xh-border)', borderRadius: 4 }}
                         onClick={loadCaptcha}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            loadCaptcha();
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-label="点击刷新验证码"
                         title="点击刷新"
                     />
                 )}
@@ -69,7 +78,7 @@ const CaptchaModal = ({ open, onVerify, onCancel }) => {
                 value={code}
                 onChange={e => setCode(e.target.value)}
                 onPressEnter={handleOk}
-                maxLength={4}
+                maxLength={5}
             />
         </Modal>
     );

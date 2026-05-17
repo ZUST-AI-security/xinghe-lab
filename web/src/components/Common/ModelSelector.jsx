@@ -124,19 +124,19 @@ const ModelSelector = ({
               
               {showInfo && (
                 <Tooltip title={getModelInfo(model)}>
-                  <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
+                  <InfoCircleOutlined style={{ color: 'var(--xh-text-secondary)' }} />
                 </Tooltip>
               )}
             </div>
             
             {/* 模型详细信息 */}
-            <div style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--xh-text-secondary)', marginTop: '4px' }}>
               {getModelInfo(model)}
             </div>
             
             {/* 模型描述 */}
             {model.description && (
-              <div style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '2px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--xh-text-secondary)', marginTop: '2px' }}>
                 {model.description}
               </div>
             )}
@@ -146,7 +146,7 @@ const ModelSelector = ({
       
       {/* 当前选中模型的信息 */}
       {value && showInfo && (
-        <div style={{ marginTop: '8px', fontSize: '12px', color: '#8c8c8c' }}>
+        <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--xh-text-secondary)' }}>
           {(() => {
             const selectedModel = models.find(m => m.name === value);
             if (selectedModel) {

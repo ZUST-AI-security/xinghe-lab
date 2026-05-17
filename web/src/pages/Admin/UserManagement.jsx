@@ -27,6 +27,7 @@ import {
   toggleUserActive,
   updateUser,
 } from '../../api/admin';
+import FloatUp from '../../components/Aceternity/FloatUp';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -403,17 +404,18 @@ const UserManagement = () => {
 
   return (
     <div className="xh-page-shell">
-      <Card className="xh-page-banner" bordered={false}>
-        <div className="xh-page-kicker">USER MANAGEMENT</div>
-        <Title level={2} className="xh-page-title">
-          用户管理
-        </Title>
-        <Paragraph className="xh-page-desc">
-          支持按用户名、邮箱和状态筛选用户，并在同一页面完成资料维护、账号启停、密码重置和删除操作。
-        </Paragraph>
-      </Card>
+      <FloatUp>
+        <Card className="xh-page-banner" bordered={false} style={{ borderRadius: 24 }}>
+          <div className="xh-page-kicker">USER MANAGEMENT</div>
+          <Title level={2} className="xh-page-title">用户管理</Title>
+          <Paragraph className="xh-page-desc">
+            支持按用户名、邮箱和状态筛选用户，并在同一页面完成资料维护、账号启停、密码重置和删除操作。
+          </Paragraph>
+        </Card>
+      </FloatUp>
 
-      <Card className="xh-admin-table-card" bordered={false}>
+      <FloatUp delay={0.1}>
+        <Card className="xh-admin-table-card" bordered={false} style={{ borderRadius: 20 }}>
         <div className="xh-toolbar">
           <div className="xh-toolbar-filters">
             <Input
@@ -464,6 +466,7 @@ const UserManagement = () => {
           }}
         />
       </Card>
+      </FloatUp>
 
       <UserEditModal
         user={editingUser}

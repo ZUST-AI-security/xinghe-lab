@@ -79,8 +79,8 @@ const ConfidenceChart = ({
       const data = payload[0].payload;
       return (
         <div style={{
-          backgroundColor: '#fff',
-          border: '1px solid #d9d9d9',
+          backgroundColor: 'var(--xh-surface)',
+          border: '1px solid var(--xh-border)',
           borderRadius: '6px',
           padding: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -88,13 +88,13 @@ const ConfidenceChart = ({
           <p style={{ margin: 0, fontWeight: 'bold', marginBottom: '8px' }}>
             {label}
           </p>
-          <p style={{ margin: '4px 0', color: '#1890ff' }}>
+          <p style={{ margin: '4px 0', color: 'var(--xh-primary)' }}>
             原始置信度: {data.original}%
           </p>
-          <p style={{ margin: '4px 0', color: '#52c41a' }}>
+          <p style={{ margin: '4px 0', color: 'var(--xh-success)' }}>
             对抗置信度: {data.adversarial}%
           </p>
-          <p style={{ margin: '4px 0', color: data.difference > 0 ? '#ff4d4f' : '#52c41a' }}>
+          <p style={{ margin: '4px 0', color: data.difference > 0 ? 'var(--xh-error)' : 'var(--xh-success)' }}>
             变化: {data.difference > 0 ? '+' : ''}{data.difference}%
           </p>
         </div>
@@ -105,14 +105,12 @@ const ConfidenceChart = ({
 
   // 下载图表
   const handleDownload = () => {
-    // 这里可以实现图表下载功能
-    console.log('Download chart');
+    // TODO: implement chart download
   };
 
   // 全屏切换
   const handleFullscreen = () => {
-    // 这里可以实现全屏功能
-    console.log('Toggle fullscreen');
+    // TODO: implement fullscreen
   };
 
   const colors = {
@@ -138,28 +136,28 @@ const ConfidenceChart = ({
             <p style={{ 
               margin: '4px 0 0 0', 
               fontSize: '12px', 
-              color: '#8c8c8c' 
+              color: 'var(--xh-text-secondary)'
             }}>
               显示原始图片和对抗样本的Top {maxClasses} 分类置信度对比
             </p>
           </div>
           
           <Tooltip title="置信度图表显示了攻击前后模型预测概率的变化">
-            <InfoCircleOutlined style={{ color: '#8c8c8c', fontSize: '16px' }} />
+            <InfoCircleOutlined style={{ color: 'var(--xh-text-secondary)', fontSize: '16px' }} />
           </Tooltip>
         </div>
       </div>
 
       {/* 预测信息 */}
       {originalPrediction !== null && adversarialPrediction !== null && (
-        <div style={{ 
+        <div style={{
           marginBottom: '16px',
           padding: '12px',
-          backgroundColor: '#f6ffed',
-          border: '1px solid #b7eb8f',
+          backgroundColor: 'rgba(22,163,74,0.06)',
+          border: '1px solid rgba(22,163,74,0.2)',
           borderRadius: '6px',
         }}>
-          <div style={{ fontSize: '12px', color: '#52c41a' }}>
+          <div style={{ fontSize: '12px', color: 'var(--xh-success)' }}>
             <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
               预测变化
             </div>
@@ -171,7 +169,7 @@ const ConfidenceChart = ({
             </div>
             <div style={{ 
               fontWeight: 'bold',
-              color: originalPrediction !== adversarialPrediction ? '#ff4d4f' : '#52c41a'
+              color: originalPrediction !== adversarialPrediction ? 'var(--xh-error)' : 'var(--xh-success)'
             }}>
               攻击结果: {originalPrediction !== adversarialPrediction ? '成功' : '失败'}
             </div>
@@ -230,7 +228,7 @@ const ConfidenceChart = ({
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex-center" style={{ height: '100%', color: '#8c8c8c' }}>
+          <div className="flex-center" style={{ height: '100%', color: 'var(--xh-text-secondary)' }}>
             <div style={{ textAlign: 'center' }}>
               <BarChartOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
               <div>暂无置信度数据</div>

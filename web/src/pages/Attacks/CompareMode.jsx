@@ -15,6 +15,9 @@ import {
   message,
 } from 'antd';
 import { MinusCircleOutlined, PlayCircleOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
+import FloatUp from '../../components/Aceternity/FloatUp';
+import GlowingCard from '../../components/Aceternity/GlowingCard';
+import SpotlightCard from '../../components/Aceternity/SpotlightCard';
 
 import { submitCWAttack, getAttackTaskStatus as getCWTaskStatus } from '../../api/attacks/cw';
 import { submitFGSMAttack, getAttackTaskStatus as getFGSMTaskStatus } from '../../api/attacks/fgsm';
@@ -23,6 +26,19 @@ import { submitIFGSMAttack, getAttackTaskStatus as getIFGSMTaskStatus } from '..
 import { submitDeepFoolAttack, getAttackTaskStatus as getDeepFoolTaskStatus } from '../../api/attacks/deepfool';
 
 const { Title, Text, Paragraph } = Typography;
+
+const S = {
+  fullWidth: { width: '100%' },
+  card: { borderRadius: 20 },
+  cardSmall: { borderRadius: 16 },
+  cardConfig: { borderRadius: 18 },
+  heading: { marginTop: 0 },
+  subtext: { marginBottom: 12 },
+  uploadPreview: { maxWidth: 220, borderRadius: 14, border: '1px solid var(--xh-border)' },
+  resultImage: { width: '100%', borderRadius: 12, border: '1px solid var(--xh-border)' },
+  noMargin: { marginBottom: 0 },
+  uploadArea: { marginTop: 16 },
+};
 
 const algorithmConfig = {
   fgsm: {
@@ -86,8 +102,8 @@ const formatPrediction = (prediction) => {
 };
 
 const ResultPreview = ({ title, panel, image }) => (
-  <Card title={title} size="small" style={{ borderRadius: 16 }}>
-    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+  <Card title={title} size="small" style={S.cardSmall}>
+    <Space direction="vertical" size={12} style={S.fullWidth}>
       <Space wrap>
         <Tag color="blue">{algorithmConfig[panel.algorithm].label}</Tag>
         <Tag color={panel.status === 'completed' ? 'green' : panel.status === 'failed' ? 'red' : 'gold'}>
@@ -105,15 +121,15 @@ const ResultPreview = ({ title, panel, image }) => (
           <Col xs={24} md={12}>
             <img
               src={panel.result.original_image || image}
-              alt="original"
-              style={{ width: '100%', borderRadius: 12, border: '1px solid #e5e7eb' }}
+              alt="原始图片"
+              style={S.resultImage}
             />
           </Col>
           <Col xs={24} md={12}>
-            <img src={panel.result.adversarial_image} alt="adversarial" style={{ width: '100%', borderRadius: 12, border: '1px solid #e5e7eb' }} />
+            <img src={panel.result.adversarial_image} alt="对抗样本" style={S.resultImage} />
           </Col>
           <Col span={24}>
-            <Paragraph style={{ marginBottom: 0 }}>
+            <Paragraph style={S.noMargin}>
               原预测: <Text strong>{formatPrediction(panel.result.metadata?.original_prediction)}</Text>
               <br />
               对抗预测: <Text strong>{formatPrediction(panel.result.metadata?.adversarial_prediction)}</Text>
@@ -282,7 +298,7 @@ const CompareMode = () => {
   const renderConfigPanel = (title, panel, index) => (
     <Card
       title={title}
-      style={{ borderRadius: 18 }}
+      style={S.cardConfig}
       extra={
         panels.length > 1 && (
           <Button
@@ -297,7 +313,7 @@ const CompareMode = () => {
         )
       }
     >
-      <Space direction="vertical" size={12} style={{ width: '100%' }}>
+      <Space direction="vertical" size={12} style={S.fullWidth}>
         <Select
           value={panel.algorithm}
           options={Object.entries(algorithmConfig).map(([value, item]) => ({ value, label: item.label }))}
@@ -313,33 +329,41 @@ const CompareMode = () => {
   );
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Card style={{ borderRadius: 20 }}>
-        <Title level={3} style={{ marginTop: 0 }}>对比模式</Title>
-        <Paragraph style={{ marginBottom: 12 }}>
-          同时提交多个攻击任务，在同一个界面查看进度和结果，方便比较不同算法或不同参数的输出。
-        </Paragraph>
-        <Space wrap>
-          <Upload beforeUpload={handleUpload} showUploadList={false}>
-            <Button icon={<UploadOutlined />}>上传图片</Button>
-          </Upload>
-          <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRun}>
-            同时提交 {panels.length} 个任务
-          </Button>
-          <Button icon={<PlusOutlined />} onClick={addPanel}>添加对比</Button>
-          <Button icon={<ReloadOutlined />} onClick={resetAll}>重置</Button>
-        </Space>
-        {imageUrl && (
-          <div style={{ marginTop: 16 }}>
-            <img src={imageUrl} alt="upload" style={{ maxWidth: 220, borderRadius: 14, border: '1px solid #e5e7eb' }} />
-          </div>
-        )}
-      </Card>
+    <Space direction="vertical" size={16} style={S.fullWidth}>
+      <FloatUp>
+        <SpotlightCard spotlightColor="rgba(22,119,255,0.03)" style={{ borderRadius: 20 }}>
+          <Card style={{ ...S.card, border: '1px solid var(--xh-border)' }}>
+            <Title level={3} style={S.heading}>对比模式</Title>
+            <Paragraph style={S.subtext}>
+              同时提交多个攻击任务，在同一个界面查看进度和结果，方便比较不同算法或不同参数的输出。
+            </Paragraph>
+            <Space wrap>
+              <Upload beforeUpload={handleUpload} showUploadList={false}>
+                <Button icon={<UploadOutlined />}>上传图片</Button>
+              </Upload>
+              <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRun}>
+                同时提交 {panels.length} 个任务
+              </Button>
+              <Button icon={<PlusOutlined />} onClick={addPanel}>添加对比</Button>
+              <Button icon={<ReloadOutlined />} onClick={resetAll}>重置</Button>
+            </Space>
+            {imageUrl && (
+              <div style={S.uploadArea}>
+                <img src={imageUrl} alt="已上传的攻击目标图片" style={S.uploadPreview} />
+              </div>
+            )}
+          </Card>
+        </SpotlightCard>
+      </FloatUp>
 
       <Row gutter={[16, 16]}>
         {panels.map((panel, index) => (
           <Col xs={24} xl={12} key={index}>
-            {renderConfigPanel(`任务 ${index + 1}`, panel, index)}
+            <FloatUp delay={0.1 + index * 0.08}>
+              <GlowingCard glowColor="rgba(22,119,255,0.06)" borderColor="rgba(22,119,255,0.12)" style={{ borderRadius: 18 }}>
+                {renderConfigPanel(`任务 ${index + 1}`, panel, index)}
+              </GlowingCard>
+            </FloatUp>
           </Col>
         ))}
       </Row>
@@ -347,32 +371,36 @@ const CompareMode = () => {
       <Row gutter={[16, 16]}>
         {panels.map((panel, index) => (
           <Col xs={24} xl={12} key={index}>
-            <ResultPreview title={`任务 ${index + 1} 结果`} panel={panel} image={imageUrl} />
+            <FloatUp delay={0.2 + index * 0.08}>
+              <ResultPreview title={`任务 ${index + 1} 结果`} panel={panel} image={imageUrl} />
+            </FloatUp>
           </Col>
         ))}
       </Row>
 
       {comparisonSummary && (
-        <Card title="结果对比摘要" style={{ borderRadius: 20 }}>
-          <Table
-            dataSource={comparisonSummary}
-            pagination={false}
-            size="small"
-            columns={[
-              {
-                title: '指标',
-                dataIndex: 'label',
-                key: 'label',
-                width: 120,
-              },
-              ...panels.map((panel, index) => ({
-                title: algorithmConfig[panel.algorithm].label,
-                key: index,
-                render: (_, record) => record.render(panel),
-              })),
-            ]}
-          />
-        </Card>
+        <FloatUp delay={0.4}>
+          <Card title="结果对比摘要" style={S.card}>
+            <Table
+              dataSource={comparisonSummary}
+              pagination={false}
+              size="small"
+              columns={[
+                {
+                  title: '指标',
+                  dataIndex: 'label',
+                  key: 'label',
+                  width: 120,
+                },
+                ...panels.map((panel, index) => ({
+                  title: algorithmConfig[panel.algorithm].label,
+                  key: index,
+                  render: (_, record) => record.render(panel),
+                })),
+              ]}
+            />
+          </Card>
+        </FloatUp>
       )}
     </Space>
   );

@@ -10,8 +10,25 @@ const CompareSlider = ({ leftImage, rightImage, labelLeft = 'Original', labelRig
   };
 
   return (
-    <div 
+    <div
       className="relative aspect-video glass rounded-2xl overflow-hidden cursor-ew-resize group"
+      role="slider"
+      aria-label={`${labelLeft} 与 ${labelRight} 的对比视图`}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(position)}
+      aria-valuetext={`${Math.round(position)}% ${labelLeft}`}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        const step = e.shiftKey ? 10 : 2;
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          setPosition(prev => Math.max(0, prev - step));
+        } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          setPosition(prev => Math.min(100, prev + step));
+        }
+      }}
       onMouseMove={handleMove}
       onTouchMove={(e) => {
         const touch = e.touches[0];
@@ -22,7 +39,7 @@ const CompareSlider = ({ leftImage, rightImage, labelLeft = 'Original', labelRig
       }}
     >
       {/* 右侧图 (底图) */}
-      <img src={rightImage} className="absolute inset-0 w-full h-full object-cover" alt="Adversarial" />
+      <img src={rightImage} className="absolute inset-0 w-full h-full object-cover" alt={labelRight} />
       <div className="absolute top-4 right-4 z-10 px-3 py-1 bg-red-500/20 text-red-400 text-[10px] font-bold uppercase rounded border border-red-500/30">
         {labelRight}
       </div>
@@ -32,7 +49,7 @@ const CompareSlider = ({ leftImage, rightImage, labelLeft = 'Original', labelRig
         className="absolute inset-0 w-full h-full overflow-hidden border-r-2 border-white/50"
         style={{ width: `${position}%` }}
       >
-        <img src={leftImage} className="absolute inset-0 w-full h-full object-cover" style={{ width: `${10000 / position}%` }} alt="Original" />
+        <img src={leftImage} className="absolute inset-0 w-full h-full object-cover" style={{ width: `${10000 / position}%` }} alt={labelLeft} />
         <div className="absolute top-4 left-4 z-10 px-3 py-1 bg-green-500/20 text-green-400 text-[10px] font-bold uppercase rounded border border-green-500/30">
           {labelLeft}
         </div>

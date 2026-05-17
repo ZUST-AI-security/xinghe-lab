@@ -87,9 +87,9 @@ const Heatmap = ({
     height: isFullscreen ? '100vh' : height,
     position: 'relative',
     overflow: 'hidden',
-    border: '1px solid #d9d9d9',
+    border: '1px solid var(--xh-border)',
     borderRadius: '8px',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'var(--xh-bg)',
   };
 
   const imageStyle = {
@@ -118,14 +118,14 @@ const Heatmap = ({
             <p style={{ 
               margin: '4px 0 0 0', 
               fontSize: '12px', 
-              color: '#8c8c8c' 
+              color: 'var(--xh-text-secondary)'
             }}>
               {description}
             </p>
           </div>
           
           <Tooltip title="热力图显示像素级别的扰动强度，红色表示扰动较大的区域">
-            <InfoCircleOutlined style={{ color: '#8c8c8c', fontSize: '16px' }} />
+            <InfoCircleOutlined style={{ color: 'var(--xh-text-secondary)', fontSize: '16px' }} />
           </Tooltip>
         </div>
       </div>
@@ -139,10 +139,10 @@ const Heatmap = ({
           alignItems: 'center',
         }}>
           <Space>
-            <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+            <span style={{ fontSize: '12px', color: 'var(--xh-text-secondary)' }}>
               缩放: {(zoom * 100).toFixed(0)}%
             </span>
-            <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+            <span style={{ fontSize: '12px', color: 'var(--xh-text-secondary)' }}>
               透明度: {(opacity * 100).toFixed(0)}%
             </span>
           </Space>
@@ -196,7 +196,7 @@ const Heatmap = ({
             draggable={false}
           />
         ) : (
-          <div className="flex-center" style={{ height: '100%', color: '#8c8c8c' }}>
+          <div className="flex-center" style={{ height: '100%', color: 'var(--xh-text-secondary)' }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌡️</div>
               <div>暂无热力图数据</div>
@@ -217,10 +217,10 @@ const Heatmap = ({
             alignItems: 'center',
             marginBottom: '4px',
           }}>
-            <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+            <span style={{ fontSize: '12px', color: 'var(--xh-text-secondary)' }}>
               透明度调节
             </span>
-            <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+            <span style={{ fontSize: '12px', color: 'var(--xh-text-secondary)' }}>
               {(opacity * 100).toFixed(0)}%
             </span>
           </div>
@@ -237,14 +237,14 @@ const Heatmap = ({
 
       {/* 色彩说明 */}
       {showControls && image && (
-        <div style={{ 
+        <div style={{
           marginTop: '12px',
           padding: '8px',
-          backgroundColor: '#f6ffed',
-          border: '1px solid #b7eb8f',
+          backgroundColor: 'rgba(22,163,74,0.06)',
+          border: '1px solid rgba(22,163,74,0.2)',
           borderRadius: '4px',
           fontSize: '12px',
-          color: '#52c41a',
+          color: 'var(--xh-success)',
         }}>
           <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
             色彩说明

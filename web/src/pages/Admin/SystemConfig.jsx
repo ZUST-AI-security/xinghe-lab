@@ -10,6 +10,7 @@ import {
 import { PlusOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
 
 import { getSystemConfig, updateSystemConfig } from '../../api/admin';
+import FloatUp from '../../components/Aceternity/FloatUp';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -144,17 +145,18 @@ const SystemConfig = () => {
 
   return (
     <div className="xh-page-shell">
-      <Card className="xh-page-banner" bordered={false}>
-        <div className="xh-page-kicker">SYSTEM CONFIG</div>
-        <Title level={2} className="xh-page-title">
-          系统配置
-        </Title>
-        <Paragraph className="xh-page-desc">
-          在后台直接调整限流、窗口时间和其他关键运行参数，更新后新的请求会按最新配置生效。
-        </Paragraph>
-      </Card>
+      <FloatUp>
+        <Card className="xh-page-banner" bordered={false} style={{ borderRadius: 24 }}>
+          <div className="xh-page-kicker">SYSTEM CONFIG</div>
+          <Title level={2} className="xh-page-title">系统配置</Title>
+          <Paragraph className="xh-page-desc">
+            在后台直接调整限流、窗口时间和其他关键运行参数，更新后新的请求会按最新配置生效。
+          </Paragraph>
+        </Card>
+      </FloatUp>
 
-      <Card title="新增配置" className="xh-admin-card" bordered={false}>
+      <FloatUp delay={0.1}>
+        <Card title="新增配置" className="xh-admin-card" bordered={false} style={{ borderRadius: 20 }}>
         <div className="xh-toolbar">
           <div className="xh-toolbar-filters" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
             <Input
@@ -184,6 +186,7 @@ const SystemConfig = () => {
       <Card
         title="当前配置"
         className="xh-admin-table-card"
+        style={{ borderRadius: 20 }}
         bordered={false}
         extra={<Button icon={<ReloadOutlined />} onClick={fetchConfig}>刷新</Button>}
       >
@@ -196,6 +199,7 @@ const SystemConfig = () => {
           scroll={{ x: 1080 }}
         />
       </Card>
+      </FloatUp>
     </div>
   );
 };

@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   color-scheme: light;
   --xh-bg: #f3f6fb;
@@ -10,7 +14,12 @@
   --xh-primary-soft: #e8f1ff;
   --xh-text: #0f172a;
   --xh-text-secondary: #64748b;
+  --xh-text-tertiary: #94a3b8;
   --xh-border: #e7edf5;
+  --xh-success: #16a34a;
+  --xh-error: #dc2626;
+  --xh-warning: #f59e0b;
+  --xh-info: #1677ff;
   --xh-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
   --xh-shadow-soft: 0 6px 18px rgba(15, 23, 42, 0.05);
 }
@@ -299,5 +308,27 @@ a {
 
   .xh-page-banner .ant-card-body {
     padding: 20px;
+  }
+}
+
+/* ── Focus visible: keyboard-only focus ring ── */
+:focus-visible {
+  outline: 2px solid var(--xh-primary);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── Respect reduced motion preferences ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -63,12 +63,21 @@ const CaptchaInput = ({ value, onChange, onCaptchaIdChange, placeholder = '验�
       />
       <div
         onClick={fetchCaptcha}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fetchCaptcha();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="刷新验证码"
         style={{
           cursor: 'pointer',
-          border: '1px solid #d9d9d9',
+          border: '1px solid var(--xh-border)',
           borderRadius: '0 6px 6px 0',
           overflow: 'hidden',
-          background: '#fff',
+          background: 'var(--xh-surface)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -90,7 +99,7 @@ const CaptchaInput = ({ value, onChange, onCaptchaIdChange, placeholder = '验�
             }}
           />
         ) : (
-          <span style={{ color: '#999', fontSize: '12px' }}>加载中...</span>
+          <span style={{ color: 'var(--xh-text-tertiary)', fontSize: '12px' }}>加载中...</span>
         )}
         <ReloadOutlined
           style={{
@@ -98,7 +107,7 @@ const CaptchaInput = ({ value, onChange, onCaptchaIdChange, placeholder = '验�
             right: '4px',
             top: '4px',
             fontSize: '12px',
-            color: '#1890ff',
+            color: 'var(--xh-primary)',
             background: 'rgba(255,255,255,0.8)',
             borderRadius: '50%',
             padding: '2px',

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Layout, Spin, App as AntApp } from 'antd';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
@@ -8,21 +8,22 @@ import MainLayout from './components/Layout/MainLayout';
 import { setupAxiosInterceptors, setGlobalMessage } from './api/client';
 import { useAuthStore } from './store/authStore';
 
-import Login from './pages/Auth/Login';
-import Register from './pages/Auth/Register';
-import Dashboard from './pages/Dashboard';
-import TaskHistory from './pages/Dashboard/TaskHistory';
-import AdminDashboard from './pages/Admin/AdminDashboard';
-import UserManagement from './pages/Admin/UserManagement';
-import AttackHistory from './pages/Admin/AttackHistory';
-import SystemLogs from './pages/Admin/SystemLogs';
-import SystemConfig from './pages/Admin/SystemConfig';
-import CWAttack from './pages/Attacks/CWAttack';
-import PGDAttack from './pages/Attacks/PGDAttack';
-import FGSMAttack from './pages/Attacks/FGSMAttack';
-import IFGSMAttack from './pages/Attacks/IFGSMAttack';
-import DeepFoolAttack from './pages/Attacks/DeepFoolAttack';
-import CompareMode from './pages/Attacks/CompareMode';
+const Landing = lazy(() => import('./pages/Landing'));
+const Login = lazy(() => import('./pages/Auth/Login'));
+const Register = lazy(() => import('./pages/Auth/Register'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const TaskHistory = lazy(() => import('./pages/Dashboard/TaskHistory'));
+const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
+const UserManagement = lazy(() => import('./pages/Admin/UserManagement'));
+const AttackHistory = lazy(() => import('./pages/Admin/AttackHistory'));
+const SystemLogs = lazy(() => import('./pages/Admin/SystemLogs'));
+const SystemConfig = lazy(() => import('./pages/Admin/SystemConfig'));
+const CWAttack = lazy(() => import('./pages/Attacks/CWAttack'));
+const PGDAttack = lazy(() => import('./pages/Attacks/PGDAttack'));
+const FGSMAttack = lazy(() => import('./pages/Attacks/FGSMAttack'));
+const IFGSMAttack = lazy(() => import('./pages/Attacks/IFGSMAttack'));
+const DeepFoolAttack = lazy(() => import('./pages/Attacks/DeepFoolAttack'));
+const CompareMode = lazy(() => import('./pages/Attacks/CompareMode'));
 
 const FullPageSpinner = () => (
   <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
@@ -33,14 +34,20 @@ const FullPageSpinner = () => (
 const EmptyState = ({ title, description }) => (
   <div
     style={{
-      background: '#fff',
+      background: 'var(--xh-surface)',
       borderRadius: 20,
       padding: 32,
-      border: '1px solid #e5e7eb',
+      border: '1px solid var(--xh-border)',
     }}
   >
     <h2 style={{ marginTop: 0 }}>{title}</h2>
-    <p style={{ marginBottom: 0, color: '#64748b' }}>{description}</p>
+    <p style={{ marginBottom: 0, color: 'var(--xh-text-secondary)' }}>{description}</p>
+  </div>
+);
+
+const PageSpinner = () => (
+  <div style={{ display: 'grid', placeItems: 'center', minHeight: 300 }}>
+    <Spin size="large" />
   </div>
 );
 
@@ -95,6 +102,7 @@ function App() {
           onCancel={() => setCaptchaVisible(false)}
         />
 
+        <Suspense fallback={<PageSpinner />}>
         <Routes>
           <Route
             path="/login"
@@ -104,12 +112,17 @@ function App() {
             path="/register"
             element={user && isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />}
           />
+          <Route
+            path="/"
+            element={user && isAuthenticated ? <Navigate to="/dashboard" replace /> : <Landing />}
+          />
 
           <Route
             path="/*"
             element={(
               <ProtectedRoute>
                 <MainLayout>
+                  <Suspense fallback={<PageSpinner />}>
                   <Routes>
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={<Dashboard />} />
@@ -173,11 +186,13 @@ function App() {
                       )}
                     />
                   </Routes>
+                  </Suspense>
                 </MainLayout>
               </ProtectedRoute>
             )}
           />
         </Routes>
+        </Suspense>
       </Layout>
     </ErrorBoundary>
   );

@@ -23,12 +23,29 @@ import {
   ShareAltOutlined,
   LineChartOutlined,
 } from '@ant-design/icons';
+import { motion, AnimatePresence } from 'framer-motion';
 import ComparisonSlider from '../../../../components/Visualization/ComparisonSlider';
 import Heatmap from '../../../../components/Visualization/Heatmap';
 import ConfidenceChart from '../../../../components/Visualization/ConfidenceChart';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
+
+const S = {
+  empty: { textAlign: 'center', padding: '60px 0' },
+  emptyIcon: { fontSize: 48, color: 'var(--xh-text-tertiary)' },
+  emptyTitle: { marginTop: 16 },
+  image: { width: '100%', maxHeight: 200, objectFit: 'contain' },
+  statLabel: { marginTop: 12 },
+  boldValue: { fontSize: 14, fontWeight: 'bold' },
+  primaryValue: { fontSize: 14, color: 'var(--xh-primary)' },
+  successValue: { fontSize: 14, color: 'var(--xh-success)' },
+  errorValue: { fontSize: 14, color: 'var(--xh-error)' },
+  smallValue: { fontSize: 12 },
+  noResult: { textAlign: 'center', padding: '40px 0' },
+  preBlock: { margin: 0, fontSize: 12, background: 'var(--xh-bg)', padding: 8, borderRadius: 4, maxHeight: 200, overflow: 'auto' },
+  marginTop: { marginTop: 16 },
+};
 
 /**
  * @typedef {Object} ResultDisplayProps
@@ -55,13 +72,13 @@ const ResultDisplay = ({
   if (!result) {
     return (
       <Card title="攻击结果" variant="borderless">
-        <div style={{ textAlign: 'center', padding: '60px 0' }}>
-          <LineChartOutlined style={{ fontSize: 48, color: '#ccc' }} />
-          <Title level={4} type="secondary" style={{ marginTop: 16 }}>
-            请上传图片并运行攻击
+        <div style={S.empty}>
+          <LineChartOutlined style={S.emptyIcon} />
+          <Title level={4} type="secondary" style={S.emptyTitle}>
+            上传图片开始实验
           </Title>
           <Text type="secondary">
-            调整左侧参数，点击"运行攻击"开始生成对抗样本
+            上传一张图片，调整参数后点击"同步执行"即可生成对抗样本
           </Text>
         </div>
       </Card>
@@ -152,11 +169,17 @@ const ResultDisplay = ({
   );
 
   return (
-    <Card 
-      title="攻击结果" 
+    <Card
+      title="攻击结果"
       variant="borderless"
       extra={actionButtons}
+      style={{ borderRadius: 16 }}
     >
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+      >
       {!result.success && (
         <Alert
           message="攻击失败"
@@ -175,20 +198,20 @@ const ResultDisplay = ({
               <Card size="small" title="原始图片">
                 <Image
                   src={originalImage}
-                  style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }}
+                  style={S.image}
                   preview={false}
                 />
-                <div style={{ marginTop: 12 }}>
+                <div style={S.statLabel}>
                   <Statistic
                     title="预测类别"
                     value={formatPredictionLabel(originalPrediction, originalTopClass)}
-                    valueStyle={{ fontSize: 14, fontWeight: 'bold' }}
+                    valueStyle={S.boldValue}
                   />
                   <Statistic
                     title="置信度"
                     value={originalTopClass !== null ? ((result.original_probs?.[originalTopClass] || 0) * 100).toFixed(2) : '-'}
                     suffix="%"
-                    valueStyle={{ fontSize: 14, color: '#1890ff' }}
+                    valueStyle={S.primaryValue}
                   />
                 </div>
               </Card>
@@ -200,31 +223,31 @@ const ResultDisplay = ({
                   <>
                     <Image
                       src={result.adversarial_image}
-                      style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }}
+                      style={S.image}
                       preview={false}
                     />
-                    <div style={{ marginTop: 12 }}>
+                    <div style={S.statLabel}>
                       <Statistic
                         title="预测类别"
                         value={formatPredictionLabel(adversarialPrediction, adversarialTopClass)}
-                        valueStyle={{ fontSize: 14, fontWeight: 'bold' }}
+                        valueStyle={S.boldValue}
                       />
                       <Statistic
                         title="置信度"
                         value={adversarialTopClass !== null ? ((result.adversarial_probs?.[adversarialTopClass] || 0) * 100).toFixed(2) : '-'}
                         suffix="%"
-                        valueStyle={{ fontSize: 14, color: result.success ? '#52c41a' : '#ff4d4f' }}
+                        valueStyle={result.success ? S.successValue : S.errorValue}
                       />
                       <Statistic
                         title="扰动大小"
                         value={metadata.l2_norm?.toFixed?.(4) ?? metadata.linf_norm?.toFixed?.(4) ?? '-'}
                         suffix={metadata.linf_norm !== undefined ? 'Linf' : 'L2'}
-                        valueStyle={{ fontSize: 12 }}
+                        valueStyle={S.smallValue}
                       />
                     </div>
                   </>
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                  <div style={S.noResult}>
                     <Text type="secondary">未生成对抗样本</Text>
                   </div>
                 )}
@@ -233,7 +256,7 @@ const ResultDisplay = ({
           </Row>
 
           {result.adversarial_image && (
-            <Row style={{ marginTop: 16 }}>
+            <Row style={S.marginTop}>
               <Col span={24}>
                 <Card size="small" title="对比滑块">
                   <ComparisonSlider
@@ -272,7 +295,7 @@ const ResultDisplay = ({
           </Row>
 
           {result.original_probs && result.adversarial_probs && (
-            <Row style={{ marginTop: 16 }}>
+            <Row style={S.marginTop}>
               <Col span={24}>
                 <Card size="small" title="置信度变化图">
                   <ConfidenceChart
@@ -302,10 +325,7 @@ const ResultDisplay = ({
               <Card size="small" title="扰动统计">
                 <Descriptions bordered column={1} size="small">
                   <Descriptions.Item label="攻击状态">
-                    <span style={{ 
-                      color: result.success ? '#52c41a' : '#ff4d4f',
-                      fontWeight: 'bold'
-                    }}>
+                    <span style={result.success ? S.successValue : S.errorValue}>
                       {result.success ? '成功' : '失败'}
                     </span>
                   </Descriptions.Item>
@@ -363,15 +383,7 @@ const ResultDisplay = ({
               {result.time_elapsed?.toFixed(2)} 秒
             </Descriptions.Item>
             <Descriptions.Item label="攻击参数">
-              <pre style={{ 
-                margin: 0, 
-                fontSize: 12, 
-                background: '#f5f5f5', 
-                padding: 8,
-                borderRadius: 4,
-                maxHeight: 200,
-                overflow: 'auto'
-              }}>
+              <pre style={S.preBlock}>
                 {JSON.stringify(result.attack_params || result.params, null, 2)}
               </pre>
             </Descriptions.Item>
@@ -386,6 +398,7 @@ const ResultDisplay = ({
           </Descriptions>
         </TabPane>
       </Tabs>
+      </motion.div>
     </Card>
   );
 };

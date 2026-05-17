@@ -10,6 +10,18 @@ import { getBase64FromFile } from '../../utils/formatters';
 
 const { Dragger } = Upload;
 
+const S = {
+  container: { position: 'relative' },
+  imageBox: { border: '1px solid var(--xh-border)', borderRadius: '8px', padding: '8px', backgroundColor: 'var(--xh-bg)' },
+  previewImage: { width: '100%', maxHeight: '300px', objectFit: 'contain', borderRadius: '4px' },
+  actions: { position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px' },
+  icon: { fontSize: '48px', color: 'var(--xh-primary)' },
+  uploadText: { fontSize: '16px', fontWeight: 500 },
+  hint: { color: 'var(--xh-text-secondary)' },
+  hintSmall: { color: 'var(--xh-text-secondary)', fontSize: '12px' },
+  hidden: { display: 'none' },
+};
+
 const ImageUploader = ({ 
   value, 
   onChange, 
@@ -84,42 +96,25 @@ const ImageUploader = ({
     <div className="image-uploader">
       {value ? (
         // 已上传图片显示
-        <div style={{ position: 'relative' }}>
-          <div 
-            style={{ 
-              border: '1px solid #d9d9d9', 
-              borderRadius: '8px',
-              padding: '8px',
-              backgroundColor: '#fafafa',
-            }}
-          >
+        <div style={S.container}>
+          <div style={S.imageBox}>
             <Image
               src={value}
               alt="上传的图片"
-              style={{ 
-                width: '100%', 
-                maxHeight: '300px',
-                objectFit: 'contain',
-                borderRadius: '4px',
-              }}
+              style={S.previewImage}
               preview={showPreview}
             />
           </div>
-          
+
           {/* 操作按钮 */}
-          <div style={{ 
-            position: 'absolute', 
-            top: '16px', 
-            right: '16px',
-            display: 'flex',
-            gap: '8px',
-          }}>
+          <div style={S.actions}>
             {showPreview && (
               <Button
                 size="small"
                 icon={<EyeOutlined />}
                 onClick={handlePreview}
                 type="primary"
+                aria-label="预览图片"
               />
             )}
             <Button
@@ -128,6 +123,7 @@ const ImageUploader = ({
               onClick={handleClear}
               danger
               disabled={disabled}
+              aria-label="删除图片"
             />
           </div>
         </div>
@@ -135,15 +131,15 @@ const ImageUploader = ({
         // 上传区域
         <Dragger {...uploadProps}>
           <p className="ant-upload-drag-icon">
-            <InboxOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+            <InboxOutlined style={S.icon} />
           </p>
-          <p className="ant-upload-text" style={{ fontSize: '16px', fontWeight: 500 }}>
+          <p className="ant-upload-text" style={S.uploadText}>
             点击或拖拽图片到此区域上传
           </p>
-          <p className="ant-upload-hint" style={{ color: '#8c8c8c' }}>
+          <p className="ant-upload-hint" style={S.hint}>
             {description}
           </p>
-          <p className="ant-upload-hint" style={{ color: '#8c8c8c', fontSize: '12px' }}>
+          <p className="ant-upload-hint" style={S.hintSmall}>
             支持 JPG、PNG、GIF、BMP 格式，最大 {maxSize}MB
           </p>
         </Dragger>
@@ -152,7 +148,7 @@ const ImageUploader = ({
       {/* 预览弹窗 */}
       {previewVisible && (
         <Image
-          style={{ display: 'none' }}
+          style={S.hidden}
           preview={{
             visible: previewVisible,
             src: previewImage || value,
