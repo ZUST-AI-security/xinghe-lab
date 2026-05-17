@@ -22,7 +22,3 @@ export { CardContainer, CardBody, CardItem } from './Card3D';
 export { default as TracingBeam } from './TracingBeam';
 export { BentoGrid, BentoGridItem } from './BentoGrid';
 export { default as EvervingCard } from './EvervingCard';
-export { default as BackgroundGradientAnimation } from './BackgroundGradientAnimation';
-export { default as Spotlight } from './Spotlight';
-export { default as CardSpotlight } from './CardSpotlight';
-export { default as CosmicVortex } from './CosmicVortex';
