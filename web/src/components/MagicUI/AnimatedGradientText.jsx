@@ -12,6 +12,7 @@ export default function AnimatedGradientText({
     <span
       className={className}
       style={{
+        display: 'inline-block',
         background: gradient,
         backgroundSize: '200% 100%',
         WebkitBackgroundClip: 'text',

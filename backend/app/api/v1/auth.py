@@ -70,9 +70,14 @@ class RegisterRequest(BaseModel):
     email: str = Field(..., pattern=r'^[^@]+@[^@]+\.[^@]+$')
     password: str = Field(..., min_length=8, max_length=100)
     full_name: Optional[str] = Field(None, max_length=100)
-    captcha_id: str = Field(..., description="验证码ID")
-    captcha_code: str = Field(..., min_length=5, max_length=5, description="验证码")
+    captcha_id: str = Field(..., description="图形验证码ID")
+    captcha_code: str = Field(..., min_length=5, max_length=5, description="图形验证码")
+    email_code: str = Field(..., min_length=6, max_length=6, description="邮箱验证码")
     setup_token: Optional[str] = Field(None, description="首次部署管理员 setup token")
+
+
+class SendRegisterCodeRequest(BaseModel):
+    email: str = Field(..., pattern=r'^[^@]+@[^@]+\.[^@]+$', description="注册邮箱")
 
 
 class LoginRequest(BaseModel):
@@ -80,13 +85,77 @@ class LoginRequest(BaseModel):
     password: str
     captcha_id: str = Field(..., description="验证码ID")
     captcha_code: str = Field(..., min_length=5, max_length=5, description="验证码")
+    remember_me: bool = Field(False, description="记住登录状态24小时")
 
 
 class RefreshRequest(BaseModel):
     refresh_token: str = Field(..., description="刷新令牌")
 
 
-@router.post("/register", response_model=UserResponse)
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., description="注册邮箱")
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str = Field(..., description="注册邮箱")
+    code: str = Field(..., min_length=6, max_length=6, description="6位验证码")
+    new_password: str = Field(..., min_length=8, max_length=100, description="新密码")
+
+
+@router.post("/send-register-code")
+async def send_register_code(
+    request_data: SendRegisterCodeRequest,
+    _rate_limit: None = Depends(auth_login_rate_limiter),
+):
+    """发送注册邮箱验证码。同一邮箱1分钟内只能发送一次。"""
+    import secrets
+    import logging
+
+    logger = logging.getLogger(__name__)
+    redis_client = get_redis_client()
+
+    # 频率限制：同一邮箱1分钟内只能请求一次
+    rate_key = f"register_code_rate:{request_data.email}"
+    if redis_client.exists(rate_key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="请求过于频繁，请1分钟后再试",
+        )
+
+    # 检查邮箱是否已被注册
+    from app.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        existing = db.query(User).filter(User.email == request_data.email).first()
+    finally:
+        db.close()
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="该邮箱已被注册",
+        )
+
+    # 生成6位验证码
+    code = secrets.randbelow(900000) + 100000
+
+    # 存入Redis，10分钟过期
+    redis_client.set(f"register_code:{request_data.email}", str(code), ex=600)
+    # 设置频率限制，1分钟
+    redis_client.set(rate_key, "1", ex=60)
+
+    # 发送邮件
+    from app.utils.email import send_register_code_email
+    msg_id = send_register_code_email(request_data.email, str(code))
+    if msg_id:
+        logger.info("注册验证码邮件已发送: email=%s, MessageId=%s", request_data.email, msg_id)
+    else:
+        logger.warning("注册验证码邮件发送失败: email=%s", request_data.email)
+
+    return {"message": "验证码已发送到您的邮箱"}
+
+
+@router.post("/register", response_model=Token)
 async def register(
     request_data: RegisterRequest,
     db: Session = Depends(get_db),
@@ -108,6 +177,16 @@ async def register(
         )
     # 验证成功后删除验证码
     redis_client.delete(f"captcha:{request_data.captcha_id}")
+
+    # 验证邮箱验证码
+    stored_email_code = redis_client.get(f"register_code:{request_data.email}")
+    if not stored_email_code or stored_email_code != request_data.email_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="邮箱验证码错误或已过期",
+        )
+    # 验证码一次性使用
+    redis_client.delete(f"register_code:{request_data.email}")
 
     if db.query(User).filter(User.username == request_data.username).first():
         raise HTTPException(
@@ -159,7 +238,22 @@ async def register(
         import logging
         logging.getLogger(__name__).warning("首个用户注册为管理员: %s", db_user.username)
 
-    return db_user
+    # 注册成功直接返回 token，无需再次登录
+    access_token = create_access_token(
+        data={"sub": db_user.username},
+        expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
+    )
+    refresh_token = create_refresh_token(
+        data={"sub": db_user.username},
+        expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
+        remember_me=False,
+    )
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "expires_in": settings.jwt_access_token_expire_minutes * 60,
+    }
 
 
 @router.post("/login", response_model=Token)
@@ -211,7 +305,11 @@ async def login(
         data={"sub": user.username},
         expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
     )
-    refresh_token = create_refresh_token(data={"sub": user.username})
+    if request_data.remember_me:
+        refresh_expires = timedelta(hours=24)
+    else:
+        refresh_expires = timedelta(minutes=settings.jwt_access_token_expire_minutes)
+    refresh_token = create_refresh_token(data={"sub": user.username}, expires_delta=refresh_expires, remember_me=request_data.remember_me)
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -242,13 +340,21 @@ async def refresh_token(request_data: RefreshRequest, db: Session = Depends(get_
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户不存在或已被禁用",
         )
+    # 从旧 token 的 payload 中读取 remember_me 标记
+    was_remember_me = payload.get("remember_me", False)
+
     # 轮转：将旧 refresh token 加入黑名单
     blacklist_token(request_data.refresh_token)
+
     access_token = create_access_token(
         data={"sub": user.username},
         expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
     )
-    new_refresh_token = create_refresh_token(data={"sub": user.username})
+    if was_remember_me:
+        refresh_expires = timedelta(hours=24)
+    else:
+        refresh_expires = timedelta(minutes=settings.jwt_access_token_expire_minutes)
+    new_refresh_token = create_refresh_token(data={"sub": user.username}, expires_delta=refresh_expires, remember_me=was_remember_me)
     return {
         "access_token": access_token,
         "refresh_token": new_refresh_token,
@@ -282,3 +388,104 @@ async def logout(
         pass  # Body may be empty or not JSON
 
     return {"message": "登出成功"}
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request_data: ForgotPasswordRequest,
+    _rate_limit: None = Depends(auth_login_rate_limiter),
+):
+    """发送密码重置验证码邮件。不泄露邮箱是否已注册。"""
+    import secrets
+    import logging
+
+    logger = logging.getLogger(__name__)
+    redis_client = get_redis_client()
+
+    # 频率限制：同一邮箱1分钟内只能请求一次
+    rate_key = f"reset_rate:{request_data.email}"
+    if redis_client.exists(rate_key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="请求过于频繁，请1分钟后再试",
+        )
+
+    # 检查邮箱是否存在（不泄露结果）
+    from app.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == request_data.email).first()
+    finally:
+        db.close()
+
+    # 无论邮箱是否存在，都返回相同提示（防止枚举）
+    if not user:
+        return {"message": "如果该邮箱已注册，验证码已发送到您的邮箱"}
+
+    # 生成6位验证码
+    code = secrets.randbelow(900000) + 100000  # 100000-999999
+
+    # 存入Redis，10分钟过期
+    redis_client.set(f"reset_code:{request_data.email}", str(code), ex=600)
+    # 设置频率限制，1分钟
+    redis_client.set(rate_key, "1", ex=60)
+
+    # 通过腾讯云SES发送邮件
+    from app.utils.email import send_reset_code_email
+    msg_id = send_reset_code_email(request_data.email, str(code))
+    if msg_id:
+        logger.info("密码重置邮件已发送: email=%s, MessageId=%s", request_data.email, msg_id)
+    else:
+        logger.warning("密码重置邮件发送失败: email=%s, 验证码已存入Redis", request_data.email)
+
+    return {"message": "如果该邮箱已注册，验证码已发送到您的邮箱"}
+
+
+@router.post("/reset-password")
+async def reset_password(
+    request_data: ResetPasswordRequest,
+    _rate_limit: None = Depends(auth_login_rate_limiter),
+):
+    """验证验证码并重置密码。"""
+    redis_client = get_redis_client()
+
+    # 验证码校验
+    stored_code = redis_client.get(f"reset_code:{request_data.email}")
+    if not stored_code or stored_code != request_data.code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="验证码错误或已过期",
+        )
+
+    # 验证码一次性使用
+    redis_client.delete(f"reset_code:{request_data.email}")
+
+    # 验证密码强度
+    from app.schemas.user import _validate_password_strength
+    try:
+        _validate_password_strength(request_data.new_password)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    # 查找用户并更新密码
+    from app.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == request_data.email).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="验证码错误或已过期",
+            )
+        user.hashed_password = get_password_hash(request_data.new_password)
+        db.commit()
+    finally:
+        db.close()
+
+    # 清除频率限制
+    redis_client.delete(f"reset_rate:{request_data.email}")
+
+    return {"message": "密码重置成功，请使用新密码登录"}

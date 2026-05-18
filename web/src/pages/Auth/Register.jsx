@@ -4,6 +4,7 @@ import { UserOutlined, LockOutlined, MailOutlined, UserAddOutlined, ArrowLeftOut
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../../store/authStore';
+import { sendRegisterCode } from '../../api/auth';
 import CaptchaInput from '../../components/Captcha/CaptchaInput';
 import AuroraBackground from '../../components/Aceternity/AuroraBackground';
 import SpotlightCard from '../../components/Aceternity/SpotlightCard';
@@ -14,12 +15,46 @@ import Sparkles from '../../components/Aceternity/Sparkles';
 const Register = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const [captchaId, setCaptchaId] = useState('');
   const { register } = useAuthStore();
   const navigate = useNavigate();
   const { message } = App.useApp();
 
   const handleCaptchaChange = (id) => setCaptchaId(id);
+
+  const startCountdown = () => {
+    setCountdown(60);
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleSendCode = async () => {
+    try {
+      await form.validateFields(['email']);
+    } catch {
+      return;
+    }
+    const email = form.getFieldValue('email');
+    setSendingCode(true);
+    try {
+      await sendRegisterCode(email);
+      message.success('验证码已发送到您的邮箱');
+      startCountdown();
+    } catch {
+      // error handled by interceptor
+    } finally {
+      setSendingCode(false);
+    }
+  };
 
   const handleRegister = async (values) => {
     setLoading(true);
@@ -30,7 +65,7 @@ const Register = () => {
         captcha_code: values.captcha_code,
       });
       message.success('注册成功！');
-      navigate('/');
+      navigate('/dashboard');
     } catch {
       // error handled by API interceptor
     } finally {
@@ -65,7 +100,7 @@ const Register = () => {
           >
             <ArrowLeftOutlined style={{ fontSize: 14, color: '#7c3aed' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 22, height: 22, borderRadius: 6, background: 'linear-gradient(135deg, #1677ff, #7c3aed)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 10 }}>X</div>
+              <img src="/logo.png" alt="星河智安" style={{ width: 22, height: 22, borderRadius: 6, objectFit: 'cover' }} />
               <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>星河智安</span>
             </div>
           </motion.div>
@@ -88,6 +123,13 @@ const Register = () => {
               <div style={{ position: 'absolute', bottom: -80, right: -80, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(22,119,255,0.08), transparent 70%)', pointerEvents: 'none' }} />
 
               <div style={{ textAlign: 'center', marginBottom: 36, position: 'relative' }}>
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                >
+                  <img src="/logo.png" alt="星河智安" style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 12, boxShadow: '0 4px 20px rgba(124,58,237,0.2)' }} />
+                </motion.div>
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -137,7 +179,26 @@ const Register = () => {
                   <Input.Password prefix={<LockOutlined />} placeholder="确认密码" autoComplete="new-password" />
                 </Form.Item>
                 <Form.Item name="captcha_code" rules={[{ required: true, message: '请输入验证码' }, { len: 5, message: '验证码为5位字符' }]}>
-                  <CaptchaInput placeholder="验证码" onCaptchaIdChange={handleCaptchaChange} />
+                  <CaptchaInput placeholder="图形验证码" onCaptchaIdChange={handleCaptchaChange} />
+                </Form.Item>
+                <Form.Item name="email_code" rules={[{ required: true, message: '请输入邮箱验证码' }, { len: 6, message: '验证码为6位数字' }]}>
+                  <Input
+                    prefix={<MailOutlined />}
+                    placeholder="邮箱验证码"
+                    maxLength={6}
+                    suffix={
+                      <Button
+                        type="link"
+                        size="small"
+                        disabled={countdown > 0}
+                        loading={sendingCode}
+                        onClick={handleSendCode}
+                        style={{ padding: 0, fontSize: 13 }}
+                      >
+                        {countdown > 0 ? `${countdown}s` : '获取验证码'}
+                      </Button>
+                    }
+                  />
                 </Form.Item>
 
                 <Form.Item style={{ marginBottom: 16 }}>

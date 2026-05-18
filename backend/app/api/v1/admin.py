@@ -291,14 +291,20 @@ async def reset_user_password(
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
+    import secrets
+    import string
     from app.core.security import get_password_hash
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
-    user.hashed_password = get_password_hash(settings.default_reset_password)
+
+    # 生成随机临时密码（12位，含大小写字母和数字）
+    alphabet = string.ascii_letters + string.digits
+    temp_password = ''.join(secrets.choice(alphabet) for _ in range(12))
+    user.hashed_password = get_password_hash(temp_password)
     db.commit()
-    return {"message": "密码已重置，请通知用户使用默认密码登录后修改密码"}
+    return {"message": "密码已重置，请通知用户使用临时密码登录后修改密码", "temp_password": temp_password}
 
 
 @router.delete("/users/{user_id}", summary="Delete user")

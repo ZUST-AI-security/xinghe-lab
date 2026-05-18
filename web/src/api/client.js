@@ -33,11 +33,36 @@ const apiClient = axios.create({
   },
 });
 
+// 获取当前活跃的 token（优先 localStorage，其次 sessionStorage）
+const getStoredToken = (key) => {
+  return localStorage.getItem(key) || sessionStorage.getItem(key);
+};
+
+// 将 token 写回原存储位置
+const setStoredToken = (key, value) => {
+  if (localStorage.getItem(key)) {
+    localStorage.setItem(key, value);
+  } else if (sessionStorage.getItem(key)) {
+    sessionStorage.setItem(key, value);
+  } else {
+    // 默认写入 localStorage（记住我场景）
+    localStorage.setItem(key, value);
+  }
+};
+
+// 清除两个存储中的 token
+const clearStoredTokens = () => {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  sessionStorage.removeItem('access_token');
+  sessionStorage.removeItem('refresh_token');
+};
+
 // 请求拦截器
 apiClient.interceptors.request.use(
   (config) => {
     // 添加认证token
-    const token = localStorage.getItem('access_token');
+    const token = getStoredToken('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -113,7 +138,7 @@ apiClient.interceptors.response.use(
 
       try {
         // 尝试使用refresh token刷新access token
-        const refreshToken = localStorage.getItem('refresh_token');
+        const refreshToken = getStoredToken('refresh_token');
         if (refreshToken) {
           const response = await axios.post(
             `${API_BASE_URL}/api/${API_VERSION}/auth/refresh`,
@@ -121,9 +146,9 @@ apiClient.interceptors.response.use(
           );
 
           const { access_token, refresh_token: new_refresh_token } = response.data;
-          localStorage.setItem('access_token', access_token);
+          setStoredToken('access_token', access_token);
           if (new_refresh_token) {
-            localStorage.setItem('refresh_token', new_refresh_token);
+            setStoredToken('refresh_token', new_refresh_token);
           }
 
           // 重新发送原始请求
@@ -132,8 +157,7 @@ apiClient.interceptors.response.use(
         }
       } catch (refreshError) {
         // 刷新失败，清除token并跳转到登录页
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        clearStoredTokens();
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }

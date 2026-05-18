@@ -39,7 +39,14 @@ class Settings(BaseSettings):
     
     # Redis配置
     redis_url: str = "redis://localhost:6379/0"
-    
+
+    # 腾讯云SES邮件配置
+    tencent_secret_id: str = ""
+    tencent_secret_key: str = ""
+    tencent_ses_region: str = "ap-hongkong"
+    tencent_ses_from: str = "星河智安 <zhian@mail.xinghezhian.com>"
+    tencent_ses_template_id: int = 178841
+
     # Celery配置
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/0"
@@ -68,7 +75,6 @@ class Settings(BaseSettings):
     password_min_length: int = 8
     max_login_attempts: int = 5
     lockout_duration_minutes: int = 15
-    default_reset_password: str = "XingHe@Reset2026"
     admin_setup_token: Optional[str] = None  # 首次部署时设置，防止攻击者抢先注册管理员
 
     # 图片上传限制（base64 编码后最大字节数）

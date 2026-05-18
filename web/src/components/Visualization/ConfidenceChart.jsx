@@ -1,272 +1,141 @@
-/**
- * 星河智安 (XingHe ZhiAn) - 置信度图表组件
- * 显示分类置信度变化的条形图
- */
-
 import React, { useMemo } from 'react';
-import { Card, Button, Space, Tooltip } from 'antd';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip,
-  Legend, 
-  ResponsiveContainer
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { 
-  DownloadOutlined, 
-  ExpandOutlined,
-  InfoCircleOutlined,
-  BarChartOutlined
-} from '@ant-design/icons';
+import { BarChartOutlined } from '@ant-design/icons';
 
-const ConfidenceChart = ({ 
-  originalProbs, 
-  adversarialProbs, 
-  title = '分类置信度变化',
-  width = '100%',
-  height = 400,
-  showControls = true,
-  maxClasses = 10,
-}) => {
-  // 准备图表数据
-  const chartData = useMemo(() => {
-    if (!originalProbs || !adversarialProbs) {
-      return [];
-    }
-
-    // 获取前N个最高置信度的类别
-    const combined = originalProbs.map((origProb, index) => ({
-      index,
-      original: origProb,
-      adversarial: adversarialProbs[index] || 0,
-      diff: (adversarialProbs[index] || 0) - origProb,
-    }));
-
-    // 按原始置信度排序并取前N个
-    const topClasses = combined
-      .sort((a, b) => b.original - a.original)
-      .slice(0, maxClasses);
-
-    return topClasses.map((item) => ({
-      name: `类别 ${item.index}`,
-      original: parseFloat((item.original * 100).toFixed(2)),
-      adversarial: parseFloat((item.adversarial * 100).toFixed(2)),
-      difference: parseFloat((item.diff * 100).toFixed(2)),
-      index: item.index,
-    }));
-  }, [originalProbs, adversarialProbs, maxClasses]);
-
-  // 获取原始预测类别
-  const originalPrediction = useMemo(() => {
-    if (!originalProbs) return null;
-    const maxIndex = originalProbs.indexOf(Math.max(...originalProbs));
-    return maxIndex;
-  }, [originalProbs]);
-
-  // 获取对抗样本预测类别
-  const adversarialPrediction = useMemo(() => {
-    if (!adversarialProbs) return null;
-    const maxIndex = adversarialProbs.indexOf(Math.max(...adversarialProbs));
-    return maxIndex;
-  }, [adversarialProbs]);
-
-  // 自定义Tooltip
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div style={{
-          backgroundColor: 'var(--xh-surface)',
-          border: '1px solid var(--xh-border)',
-          borderRadius: '6px',
-          padding: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        }}>
-          <p style={{ margin: 0, fontWeight: 'bold', marginBottom: '8px' }}>
-            {label}
-          </p>
-          <p style={{ margin: '4px 0', color: 'var(--xh-primary)' }}>
-            原始置信度: {data.original}%
-          </p>
-          <p style={{ margin: '4px 0', color: 'var(--xh-success)' }}>
-            对抗置信度: {data.adversarial}%
-          </p>
-          <p style={{ margin: '4px 0', color: data.difference > 0 ? 'var(--xh-error)' : 'var(--xh-success)' }}>
-            变化: {data.difference > 0 ? '+' : ''}{data.difference}%
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // 下载图表
-  const handleDownload = () => {
-    // TODO: implement chart download
-  };
-
-  // 全屏切换
-  const handleFullscreen = () => {
-    // TODO: implement fullscreen
-  };
-
-  const colors = {
-    original: '#1890ff',
-    adversarial: '#52c41a',
-    increase: '#ff4d4f',
-    decrease: '#52c41a',
-  };
-
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  const data = payload[0].payload;
   return (
-    <div className="confidence-chart">
-      {/* 标题和描述 */}
-      <div style={{ marginBottom: '16px' }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>
-              {title}
-            </h3>
-            <p style={{ 
-              margin: '4px 0 0 0', 
-              fontSize: '12px', 
-              color: 'var(--xh-text-secondary)'
-            }}>
-              显示原始图片和对抗样本的Top {maxClasses} 分类置信度对比
-            </p>
-          </div>
-          
-          <Tooltip title="置信度图表显示了攻击前后模型预测概率的变化">
-            <InfoCircleOutlined style={{ color: 'var(--xh-text-secondary)', fontSize: '16px' }} />
-          </Tooltip>
+    <div style={{
+      background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(12px)',
+      border: '1px solid var(--xh-border)', borderRadius: 10,
+      padding: '12px 16px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+    }}>
+      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: 'var(--xh-text)' }}>{label}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 2, background: '#1677ff' }} />
+          <span style={{ fontSize: 12, color: 'var(--xh-text-secondary)' }}>原始: <strong style={{ color: 'var(--xh-text)' }}>{data.original}%</strong></span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 2, background: '#7c3aed' }} />
+          <span style={{ fontSize: 12, color: 'var(--xh-text-secondary)' }}>对抗: <strong style={{ color: 'var(--xh-text)' }}>{data.adversarial}%</strong></span>
+        </div>
+        <div style={{ fontSize: 11, color: data.difference > 0 ? '#dc2626' : '#16a34a', fontWeight: 700, marginTop: 2 }}>
+          变化: {data.difference > 0 ? '+' : ''}{data.difference}%
         </div>
       </div>
+    </div>
+  );
+};
 
-      {/* 预测信息 */}
+const ConfidenceChart = ({
+  originalProbs, adversarialProbs,
+  title = '分类置信度变化',
+  width = '100%', height = 360,
+  maxClasses = 10,
+}) => {
+  const chartData = useMemo(() => {
+    if (!originalProbs || !adversarialProbs) return [];
+    const combined = originalProbs.map((origProb, index) => ({
+      index, original: origProb, adversarial: adversarialProbs[index] || 0,
+      diff: (adversarialProbs[index] || 0) - origProb,
+    }));
+    return combined
+      .sort((a, b) => b.original - a.original)
+      .slice(0, maxClasses)
+      .map((item) => ({
+        name: `类别 ${item.index}`,
+        original: parseFloat((item.original * 100).toFixed(2)),
+        adversarial: parseFloat((item.adversarial * 100).toFixed(2)),
+        difference: parseFloat((item.diff * 100).toFixed(2)),
+        index: item.index,
+      }));
+  }, [originalProbs, adversarialProbs, maxClasses]);
+
+  const originalPrediction = useMemo(() => {
+    if (!originalProbs) return null;
+    return originalProbs.indexOf(Math.max(...originalProbs));
+  }, [originalProbs]);
+
+  const adversarialPrediction = useMemo(() => {
+    if (!adversarialProbs) return null;
+    return adversarialProbs.indexOf(Math.max(...adversarialProbs));
+  }, [adversarialProbs]);
+
+  return (
+    <div>
+      {/* Prediction summary */}
       {originalPrediction !== null && adversarialPrediction !== null && (
         <div style={{
-          marginBottom: '16px',
-          padding: '12px',
-          backgroundColor: 'rgba(22,163,74,0.06)',
-          border: '1px solid rgba(22,163,74,0.2)',
-          borderRadius: '6px',
+          display: 'flex', gap: 12, marginBottom: 16,
+          padding: '12px 16px', borderRadius: 12,
+          background: originalPrediction !== adversarialPrediction ? 'rgba(22,163,74,0.04)' : 'rgba(245,158,11,0.04)',
+          border: `1px solid ${originalPrediction !== adversarialPrediction ? 'rgba(22,163,74,0.12)' : 'rgba(245,158,11,0.12)'}`,
         }}>
-          <div style={{ fontSize: '12px', color: 'var(--xh-success)' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-              预测变化
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--xh-text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>原始预测</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--xh-text)' }}>
+              类别 {originalPrediction} ({((originalProbs[originalPrediction] || 0) * 100).toFixed(1)}%)
             </div>
-            <div>
-              原始预测: 类别 {originalPrediction} (置信度: {parseFloat(((originalProbs[originalPrediction] || 0) * 100).toFixed(1))}%)
+          </div>
+          <div style={{ width: 1, background: 'var(--xh-border)' }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--xh-text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>对抗预测</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: originalPrediction !== adversarialPrediction ? '#16a34a' : '#f59e0b' }}>
+              类别 {adversarialPrediction} ({((adversarialProbs[adversarialPrediction] || 0) * 100).toFixed(1)}%)
             </div>
-            <div>
-              对抗预测: 类别 {adversarialPrediction} (置信度: {parseFloat(((adversarialProbs[adversarialPrediction] || 0) * 100).toFixed(1))}%)
-            </div>
-            <div style={{ 
-              fontWeight: 'bold',
-              color: originalPrediction !== adversarialPrediction ? 'var(--xh-error)' : 'var(--xh-success)'
-            }}>
-              攻击结果: {originalPrediction !== adversarialPrediction ? '成功' : '失败'}
-            </div>
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center', padding: '4px 12px', borderRadius: 999,
+            background: originalPrediction !== adversarialPrediction ? 'rgba(22,163,74,0.08)' : 'rgba(245,158,11,0.08)',
+            color: originalPrediction !== adversarialPrediction ? '#16a34a' : '#f59e0b',
+            fontSize: 12, fontWeight: 700,
+          }}>
+            {originalPrediction !== adversarialPrediction ? '攻击成功' : '攻击失败'}
           </div>
         </div>
       )}
 
-      {/* 图表容器 */}
-      <Card 
-        style={{ 
-          width, 
-          height,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        }}
-        styles={{
-          body: { padding: '16px' }
-        }}
-      >
+      {/* Chart */}
+      <div style={{ width, height }}>
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis 
-                dataKey="name" 
-                angle={-45}
-                textAnchor="end"
-                height={80}
-                tick={{ fontSize: 12 }}
+            <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 50 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--xh-border)" vertical={false} />
+              <XAxis
+                dataKey="name" angle={-45} textAnchor="end" height={60}
+                tick={{ fontSize: 11, fill: 'var(--xh-text-tertiary)' }}
+                axisLine={{ stroke: 'var(--xh-border)' }}
+                tickLine={false}
               />
-              <YAxis 
-                label={{ 
-                  value: '置信度 (%)', 
-                  angle: -90, 
-                  position: 'insideLeft',
-                  style: { fontSize: 12 }
-                }}
-                tick={{ fontSize: 12 }}
+              <YAxis
+                label={{ value: '置信度 (%)', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'var(--xh-text-tertiary)' } }}
+                tick={{ fontSize: 11, fill: 'var(--xh-text-tertiary)' }}
+                axisLine={false}
+                tickLine={false}
               />
-              <RechartsTooltip content={<CustomTooltip />} />
-              <Legend />
-              <Bar 
-                dataKey="original" 
-                name="原始置信度" 
-                fill={colors.original}
-                radius={[4, 4, 0, 0]}
+              <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(22,119,255,0.04)' }} />
+              <Legend
+                iconType="circle" iconSize={8}
+                wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
               />
-              <Bar 
-                dataKey="adversarial" 
-                name="对抗置信度" 
-                fill={colors.adversarial}
-                radius={[4, 4, 0, 0]}
-              />
+              <Bar dataKey="original" name="原始置信度" fill="#1677ff" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="adversarial" name="对抗置信度" fill="#7c3aed" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex-center" style={{ height: '100%', color: 'var(--xh-text-secondary)' }}>
+          <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--xh-text-tertiary)' }}>
             <div style={{ textAlign: 'center' }}>
-              <BarChartOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
-              <div>暂无置信度数据</div>
-              <div style={{ fontSize: '12px', marginTop: '8px' }}>
-                请先运行攻击算法生成置信度数据
-              </div>
+              <BarChartOutlined style={{ fontSize: 40, opacity: 0.3, marginBottom: 12 }} />
+              <div style={{ fontSize: 13 }}>暂无置信度数据</div>
             </div>
           </div>
         )}
-      </Card>
-
-      {/* 控制按钮 */}
-      {showControls && chartData.length > 0 && (
-        <div style={{ 
-          marginTop: '12px', 
-          display: 'flex', 
-          justifyContent: 'flex-end',
-        }}>
-          <Space>
-            <Button 
-              size="small" 
-              icon={<DownloadOutlined />} 
-              onClick={handleDownload}
-              title="下载图表"
-            >
-              下载
-            </Button>
-            <Button 
-              size="small" 
-              icon={<ExpandOutlined />} 
-              onClick={handleFullscreen}
-              title="全屏查看"
-            >
-              全屏
-            </Button>
-          </Space>
-        </div>
-      )}
+      </div>
     </div>
   );
 };

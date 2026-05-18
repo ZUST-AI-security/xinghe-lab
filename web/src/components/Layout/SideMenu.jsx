@@ -1,5 +1,5 @@
-import React from 'react';
-import { Layout, Menu, Space, Tag, Typography } from 'antd';
+import React, { useState } from 'react';
+import { Layout, Menu, Modal, Space } from 'antd';
 import {
   AppstoreOutlined,
   BarChartOutlined,
@@ -14,9 +14,12 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 import { useAuthStore } from '../../store/authStore';
+import BorderBeam from '../MagicUI/BorderBeam';
+import FlickeringGrid from '../MagicUI/FlickeringGrid';
+import Spotlight from '../Aceternity/Spotlight';
+import GlowingEffect from '../Aceternity/GlowingEffect';
 
 const { Sider } = Layout;
-const { Text } = Typography;
 
 const baseAttackItems = [
   { key: '/attacks/fgsm', label: 'FGSM', icon: <ThunderboltOutlined /> },
@@ -81,6 +84,7 @@ const SideMenu = ({
   const isAdmin = user?.role === 'admin';
   const items = buildMenuItems(isAdmin);
   const openKeys = findOpenKeys(location.pathname, items);
+  const [logoPreview, setLogoPreview] = useState(false);
 
   const handleSelect = ({ key }) => {
     navigate(key);
@@ -96,71 +100,76 @@ const SideMenu = ({
       theme="light"
       breakpoint="lg"
       onCollapse={onCollapseChange}
-      style={{ borderRight: 'none' }}
+      style={{ borderRight: 'none', position: 'relative', overflow: 'hidden' }}
     >
+      {/* FlickeringGrid background — subtle animated particle overlay */}
+      <FlickeringGrid
+        squareSize={3}
+        gridGap={8}
+        flickerChance={0.08}
+        color="rgb(96, 165, 250)"
+        maxOpacity={0.25}
+        style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }}
+      />
       <div
         className="xh-side-brand"
         style={{
           padding: collapsed && !mobile ? '20px 16px' : '22px 18px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+        {/* GlowingEffect — cursor-tracking conic gradient glow */}
+        <GlowingEffect spread={30} proximity={120} />
+        <Spotlight fill="rgba(22,119,255,0.15)" style={{ opacity: 0.4, top: '-80%', left: '-20%' }} />
+
+        <Space direction="vertical" size={10} style={{ width: '100%', position: 'relative', zIndex: 1 }}>
           <Space align="center" size={12}>
             <motion.div
               whileHover={{ scale: 1.08, rotate: 3 }}
               transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+              onClick={() => setLogoPreview(true)}
               style={{
                 width: 42,
                 height: 42,
-                borderRadius: 14,
-                display: 'grid',
-                placeItems: 'center',
-                background: 'linear-gradient(135deg, #1677ff 0%, #60a5fa 100%)',
-                color: '#fff',
-                fontWeight: 800,
-                fontSize: 18,
-                boxShadow: '0 4px 16px rgba(22,119,255,0.3)',
+                borderRadius: 12,
+                boxShadow: '0 4px 16px rgba(22,119,255,0.35)',
+                overflow: 'hidden',
+                cursor: 'pointer',
               }}
             >
-              星
+              <img src="/logo.png" alt="星河智安" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </motion.div>
             {(!collapsed || mobile) && (
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fbff' }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: '#f8fbff', letterSpacing: 0.5 }}>
                   星河智安
                 </div>
-                <Text style={{ color: 'rgba(226, 232, 240, 0.72)', fontSize: 12 }}>
-                  AI 安全实验平台
-                </Text>
+                <div style={{ color: 'rgba(226, 232, 240, 0.6)', fontSize: 11, fontWeight: 500, letterSpacing: 0.3 }}>
+                  AI Security Platform
+                </div>
               </div>
             )}
           </Space>
 
           {(!collapsed || mobile) && (
-            <Space wrap>
-              <Tag
-                bordered={false}
-                style={{
-                  borderRadius: 999,
-                  background: isAdmin ? 'rgba(59, 130, 246, 0.18)' : 'rgba(148, 163, 184, 0.18)',
-                  color: '#dbeafe',
-                  fontWeight: 700,
-                }}
-              >
+            <div style={{ display: 'flex', gap: 6 }}>
+              <span style={{
+                display: 'inline-block', padding: '3px 10px', borderRadius: 999,
+                background: isAdmin ? 'rgba(59, 130, 246, 0.15)' : 'rgba(148, 163, 184, 0.12)',
+                color: '#dbeafe', fontSize: 11, fontWeight: 700,
+              }}>
                 {isAdmin ? '管理员' : '实验用户'}
-              </Tag>
-              <Tag
-                bordered={false}
-                style={{
-                  borderRadius: 999,
-                  background: 'rgba(255,255,255,0.08)',
-                  color: '#e2e8f0',
-                }}
-              >
+              </span>
+              <span style={{
+                display: 'inline-block', padding: '3px 10px', borderRadius: 999,
+                background: 'rgba(255,255,255,0.06)',
+                color: '#e2e8f0', fontSize: 11, fontWeight: 500,
+              }}>
                 {user?.username || '访客'}
-              </Tag>
-            </Space>
+              </span>
+            </div>
           )}
         </Space>
       </div>
@@ -174,6 +183,17 @@ const SideMenu = ({
         onClick={handleSelect}
         style={{ padding: '14px 10px 18px' }}
       />
+
+      <Modal
+        open={logoPreview}
+        onCancel={() => setLogoPreview(false)}
+        footer={null}
+        centered
+        width={360}
+        styles={{ body: { padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' } }}
+      >
+        <img src="/logo.png" alt="星河智安" style={{ width: '100%', borderRadius: 16 }} />
+      </Modal>
     </Sider>
   );
 };

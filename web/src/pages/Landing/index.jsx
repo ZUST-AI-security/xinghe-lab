@@ -88,11 +88,13 @@ function NavBar() {
 
   const logo = (
     <motion.div onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <motion.div
-        style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #1677ff, #7c3aed)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 13, boxShadow: '0 0 16px rgba(22,119,255,0.3)' }}
+      <motion.img
+        src="/logo.png"
+        alt="星河智安"
+        style={{ width: 32, height: 32, borderRadius: 10, boxShadow: '0 0 16px rgba(22,119,255,0.3)' }}
         whileHover={{ rotate: 12, boxShadow: '0 0 24px rgba(22,119,255,0.5)' }}
         transition={{ type: 'spring', stiffness: 400 }}
-      >X</motion.div>
+      />
       <span style={{ fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>星河智安</span>
     </motion.div>
   );
@@ -894,7 +896,7 @@ function CTASection() {
 
       <div style={{ marginTop: 80, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)', position: 'relative', zIndex: 2 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
-          <div style={{ width: 26, height: 26, borderRadius: 7, background: 'linear-gradient(135deg, #1677ff, #7c3aed)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 11 }}>X</div>
+          <img src="/logo.png" alt="星河智安" style={{ width: 26, height: 26, borderRadius: 7 }} />
           <span style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.45)' }}>星河智安</span>
         </div>
         <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', margin: 0 }}>&copy; {new Date().getFullYear()} XingHe ZhiAn &mdash; AI Adversarial Attack Visualization Platform</p>

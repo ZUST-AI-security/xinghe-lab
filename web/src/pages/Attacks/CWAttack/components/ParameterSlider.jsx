@@ -1,18 +1,7 @@
 import React from 'react';
-import { Slider, InputNumber, Row, Col, Tooltip, Typography, Space } from 'antd';
+import { Slider, InputNumber, Row, Col, Tooltip } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
-
-const { Text } = Typography;
-
-const S = {
-  group: { marginBottom: 24, position: 'relative' },
-  icon: { marginLeft: 8, color: 'var(--xh-text-tertiary)' },
-  compact: { width: 120 },
-  input: { width: 80 },
-  unit: { width: 40, textAlign: 'center', borderLeft: 'none', backgroundColor: 'var(--xh-bg)' },
-  tips: { fontSize: 12 },
-};
 
 const ParameterSlider = ({
   label, description, tips, value, onChange, range, step = 0.01,
@@ -29,53 +18,60 @@ const ParameterSlider = ({
 
   return (
     <motion.div
-      style={S.group}
-      role="group"
-      aria-labelledby={`param-${label}`}
-      whileHover={{ scale: 1.005 }}
+      style={{ marginBottom: 20, position: 'relative', paddingLeft: 14 }}
+      whileHover={{ x: 2 }}
       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
     >
+      {/* Accent bar */}
       <div style={{
-        position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
-        borderRadius: 2, background: 'var(--xh-primary)', opacity: 0.15,
+        position: 'absolute', left: 0, top: 2, bottom: 2, width: 3,
+        borderRadius: 2, background: 'linear-gradient(180deg, #1677ff, #7c3aed)',
+        opacity: 0.3,
       }} />
-      <Row align="middle" gutter={8}>
+
+      <Row align="middle" gutter={8} style={{ marginBottom: 6 }}>
         <Col flex="auto">
-          <Text strong id={`param-${label}`}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--xh-text)' }}>
             {label}
-            <Tooltip title={description}>
-              <QuestionCircleOutlined style={S.icon} aria-hidden="true" />
-            </Tooltip>
-          </Text>
+            {description && (
+              <Tooltip title={description}>
+                <QuestionCircleOutlined style={{ marginLeft: 6, color: 'var(--xh-text-tertiary)', fontSize: 12 }} />
+              </Tooltip>
+            )}
+          </span>
         </Col>
         <Col>
-          <Space.Compact style={S.compact}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
             <InputNumber
               value={value} onChange={onChange} min={range.min} max={range.max}
-              step={step} disabled={disabled} style={S.input} aria-label={`${label} 参数值`}
+              step={step} disabled={disabled}
+              style={{ width: 88, borderRadius: '8px 0 0 8px', borderRight: 'none' }}
             />
-            <InputNumber value={unit} disabled style={S.unit} />
-          </Space.Compact>
+            {unit && (
+              <div style={{
+                padding: '0 10px', height: 32, display: 'grid', placeItems: 'center',
+                background: 'var(--xh-bg)', border: '1px solid var(--xh-border)',
+                borderRadius: '0 8px 8px 0', fontSize: 12, color: 'var(--xh-text-tertiary)',
+                fontWeight: 600,
+              }}>
+                {unit}
+              </div>
+            )}
+          </div>
         </Col>
       </Row>
 
-      <Row>
-        <Col span={24}>
-          <Slider
-            value={sliderValue} onChange={handleSliderChange}
-            min={sliderMin} max={sliderMax} step={isLogScale ? 0.01 : step}
-            disabled={disabled} tooltip={{ formatter: null }}
-            styles={{ track: { background: 'var(--xh-primary)' } }}
-          />
-        </Col>
-      </Row>
+      <Slider
+        value={sliderValue} onChange={handleSliderChange}
+        min={sliderMin} max={sliderMax} step={isLogScale ? 0.01 : step}
+        disabled={disabled} tooltip={{ formatter: null }}
+        styles={{ track: { background: 'linear-gradient(90deg, #1677ff, #7c3aed)' } }}
+      />
 
       {tips && (
-        <Row>
-          <Col span={24}>
-            <Text type="secondary" style={S.tips}>{tips}</Text>
-          </Col>
-        </Row>
+        <div style={{ fontSize: 11, color: 'var(--xh-text-tertiary)', lineHeight: 1.5, marginTop: 2 }}>
+          {tips}
+        </div>
       )}
     </motion.div>
   );

@@ -52,3 +52,16 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# 前端构建产物
+web/dist/
+
+# 旧版 api 目录（开发残留）
+/api/
+
+# 非核心文档
+skills-lock.json
+
+# SQLite 运行时
+*.db-shm
+*.db-wal

@@ -1,39 +1,35 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Checkbox, Divider, Space, App } from 'antd';
-import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { Form, Input, Button, App } from 'antd';
+import { LockOutlined, SafetyOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuthStore } from '../../store/authStore';
-import CaptchaInput from '../../components/Captcha/CaptchaInput';
+import { resetPassword } from '../../api/auth';
 import AuroraBackground from '../../components/Aceternity/AuroraBackground';
 import SpotlightCard from '../../components/Aceternity/SpotlightCard';
 import FloatUp from '../../components/Aceternity/FloatUp';
 import MagneticButton from '../../components/Aceternity/MagneticButton';
 import Sparkles from '../../components/Aceternity/Sparkles';
 
-const Login = () => {
+const ResetPassword = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [captchaId, setCaptchaId] = useState('');
-  const { login } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const emailFromUrl = searchParams.get('email') || '';
   const navigate = useNavigate();
   const { message } = App.useApp();
 
-  const handleCaptchaChange = (id) => setCaptchaId(id);
-
-  const handleLogin = async (values) => {
+  const handleReset = async (values) => {
+    if (values.new_password !== values.confirm_password) {
+      message.error('两次输入的密码不一致');
+      return;
+    }
     setLoading(true);
     try {
-      await login({
-        ...values,
-        captcha_id: captchaId,
-        captcha_code: values.captcha_code,
-        remember_me: values.remember_me || false,
-      });
-      message.success('登录成功！');
-      navigate('/dashboard');
+      await resetPassword(values.email, values.code, values.new_password);
+      message.success('密码重置成功，请使用新密码登录');
+      navigate('/login');
     } catch {
-      // error handled by API interceptor
+      // error handled by interceptor
     } finally {
       setLoading(false);
     }
@@ -44,7 +40,7 @@ const Login = () => {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, position: 'relative' }}>
         <Sparkles count={50} color="rgba(22,119,255,0.2)" />
 
-        {/* Back to home */}
+        {/* Back */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -52,7 +48,7 @@ const Login = () => {
           style={{ position: 'absolute', top: 28, left: 28, zIndex: 10 }}
         >
           <motion.div
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/forgot-password')}
             whileHover={{ x: -4, scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             style={{
@@ -65,10 +61,7 @@ const Login = () => {
             }}
           >
             <ArrowLeftOutlined style={{ fontSize: 14, color: '#1677ff' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <img src="/logo.png" alt="星河智安" style={{ width: 22, height: 22, borderRadius: 6, objectFit: 'cover' }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>星河智安</span>
-            </div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>返回</span>
           </motion.div>
         </motion.div>
 
@@ -85,7 +78,6 @@ const Login = () => {
               position: 'relative',
               overflow: 'hidden',
             }}>
-              {/* Decorative orbs */}
               <div style={{ position: 'absolute', top: -80, right: -80, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(22,119,255,0.1), transparent 70%)', pointerEvents: 'none' }} />
               <div style={{ position: 'absolute', bottom: -60, left: -60, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.08), transparent 70%)', pointerEvents: 'none' }} />
 
@@ -112,29 +104,58 @@ const Login = () => {
                   transition={{ delay: 0.2, duration: 0.4 }}
                   style={{ color: 'var(--xh-text-secondary)', fontSize: 14, marginTop: 8 }}
                 >
-                  AI安全攻击可视化平台
+                  重置密码
                 </motion.div>
               </div>
 
-              {/* Form */}
-              <Form form={form} name="login" onFinish={handleLogin} size="large" layout="vertical">
-                <Form.Item name="username" rules={[{ required: true, message: '请输入用户名或邮箱' }]}>
-                  <Input prefix={<UserOutlined />} placeholder="用户名或邮箱" autoComplete="username" />
-                </Form.Item>
-                <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
-                  <Input.Password prefix={<LockOutlined />} placeholder="密码" autoComplete="current-password" />
-                </Form.Item>
+              <Form form={form} name="reset" onFinish={handleReset} size="large" layout="vertical"
+                initialValues={{ email: emailFromUrl }}
+              >
                 <Form.Item
-                  name="captcha_code"
-                  rules={[{ required: true, message: '请输入验证码' }, { len: 5, message: '验证码为5位字符' }]}
+                  name="email"
+                  rules={[
+                    { required: true, message: '请输入邮箱' },
+                    { type: 'email', message: '请输入有效的邮箱地址' },
+                  ]}
                 >
-                  <CaptchaInput placeholder="验证码" onCaptchaIdChange={handleCaptchaChange} />
+                  <Input prefix={<SafetyOutlined />} placeholder="注册邮箱" />
                 </Form.Item>
 
-                <Form.Item name="remember_me" valuePropName="checked" style={{ marginBottom: 20 }}>
-                  <Checkbox>
-                    <span style={{ color: 'var(--xh-text-secondary)', fontSize: 13 }}>记住我24小时</span>
-                  </Checkbox>
+                <Form.Item
+                  name="code"
+                  rules={[
+                    { required: true, message: '请输入验证码' },
+                    { len: 6, message: '验证码为6位数字' },
+                  ]}
+                >
+                  <Input prefix={<SafetyOutlined />} placeholder="6位验证码" maxLength={6} style={{ letterSpacing: 4, fontWeight: 600 }} />
+                </Form.Item>
+
+                <Form.Item
+                  name="new_password"
+                  rules={[
+                    { required: true, message: '请输入新密码' },
+                    { min: 8, message: '密码至少8位' },
+                  ]}
+                >
+                  <Input.Password prefix={<LockOutlined />} placeholder="新密码（至少8位，含大小写字母和数字）" />
+                </Form.Item>
+
+                <Form.Item
+                  name="confirm_password"
+                  rules={[
+                    { required: true, message: '请确认新密码' },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (!value || getFieldValue('new_password') === value) {
+                          return Promise.resolve();
+                        }
+                        return Promise.reject(new Error('两次输入的密码不一致'));
+                      },
+                    }),
+                  ]}
+                >
+                  <Input.Password prefix={<LockOutlined />} placeholder="确认新密码" />
                 </Form.Item>
 
                 <Form.Item style={{ marginBottom: 16 }}>
@@ -155,20 +176,11 @@ const Login = () => {
                         letterSpacing: '0.02em',
                       }}
                     >
-                      {loading ? '登录中...' : '登 录'}
+                      {loading ? '重置中...' : '重置密码'}
                     </Button>
                   </MagneticButton>
                 </Form.Item>
               </Form>
-
-              <Divider style={{ margin: '20px 0' }} />
-
-              <div style={{ textAlign: 'center' }}>
-                <Space split={<span style={{ color: 'var(--xh-border)' }}>|</span>}>
-                  <Link to="/register" style={{ color: 'var(--xh-primary)', fontWeight: 500 }}>注册账号</Link>
-                  <Link to="/forgot-password" style={{ color: 'var(--xh-text-secondary)', fontWeight: 500 }}>忘记密码</Link>
-                </Space>
-              </div>
             </div>
           </SpotlightCard>
         </FloatUp>
@@ -177,4 +189,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default ResetPassword;

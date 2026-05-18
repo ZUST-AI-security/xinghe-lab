@@ -110,18 +110,22 @@ a {
   border-radius: 12px;
   color: rgba(226, 232, 240, 0.84);
   font-weight: 600;
+  transition: all 0.25s ease;
+  border: 1px solid transparent;
 }
 
 .xh-side-menu.ant-menu .ant-menu-item:hover,
 .xh-side-menu.ant-menu .ant-menu-submenu-title:hover {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(22, 119, 255, 0.2);
+  box-shadow: 0 0 24px rgba(22, 119, 255, 0.18), 0 0 48px rgba(124, 58, 237, 0.06), inset 0 0 20px rgba(22, 119, 255, 0.05);
 }
 
 .xh-side-menu.ant-menu .ant-menu-item-selected {
   color: #ffffff;
   background: var(--xh-primary) !important;
-  box-shadow: 0 8px 18px rgba(22, 119, 255, 0.28);
+  box-shadow: 0 8px 18px rgba(22, 119, 255, 0.28), 0 0 24px rgba(22, 119, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .xh-side-menu.ant-menu .ant-menu-sub.ant-menu-inline {
@@ -131,10 +135,13 @@ a {
 }
 
 .xh-header {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border-bottom: 1px solid var(--xh-border);
-  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-bottom: 1px solid var(--xh-border) !important;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.04);
+  backdrop-filter: blur(20px) saturate(200%);
+  -webkit-backdrop-filter: blur(20px) saturate(200%);
+  line-height: normal !important;
+  overflow: visible !important;
 }
 
 .xh-content {

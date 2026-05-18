@@ -1,33 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, Image, Progress, Typography, App } from 'antd';
+import { Upload, Image, Progress, App } from 'antd';
 import { InboxOutlined, DeleteOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const { Dragger } = Upload;
-const { Text } = Typography;
-
-const S = {
-  previewWrap: { position: 'relative', display: 'inline-block' },
-  previewImage: { maxWidth: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 12, border: '1px solid var(--xh-border)' },
-  deleteBtn: {
-    position: 'absolute', top: -8, right: -8,
-    background: 'var(--xh-error)', color: '#fff', border: 'none', borderRadius: '50%',
-    width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10,
-  },
-  fileInfo: { marginTop: 8, textAlign: 'center' },
-  smallText: { fontSize: 12 },
-  dragger: {
-    border: '2px dashed var(--xh-border)', borderRadius: 12,
-    background: 'var(--xh-bg)', padding: '40px 20px',
-    transition: 'border-color 0.3s, background 0.3s',
-  },
-  draggerHover: {
-    borderColor: 'var(--xh-primary)',
-    background: 'var(--xh-primary-soft)',
-  },
-  uploadIcon: { fontSize: 48, color: 'var(--xh-primary)' },
-  progressWrap: { marginTop: 16 },
-};
 
 const ImageUploader = ({
   onImageChange, onImageIdChange, disabled = false, maxSize = 10,
@@ -103,21 +79,31 @@ const ImageUploader = ({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            style={S.previewWrap}
+            style={{ position: 'relative', display: 'inline-block', width: '100%' }}
           >
-            <Image src={previewUrl} alt="已上传的攻击目标图片预览" style={S.previewImage} />
-            <button
+            <Image
+              src={previewUrl} alt="已上传的攻击目标图片预览"
+              style={{ maxWidth: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 12, border: '1px solid var(--xh-border)' }}
+            />
+            <motion.button
               type="button" onClick={handleDelete} disabled={disabled}
-              aria-label="删除已上传图片"
-              style={{ ...S.deleteBtn, cursor: disabled ? 'not-allowed' : 'pointer' }}
+              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+              style={{
+                position: 'absolute', top: -8, right: -8,
+                background: '#ef4444', color: '#fff', border: '2px solid #fff',
+                borderRadius: '50%', width: 26, height: 26,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: disabled ? 'not-allowed' : 'pointer', zIndex: 10,
+                boxShadow: '0 2px 8px rgba(239,68,68,0.3)',
+              }}
             >
-              <DeleteOutlined />
-            </button>
+              <DeleteOutlined style={{ fontSize: 12 }} />
+            </motion.button>
             {imageFile && (
-              <div style={S.fileInfo}>
-                <Text type="secondary" style={S.smallText}>
+              <div style={{ marginTop: 8, textAlign: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--xh-text-tertiary)' }}>
                   {imageFile.name} ({(imageFile.size / 1024 / 1024).toFixed(2)} MB)
-                </Text>
+                </span>
               </div>
             )}
           </motion.div>
@@ -132,23 +118,25 @@ const ImageUploader = ({
               name="image" multiple={false} beforeUpload={handleUpload}
               disabled={disabled || uploading} showUploadList={false}
               accept={acceptTypes.join(',')}
-              style={{ ...S.dragger, ...(isDragOver ? S.draggerHover : {}) }}
+              style={{
+                border: `2px dashed ${isDragOver ? '#1677ff' : 'var(--xh-border)'}`,
+                borderRadius: 14, background: isDragOver ? 'rgba(22,119,255,0.03)' : 'var(--xh-bg)',
+                padding: '36px 20px', transition: 'all 0.3s ease',
+              }}
               onDragEnter={() => setIsDragOver(true)}
               onDragLeave={() => setIsDragOver(false)}
               onDrop={() => setIsDragOver(false)}
             >
-              <p className="ant-upload-drag-icon">
-                <motion.div
-                  animate={isDragOver ? { scale: 1.15, y: -4 } : { scale: 1, y: 0 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                >
-                  <InboxOutlined style={S.uploadIcon} />
-                </motion.div>
-              </p>
-              <p className="ant-upload-text">{placeholder}</p>
-              <p className="ant-upload-hint">
+              <motion.div
+                animate={isDragOver ? { scale: 1.12, y: -4 } : { scale: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              >
+                <InboxOutlined style={{ fontSize: 40, color: isDragOver ? '#1677ff' : 'var(--xh-text-tertiary)', transition: 'color 0.3s' }} />
+              </motion.div>
+              <div style={{ marginTop: 12, fontSize: 14, fontWeight: 600, color: 'var(--xh-text)' }}>{placeholder}</div>
+              <div style={{ marginTop: 4, fontSize: 12, color: 'var(--xh-text-tertiary)' }}>
                 支持 JPEG、PNG、WebP 格式，单个文件不超过 {maxSize}MB
-              </p>
+              </div>
             </Dragger>
           </motion.div>
         )}
@@ -158,10 +146,10 @@ const ImageUploader = ({
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
-          style={S.progressWrap}
+          style={{ marginTop: 12 }}
         >
           <Progress percent={uploadProgress} status={uploadProgress === 100 ? 'success' : 'active'} size="small" strokeColor={{ from: '#1677ff', to: '#7c3aed' }} />
-          <Text type="secondary" style={S.smallText}>正在上传图片...</Text>
+          <div style={{ fontSize: 12, color: 'var(--xh-text-tertiary)', marginTop: 4 }}>正在上传图片...</div>
         </motion.div>
       )}
     </div>

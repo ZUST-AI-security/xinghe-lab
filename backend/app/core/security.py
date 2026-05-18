@@ -74,21 +74,25 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     
     return encoded_jwt
 
-def create_refresh_token(data: dict) -> str:
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None, remember_me: bool = False) -> str:
     """
     创建刷新令牌
-    
+
     Args:
         data: 要编码的数据
-        
+        expires_delta: 自定义过期时间增量，None则使用默认配置
+        remember_me: 是否为记住登录状态的长期token
+
     Returns:
         str: JWT刷新令牌
     """
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=settings.jwt_refresh_token_expire_days)
-    
-    to_encode.update({"exp": expire, "type": "refresh"})
-    
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(days=settings.jwt_refresh_token_expire_days)
+    to_encode.update({"exp": expire, "type": "refresh", "remember_me": remember_me})
+
     encoded_jwt = jwt.encode(
         to_encode, 
         settings.jwt_secret_key, 
@@ -270,26 +274,31 @@ async def get_current_admin_user(
     return current_user
 
 
-def create_user_tokens(user: User) -> dict:
+def create_user_tokens(user: User, remember_me: bool = False) -> dict:
     """
     为用户创建访问令牌和刷新令牌
-    
+
     Args:
         user: 用户对象
-        
+        remember_me: 是否记住登录状态
+
     Returns:
         dict: 包含访问令牌和刷新令牌的字典
     """
     access_token_expires = timedelta(minutes=settings.jwt_access_token_expire_minutes)
     access_token = create_access_token(
-        data={"sub": user.username}, 
+        data={"sub": user.username},
         expires_delta=access_token_expires
     )
-    refresh_token = create_refresh_token(data={"sub": user.username})
-    
+    if remember_me:
+        refresh_expires = timedelta(hours=24)
+    else:
+        refresh_expires = timedelta(minutes=settings.jwt_access_token_expire_minutes)
+    refresh_token = create_refresh_token(data={"sub": user.username}, expires_delta=refresh_expires, remember_me=remember_me)
+
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
-        "expires_in": settings.jwt_access_token_expire_minutes * 60
+        "expires_in": settings.jwt_access_token_expire_minutes * 60,
     }

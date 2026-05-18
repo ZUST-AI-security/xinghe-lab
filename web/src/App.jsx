@@ -11,6 +11,8 @@ import { useAuthStore } from './store/authStore';
 const Landing = lazy(() => import('./pages/Landing'));
 const Login = lazy(() => import('./pages/Auth/Login'));
 const Register = lazy(() => import('./pages/Auth/Register'));
+const ForgotPassword = lazy(() => import('./pages/Auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/Auth/ResetPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const TaskHistory = lazy(() => import('./pages/Dashboard/TaskHistory'));
 const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
@@ -113,8 +115,16 @@ function App() {
             element={user && isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />}
           />
           <Route
+            path="/forgot-password"
+            element={<ForgotPassword />}
+          />
+          <Route
+            path="/reset-password"
+            element={<ResetPassword />}
+          />
+          <Route
             path="/"
-            element={user && isAuthenticated ? <Navigate to="/dashboard" replace /> : <Landing />}
+            element={<Landing />}
           />
 
           <Route
@@ -124,7 +134,6 @@ function App() {
                 <MainLayout>
                   <Suspense fallback={<PageSpinner />}>
                   <Routes>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/tasks/history" element={<TaskHistory />} />
 
