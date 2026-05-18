@@ -1,21 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 export default function Meteors({ number = 20, style, className }) {
-  const meteors = Array.from({ length: number }, (_, i) => {
-    const headSize = 2 + Math.random() * 3;
-    const tailLen = 60 + Math.random() * 100;
-    const angle = -35 - Math.random() * 20; // -35 to -55 deg
-    return {
-      id: i,
-      left: Math.random() * 120 - 10, // -10% to 110%
-      delay: Math.random() * 8,
-      duration: 1.5 + Math.random() * 2.5,
-      headSize,
-      tailLen,
-      angle,
-      opacity: 0.5 + Math.random() * 0.5,
-    };
-  });
+  const meteors = useMemo(() => Array.from({ length: number }, (_, i) => ({
+    id: i,
+    // Random horizontal start position across a wide range
+    left: Math.random() * 140 - 20,
+    delay: Math.random() * 6 + 0.2,
+    duration: Math.floor(Math.random() * 5) + 3,
+    // Tail length varies 40-80px
+    tailLen: 40 + Math.random() * 40,
+  })), [number]);
 
   return (
     <div
@@ -27,61 +21,54 @@ export default function Meteors({ number = 20, style, className }) {
       }}
     >
       {meteors.map((m) => (
-        <div
+        <span
           key={m.id}
           style={{
             position: 'absolute',
-            left: `${m.left}%`,
-            top: '-5%',
-            animation: `meteorFall ${m.duration}s linear ${m.delay}s infinite`,
+            top: 0,
+            left: `${m.left}px`,
+            width: 2,
+            height: 2,
+            borderRadius: 999,
+            background: 'rgba(255,255,255,0.8)',
+            boxShadow: '0 0 0 1px rgba(255,255,255,0.15), 0 0 6px 1px rgba(180,210,255,0.4)',
+            transform: 'rotate(215deg)',
+            animationDelay: `${m.delay}s`,
+            animationDuration: `${m.duration}s`,
+            animationName: 'meteorFall',
+            animationTimingFunction: 'linear',
+            animationIterationCount: 'infinite',
             opacity: 0,
           }}
         >
-          {/* Tail */}
-          <div style={{
+          {/* Tail via pseudo-element — thin gradient line */}
+          <span style={{
+            content: '""',
             position: 'absolute',
-            top: 0,
-            left: '50%',
-            transformOrigin: 'top center',
-            transform: `translateX(-50%) rotate(${m.angle + 90}deg)`,
+            top: '50%',
+            right: 0,
+            transform: 'translateY(-50%)',
             width: m.tailLen,
-            height: 1.5,
-            background: `linear-gradient(to left, rgba(180,210,255,${m.opacity * 0.7}), rgba(120,170,255,${m.opacity * 0.3}) 30%, transparent)`,
+            height: 1,
+            background: 'linear-gradient(to right, rgba(148,163,184,0), rgba(148,163,184,0.5) 20%, rgba(200,220,255,0.7))',
             borderRadius: 999,
-            filter: 'blur(0.5px)',
+            pointerEvents: 'none',
           }} />
-          {/* Head glow */}
-          <div style={{
-            position: 'absolute',
-            top: -m.headSize * 1.5,
-            left: '50%',
-            transform: 'translate(-50%, 0)',
-            width: m.headSize * 4,
-            height: m.headSize * 4,
-            borderRadius: '50%',
-            background: `radial-gradient(circle, rgba(180,220,255,${m.opacity * 0.3}) 0%, transparent 70%)`,
-            filter: 'blur(2px)',
-          }} />
-          {/* Head core */}
-          <div style={{
-            position: 'absolute',
-            top: -m.headSize / 2,
-            left: '50%',
-            transform: 'translate(-50%, 0)',
-            width: m.headSize,
-            height: m.headSize,
-            borderRadius: '50%',
-            background: `radial-gradient(circle, #fff 0%, rgba(180,220,255,${m.opacity}) 60%, transparent 100%)`,
-            boxShadow: `0 0 ${m.headSize * 2}px rgba(160,200,255,${m.opacity * 0.8}), 0 0 ${m.headSize * 4}px rgba(120,170,255,${m.opacity * 0.4})`,
-          }} />
-        </div>
+        </span>
       ))}
       <style>{`
         @keyframes meteorFall {
-          0% { transform: translateY(0) translateX(0); opacity: 0; }
-          5% { opacity: 1; }
-          85% { opacity: 0.8; }
-          100% { transform: translateY(110vh) translateX(-20vw); opacity: 0; }
+          0% {
+            transform: rotate(215deg) translateX(0);
+            opacity: 1;
+          }
+          70% {
+            opacity: 1;
+          }
+          100% {
+            transform: rotate(215deg) translateX(-600px);
+            opacity: 0;
+          }
         }
       `}</style>
     </div>
