@@ -13,3 +13,4 @@ export { default as GlareHover } from './GlareHover';
 export { default as AnimatedBeam } from './AnimatedBeam';
 export { default as FlickeringGrid } from './FlickeringGrid';
 export { default as NeonGradientCard } from './NeonGradientCard';
+export { default as FloatingNav } from './FloatingNav';

@@ -6,12 +6,13 @@ import {
   TextGenerateEffect, FlipWords, InfiniteMovingCards,
   MagneticButton, TracingBeam, BentoGrid, BentoGridItem,
   EvervingCard, GlowingCard, SpotlightCard, LampContainer,
+  CardContainer, CardBody, CardItem,
 } from '../../components/Aceternity';
 import {
   Marquee, BorderBeam, ShimmerButton, HyperText, BlurFade,
   RetroGrid, NumberTicker, AnimatedGradientText, Meteors,
   FlickeringGrid, NeonGradientCard, GlareHover, Lens,
-  OrbitingCircles,
+  OrbitingCircles, FloatingNav,
 } from '../../components/MagicUI';
 
 /* ═══════════════ tokens ═══════════════ */
@@ -78,38 +79,40 @@ const techStack = ['PyTorch', 'TensorFlow', 'ResNet', 'VGG', 'Inception', 'Mobil
 /* ═══════════════ NavBar ═══════════════ */
 function NavBar() {
   const nav = useNavigate();
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', h, { passive: true });
-    return () => window.removeEventListener('scroll', h);
-  }, []);
+
+  const navItems = [
+    { label: '功能', href: '#功能', icon: '✦' },
+    { label: '算法', href: '#算法', icon: '◈' },
+    { label: '架构', href: '#架构', icon: '◇' },
+  ];
+
+  const logo = (
+    <motion.div onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <motion.div
+        style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #1677ff, #7c3aed)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 13, boxShadow: '0 0 16px rgba(22,119,255,0.3)' }}
+        whileHover={{ rotate: 12, boxShadow: '0 0 24px rgba(22,119,255,0.5)' }}
+        transition={{ type: 'spring', stiffness: 400 }}
+      >X</motion.div>
+      <span style={{ fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>星河智安</span>
+    </motion.div>
+  );
+
+  const rightContent = (
+    <>
+      <motion.button onClick={() => nav('/login')} style={{ padding: '7px 18px', borderRadius: 9999, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }} whileHover={{ scale: 1.05, color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }} whileTap={{ scale: 0.95 }}>登录</motion.button>
+      <MagneticButton>
+        <motion.button onClick={() => nav('/register')} style={{ padding: '7px 18px', borderRadius: 9999, border: 'none', background: 'linear-gradient(135deg, #1677ff, #7c3aed)', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 12px rgba(22,119,255,0.3)' }} whileHover={{ scale: 1.05, boxShadow: '0 4px 20px rgba(22,119,255,0.45)' }} whileTap={{ scale: 0.95 }}>免费注册</motion.button>
+      </MagneticButton>
+    </>
+  );
 
   return (
-    <nav style={S.nav(scrolled)}>
-      <motion.div onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} whileHover={{ scale: 1.03 }}>
-        <motion.div style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg, #1677ff, #7c3aed)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 14 }} whileHover={{ rotate: 8 }} transition={{ type: 'spring', stiffness: 300 }}>X</motion.div>
-        <span style={{ fontSize: 17, fontWeight: 700, color: '#fff' }}>星河智安</span>
-      </motion.div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 36 }}>
-        {['功能', '算法', '架构'].map((item) => (
-          <motion.a key={item} href={`#${item}`} onClick={(e) => { e.preventDefault(); document.getElementById(item)?.scrollIntoView({ behavior: 'smooth' }); }}
-            style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.55)', textDecoration: 'none', cursor: 'pointer', position: 'relative', padding: '4px 0' }}
-            whileHover={{ color: '#fff' }}>
-            {item}
-            <motion.div style={{ position: 'absolute', bottom: -2, left: 0, right: 0, height: 2, borderRadius: 1, background: '#60a5fa', transformOrigin: 'center' }} initial={{ scaleX: 0 }} whileHover={{ scaleX: 1 }} transition={{ duration: 0.25 }} />
-          </motion.a>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <motion.button onClick={() => nav('/login')} style={{ padding: '6px 18px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', fontSize: 13, fontWeight: 600, color: '#e2e8f0', cursor: 'pointer' }} whileHover={{ scale: 1.04, borderColor: 'rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.08)' }} whileTap={{ scale: 0.97 }}>登录</motion.button>
-        <MagneticButton>
-          <motion.button onClick={() => nav('/register')} style={{ padding: '6px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #1677ff, #7c3aed)', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 12px rgba(22,119,255,0.3)' }} whileHover={{ scale: 1.04, boxShadow: '0 4px 24px rgba(22,119,255,0.45)' }} whileTap={{ scale: 0.97 }}>免费注册</motion.button>
-        </MagneticButton>
-      </div>
-    </nav>
+    <FloatingNav
+      navItems={navItems}
+      logo={logo}
+      rightContent={rightContent}
+      activeColor="#60a5fa"
+    />
   );
 }
 
@@ -328,39 +331,289 @@ function ProductDemoSection() {
   );
 }
 
+/* ═══════════════ FEATURE MOCKUPS ═══════════════ */
+function FeatureMockup({ index, color }) {
+  const base = {
+    width: 180, height: 150, borderRadius: 12,
+    background: 'rgba(0,0,0,0.3)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    overflow: 'hidden', position: 'relative',
+  };
+
+  // 0: 实时可视化引擎 — heatmap grid
+  if (index === 0) {
+    return (
+      <div style={base}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(6, 1fr)', gap: 2, padding: 10, height: '100%' }}>
+          {Array.from({ length: 48 }).map((_, j) => {
+            const colors = ['#1e3a5f', '#1e40af', '#3b82f6', '#60a5fa', '#93c5fd', '#ef4444', '#f97316'];
+            return <div key={j} style={{ borderRadius: 2, background: colors[j % colors.length], opacity: 0.5 + (j % 5) * 0.1 }} />;
+          })}
+        </div>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>实时渲染 · 60fps</div>
+      </div>
+    );
+  }
+
+  // 1: 智能对比模式 — side-by-side with slider
+  if (index === 1) {
+    return (
+      <div style={base}>
+        <div style={{ display: 'flex', height: '100%', padding: 10, gap: 4 }}>
+          {/* Left image */}
+          <div style={{ flex: 1, borderRadius: 8, background: 'linear-gradient(135deg, #1e3a5f, #0f172a)', display: 'grid', placeItems: 'center', position: 'relative' }}>
+            <div style={{ fontSize: 20, opacity: 0.5 }}>🖼️</div>
+            <div style={{ position: 'absolute', top: 6, left: 6, fontSize: 8, color: '#60a5fa', fontWeight: 700 }}>原始</div>
+          </div>
+          {/* Slider divider */}
+          <div style={{ width: 2, background: '#60a5fa', borderRadius: 1, position: 'relative', flexShrink: 0 }}>
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 14, height: 14, borderRadius: '50%', background: '#60a5fa', border: '2px solid #fff', boxShadow: '0 0 8px rgba(96,165,250,0.5)' }} />
+          </div>
+          {/* Right image */}
+          <div style={{ flex: 1, borderRadius: 8, background: 'linear-gradient(135deg, #5b21b6, #1e1b4b)', display: 'grid', placeItems: 'center', position: 'relative' }}>
+            <div style={{ fontSize: 20, opacity: 0.5 }}>⚡</div>
+            <div style={{ position: 'absolute', top: 6, right: 6, fontSize: 8, color: '#a78bfa', fontWeight: 700 }}>对抗</div>
+          </div>
+        </div>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>滑块对比 · 实时</div>
+      </div>
+    );
+  }
+
+  // 2: 交互式参数调优 — sliders
+  if (index === 2) {
+    const sliders = [
+      { label: 'ε', value: 0.03, pct: 30 },
+      { label: 'Steps', value: 40, pct: 50 },
+      { label: 'α', value: 0.007, pct: 15 },
+    ];
+    return (
+      <div style={base}>
+        <div style={{ padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {sliders.map((s) => (
+            <div key={s.label}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8' }}>{s.label}</span>
+                <span style={{ fontSize: 9, color, fontWeight: 600 }}>{s.value}</span>
+              </div>
+              <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)', position: 'relative' }}>
+                <div style={{ width: `${s.pct}%`, height: '100%', borderRadius: 2, background: `linear-gradient(90deg, ${color}, ${color}80)` }} />
+                <div style={{ position: 'absolute', left: `${s.pct}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 10, height: 10, borderRadius: '50%', background: '#fff', border: `2px solid ${color}`, boxShadow: `0 0 6px ${color}60` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>实时调参 · 即时反馈</div>
+      </div>
+    );
+  }
+
+  // 3: 置信度分析图表 — bar chart
+  if (index === 3) {
+    const bars = [
+      { label: 'Cat', before: 92, after: 15 },
+      { label: 'Dog', before: 5, after: 78 },
+      { label: 'Bird', before: 2, after: 4 },
+    ];
+    return (
+      <div style={base}>
+        <div style={{ padding: '12px 12px 0', display: 'flex', alignItems: 'flex-end', gap: 8, height: '100%' }}>
+          {bars.map((b) => (
+            <div key={b.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              {/* Before/After pair */}
+              <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 90 }}>
+                <div style={{ width: 14, borderRadius: '3px 3px 0 0', background: `linear-gradient(to top, ${color}, ${color}60)`, height: `${b.before}%` }} />
+                <div style={{ width: 14, borderRadius: '3px 3px 0 0', background: 'linear-gradient(to top, #ef4444, #ef444460)', height: `${b.after}%` }} />
+              </div>
+              <span style={{ fontSize: 7, color: '#64748b', fontWeight: 600 }}>{b.label}</span>
+            </div>
+          ))}
+        </div>
+        {/* Legend */}
+        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><div style={{ width: 5, height: 5, borderRadius: 1, background: color }} /><span style={{ fontSize: 7, color: '#64748b' }}>前</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><div style={{ width: 5, height: 5, borderRadius: 1, background: '#ef4444' }} /><span style={{ fontSize: 7, color: '#64748b' }}>后</span></div>
+        </div>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>置信度变化 · Top-K</div>
+      </div>
+    );
+  }
+
+  // 4: 扰动热力图 — pixel-level with color scale
+  if (index === 4) {
+    return (
+      <div style={base}>
+        <div style={{ padding: 10, height: '100%', display: 'flex', gap: 8 }}>
+          {/* Pixel grid */}
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gridTemplateRows: 'repeat(10, 1fr)', gap: 1 }}>
+            {Array.from({ length: 100 }).map((_, j) => {
+              const intensity = Math.sin(j * 0.3) * 0.5 + 0.5;
+              const r = Math.floor(intensity * 255);
+              const b = Math.floor((1 - intensity) * 100);
+              return <div key={j} style={{ borderRadius: 1, background: `rgb(${r}, ${Math.floor(intensity * 80)}, ${b})` }} />;
+            })}
+          </div>
+          {/* Color scale */}
+          <div style={{ width: 12, borderRadius: 4, background: 'linear-gradient(to bottom, #ef4444, #f97316, #eab308, #22c55e, #3b82f6)', position: 'relative' }}>
+            <span style={{ position: 'absolute', top: -2, right: -2, fontSize: 6, color: '#ef4444' }}>高</span>
+            <span style={{ position: 'absolute', bottom: -2, right: -2, fontSize: 6, color: '#3b82f6' }}>低</span>
+          </div>
+        </div>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>像素级扰动 · 可导出</div>
+      </div>
+    );
+  }
+
+  // 5: 多模型架构支持 — connected nodes
+  if (index === 5) {
+    const nodes = [
+      { x: 20, y: 30, label: 'R', c: '#3b82f6' },
+      { x: 70, y: 20, label: 'V', c: '#8b5cf6' },
+      { x: 45, y: 70, label: 'I', c: '#06b6d4' },
+      { x: 80, y: 65, label: 'M', c: '#10b981' },
+    ];
+    return (
+      <div style={base}>
+        <svg style={{ width: '100%', height: '100%', padding: 10 }} viewBox="0 0 100 90">
+          {/* Connection lines */}
+          {nodes.map((a, ai) => nodes.slice(ai + 1).map((b, bi) => (
+            <line key={`${ai}-${bi}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
+          )))}
+          {/* Nodes */}
+          {nodes.map((n) => (
+            <g key={n.label}>
+              <circle cx={n.x} cy={n.y} r="12" fill={`${n.c}20`} stroke={`${n.c}40`} strokeWidth="0.8" />
+              <circle cx={n.x} cy={n.y} r="5" fill={n.c} opacity="0.8" />
+              <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="5" fontWeight="700">{n.label}</text>
+            </g>
+          ))}
+        </svg>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>ResNet · VGG · Inception · MobileNet</div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 /* ═══════════════ FEATURES ═══════════════ */
 function FeaturesSection() {
+  const features = [
+    {
+      title: '实时可视化引擎',
+      desc: '对抗样本生成全过程实时呈现，原始图像与扰动层分离展示，像素级差异热力图一目了然。',
+      icon: '🔬',
+      color: '#667eea',
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    },
+    {
+      title: '智能对比模式',
+      desc: '左右滑块对比、多算法同图叠加、量化差异图表，三种维度深度比较攻击效果。',
+      icon: '⚖️',
+      color: '#f093fb',
+      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    },
+    {
+      title: '交互式参数调优',
+      desc: '可视化滑块实时调节 epsilon / steps / learning rate，预设模板与自定义并行。',
+      icon: '🎛️',
+      color: '#4facfe',
+      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    },
+    {
+      title: '置信度分析图表',
+      desc: '分类置信度变化柱状图，Top-K 概率分布对比，攻击前后模型决策全景展示。',
+      icon: '📊',
+      color: '#43e97b',
+      gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    },
+    {
+      title: '扰动热力图',
+      desc: '像素级扰动幅度可视化，颜色编码直观呈现攻击影响区域，支持缩放与导出。',
+      icon: '🔥',
+      color: '#fa709a',
+      gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    },
+    {
+      title: '多模型架构支持',
+      desc: 'ResNet / VGG / Inception / MobileNet 等主流架构开箱即用，灵活扩展。',
+      icon: '🧬',
+      color: '#a18cd1',
+      gradient: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+    },
+  ];
+
   return (
-    <section id="功能" style={{ ...S.section, background: '#fff' }}>
+    <section id="功能" style={{ ...S.section, background: '#050510', padding: 'clamp(100px, 12vw, 160px) 24px' }}>
+      <FlickeringGrid color="rgb(124, 58, 237)" squareSize={2} gridGap={10} flickerChance={0.04} maxOpacity={0.1} />
+      <Meteors number={6} />
+      <div style={{ position: 'absolute', top: '15%', right: '10%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.06) 0%, transparent 70%)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: '15%', left: '10%', width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle, rgba(22,119,255,0.05) 0%, transparent 70%)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+
       <div style={S.inner}>
-        <BlurFade style={{ textAlign: 'center', marginBottom: 56 }}>
-          <div style={S.tag('#7c3aed')}>Platform Features</div>
-          <h2 style={S.h2}>平台核心能力</h2>
-          <p style={S.desc}>从攻击生成到结果分析，全流程可视化操作，让 AI 安全研究更高效。</p>
+        <BlurFade style={{ textAlign: 'center', marginBottom: 72 }}>
+          <div style={S.tag('#a78bfa')}>Platform Features</div>
+          <h2 style={{ ...S.h2, color: '#fff' }}>平台核心能力</h2>
+          <p style={{ ...S.desc, color: '#94a3b8' }}>从攻击生成到结果分析，全流程可视化操作，让 AI 安全研究更高效。</p>
         </BlurFade>
 
-        <BentoGrid>
-          {capabilities.map((cap, i) => {
-            const isWide = i === 0 || i === 3;
-            return (
-              <BlurFade key={cap.title} delay={i * 0.08}>
-                <GlareHover borderRadius={20} glareColor="rgba(22,119,255,0.08)" style={{ height: '100%' }}>
-                  <BentoGridItem
-                    title={cap.title}
-                    description={cap.desc}
-                    colSpan={isWide ? 2 : 1}
-                    header={
-                      <div style={{ height: isWide ? 130 : 100, background: cap.gradient, position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.15)' }} />
+        {/* Bento grid — all cards use Card3D + SpotlightCard */}
+        <div className="features-bento-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, maxWidth: 960, margin: '0 auto' }}>
+          {features.map((feat, i) => (
+            <BlurFade key={feat.title} delay={i * 0.08}>
+              <CardContainer containerClassName="feature-3d-container" style={{ width: '100%' }}>
+                <CardBody style={{
+                  background: 'rgba(15,23,42,0.8)',
+                  borderRadius: 20,
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  padding: 0,
+                  overflow: 'hidden',
+                }}>
+                  <SpotlightCard spotlightColor={`${feat.color}18`} style={{ height: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 28, padding: '28px 32px', position: 'relative', zIndex: 2 }}>
+                      {/* Left: icon + content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <CardItem translateZ={30}>
+                          <div style={{
+                            width: 56, height: 56, borderRadius: 16, marginBottom: 16,
+                            background: feat.gradient,
+                            display: 'grid', placeItems: 'center', fontSize: 26,
+                            boxShadow: `0 8px 32px ${feat.color}30`,
+                          }}>
+                            {feat.icon}
+                          </div>
+                        </CardItem>
+                        <CardItem translateZ={20}>
+                          <h3 style={{ fontSize: 19, fontWeight: 700, color: '#fff', margin: '0 0 8px' }}>{feat.title}</h3>
+                        </CardItem>
+                        <CardItem translateZ={10}>
+                          <p style={{ fontSize: 13, lineHeight: 1.7, color: '#94a3b8', margin: 0 }}>{feat.desc}</p>
+                        </CardItem>
                       </div>
-                    }
-                  />
-                </GlareHover>
-              </BlurFade>
-            );
-          })}
-        </BentoGrid>
+
+                      {/* Right: unique mini mockup per feature */}
+                      <CardItem translateZ={50} style={{ flex: '0 0 auto' }}>
+                        <FeatureMockup index={i} color={feat.color} />
+                      </CardItem>
+                    </div>
+
+                    {/* Bottom gradient bar */}
+                    <div style={{ height: 3, background: feat.gradient }} />
+                  </SpotlightCard>
+                </CardBody>
+              </CardContainer>
+            </BlurFade>
+          ))}
+        </div>
       </div>
+
+      {/* Responsive */}
+      <style>{`
+        .feature-3d-container { width: 100%; }
+        @media (max-width: 768px) {
+          .features-bento-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </section>
   );
 }
@@ -451,19 +704,35 @@ function AlgorithmsSection() {
                           {algo.icon}
                         </motion.div>
                         <div>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: algo.color, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 2 }}>{algo.name}</div>
-                          <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>{algo.full}</div>
+                          <HyperText
+                            text={algo.name}
+                            duration={600}
+                            style={{
+                              fontSize: 14, fontWeight: 800, color: algo.color,
+                              letterSpacing: 2, textTransform: 'uppercase',
+                              display: 'block', marginBottom: 2,
+                            }}
+                          />
+                          <TextGenerateEffect
+                            words={algo.full}
+                            duration={0.4}
+                            style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}
+                          />
                         </div>
                       </div>
 
                       {/* Description */}
-                      <p style={{ fontSize: 13, lineHeight: 1.7, color: '#94a3b8', margin: '0 0 20px' }}>{algo.desc}</p>
+                      <TextGenerateEffect
+                        words={algo.desc}
+                        duration={0.5}
+                        style={{ fontSize: 13, lineHeight: 1.7, color: '#cbd5e1', margin: '0 0 20px' }}
+                      />
 
                       {/* Bars */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', letterSpacing: 1 }}>速度</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: 1 }}>速度</span>
                             <span style={{ fontSize: 10, color: algo.color, fontWeight: 600 }}>{algo.speed}</span>
                           </div>
                           <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)' }}>
@@ -478,7 +747,7 @@ function AlgorithmsSection() {
                         </div>
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', letterSpacing: 1 }}>精度</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: 1 }}>精度</span>
                             <span style={{ fontSize: 10, color: algo.color, fontWeight: 600 }}>{algo.precision}</span>
                           </div>
                           <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)' }}>
@@ -530,7 +799,7 @@ function AlgorithmsSection() {
               </React.Fragment>
             ))}
           </div>
-          <div style={{ fontSize: 11, color: '#475569', marginTop: 16, letterSpacing: 1 }}>从快速验证到高精度评估，覆盖完整攻击谱系</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 16, letterSpacing: 1 }}>从快速验证到高精度评估，覆盖完整攻击谱系</div>
         </BlurFade>
       </div>
     </section>
