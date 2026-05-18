@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { Modal } from 'antd';
 import {
   AuroraBackground, Sparkles, BackgroundGrid, BackgroundBeams,
   TextGenerateEffect, FlipWords, InfiniteMovingCards,
@@ -76,9 +77,20 @@ const stats = [
 
 const techStack = ['PyTorch', 'TensorFlow', 'ResNet', 'VGG', 'Inception', 'MobileNet', 'FGSM', 'PGD', 'C&W', 'DeepFool', 'Grad-CAM', 'NumPy'];
 
+/* ═══════════════ LogoPreview Modal ═══════════════ */
+function LogoPreviewModal({ open, onClose }) {
+  return (
+    <Modal open={open} onCancel={onClose} footer={null} centered width={360}
+      styles={{ body: { padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' } }}>
+      <img src="/logo.png" alt="星河智安" style={{ width: '100%', borderRadius: 16 }} />
+    </Modal>
+  );
+}
+
 /* ═══════════════ NavBar ═══════════════ */
 function NavBar() {
   const nav = useNavigate();
+  const [logoOpen, setLogoOpen] = useState(false);
 
   const navItems = [
     { label: '功能', href: '#功能', icon: '✦' },
@@ -87,15 +99,17 @@ function NavBar() {
   ];
 
   const logo = (
-    <motion.div onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <motion.div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <motion.img
         src="/logo.png"
         alt="星河智安"
-        style={{ width: 32, height: 32, borderRadius: 10, boxShadow: '0 0 16px rgba(22,119,255,0.3)' }}
+        onClick={(e) => { e.stopPropagation(); setLogoOpen(true); }}
+        style={{ width: 32, height: 32, borderRadius: 10, boxShadow: '0 0 16px rgba(22,119,255,0.3)', cursor: 'pointer' }}
         whileHover={{ rotate: 12, boxShadow: '0 0 24px rgba(22,119,255,0.5)' }}
         transition={{ type: 'spring', stiffness: 400 }}
       />
-      <span style={{ fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>星河智安</span>
+      <span onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em', cursor: 'pointer' }}>星河智安</span>
+      <LogoPreviewModal open={logoOpen} onClose={() => setLogoOpen(false)} />
     </motion.div>
   );
 
@@ -868,6 +882,7 @@ function ShowcaseSection() {
 /* ═══════════════ CTA ═══════════════ */
 function CTASection() {
   const nav = useNavigate();
+  const [logoOpen, setLogoOpen] = useState(false);
   return (
     <section style={{ position: 'relative', padding: 'clamp(100px, 12vw, 160px) 24px', textAlign: 'center', background: '#050510', overflow: 'hidden' }}>
       <FlickeringGrid color="rgb(96, 165, 250)" squareSize={2} gridGap={12} flickerChance={0.05} maxOpacity={0.15} />
@@ -896,8 +911,9 @@ function CTASection() {
 
       <div style={{ marginTop: 80, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)', position: 'relative', zIndex: 2 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
-          <img src="/logo.png" alt="星河智安" style={{ width: 26, height: 26, borderRadius: 7 }} />
+          <img src="/logo.png" alt="星河智安" onClick={() => setLogoOpen(true)} style={{ width: 26, height: 26, borderRadius: 7, cursor: 'pointer' }} />
           <span style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.45)' }}>星河智安</span>
+          <LogoPreviewModal open={logoOpen} onClose={() => setLogoOpen(false)} />
         </div>
         <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', margin: 0 }}>&copy; {new Date().getFullYear()} XingHe ZhiAn &mdash; AI Adversarial Attack Visualization Platform</p>
       </div>
