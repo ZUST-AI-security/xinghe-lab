@@ -200,6 +200,9 @@ const MainLayout = ({ children }) => {
               <div className="xh-content-inner">{children}</div>
             </motion.div>
           </AnimatePresence>
+          <div style={{ textAlign: 'center', padding: '24px 16px 20px', color: 'var(--xh-text-tertiary)', fontSize: 12 }}>
+            浙ICP备2026027797号
+          </div>
         </Content>
       </Layout>
     </Layout>

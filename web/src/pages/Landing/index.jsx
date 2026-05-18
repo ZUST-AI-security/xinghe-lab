@@ -7,12 +7,12 @@ import {
   TextGenerateEffect, FlipWords, InfiniteMovingCards,
   MagneticButton, TracingBeam, BentoGrid, BentoGridItem,
   EvervingCard, GlowingCard, SpotlightCard, LampContainer,
-  CardContainer, CardBody, CardItem,
+  CardContainer, CardBody, CardItem, GlowingEffect, WobbleCard,
 } from '../../components/Aceternity';
 import {
   Marquee, BorderBeam, ShimmerButton, HyperText, BlurFade,
   RetroGrid, NumberTicker, AnimatedGradientText, Meteors,
-  FlickeringGrid, NeonGradientCard, GlareHover, Lens,
+  FlickeringGrid, NeonGradientCard, Lens,
   OrbitingCircles, FloatingNav,
 } from '../../components/MagicUI';
 
@@ -232,18 +232,14 @@ function StatsBar() {
       <div style={{ ...S.inner, display: 'flex', justifyContent: 'center', gap: 'clamp(16px, 3vw, 32px)', flexWrap: 'wrap' }}>
         {stats.map((s, i) => (
           <BlurFade key={s.label} delay={i * 0.1} duration={0.6}>
-            <NeonGradientCard
-              neonColors={{ firstColor: s.color, secondColor: '#7c3aed' }}
-              size={200}
-              style={{ width: 'clamp(140px, 20vw, 220px)' }}
-            >
+            <WobbleCard style={{ width: 'clamp(140px, 20vw, 220px)', background: '#fff', border: '1px solid #e2e8f0' }}>
               <div style={{ padding: '28px 20px', textAlign: 'center' }}>
                 <div style={{ fontSize: 'clamp(36px, 5vw, 52px)', fontWeight: 900, lineHeight: 1, background: `linear-gradient(135deg, ${s.color}, #7c3aed)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                   <NumberTicker value={s.value} duration={2} suffix={s.suffix} />
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', marginTop: 8 }}>{s.label}</div>
               </div>
-            </NeonGradientCard>
+            </WobbleCard>
           </BlurFade>
         ))}
       </div>
@@ -585,7 +581,8 @@ function FeaturesSection() {
                   padding: 0,
                   overflow: 'hidden',
                 }}>
-                  <SpotlightCard spotlightColor={`${feat.color}18`} style={{ height: '100%' }}>
+                  <div style={{ position: 'relative', height: '100%' }}>
+                    <GlowingEffect spread={40} proximity={160} style={{ '--xh-primary': `${feat.color}50` }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 28, padding: '28px 32px', position: 'relative', zIndex: 2 }}>
                       {/* Left: icon + content */}
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -615,7 +612,7 @@ function FeaturesSection() {
 
                     {/* Bottom gradient bar */}
                     <div style={{ height: 3, background: feat.gradient }} />
-                  </SpotlightCard>
+                  </div>
                 </CardBody>
               </CardContainer>
             </BlurFade>
@@ -692,11 +689,10 @@ function AlgorithmsSection() {
                     padding: 28,
                     position: 'relative',
                     overflow: 'hidden',
+                    '--xh-primary': `${algo.color}40`,
                   }}>
-                    {/* GlareEffect */}
-                    <GlareHover borderRadius={18} glareColor={`${algo.color}20`} glareSize={300} style={{ position: 'absolute', inset: 0 }}>
-                      <div />
-                    </GlareHover>
+                    {/* Cursor-tracking glow border */}
+                    <GlowingEffect spread={40} proximity={140} />
 
                     {/* Top accent line */}
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${algo.color}, transparent)` }} />
@@ -845,7 +841,8 @@ function ArchitectureSection() {
             <BlurFade key={step.label} delay={i * 0.12} style={{ flex: '1 1 220px', maxWidth: 260 }}>
               <EvervingCard delay={i * 0.3}>
                 <NeonGradientCard neonColors={{ firstColor: step.color, secondColor: '#7c3aed' }} size={180}>
-                  <div style={{ padding: '32px 20px', textAlign: 'center', position: 'relative' }}>
+                  <div style={{ padding: '32px 20px', textAlign: 'center', position: 'relative', '--xh-primary': `${step.color}35` }}>
+                    <GlowingEffect spread={35} proximity={120} />
                     <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', padding: '2px 12px', borderRadius: 999, background: step.color, color: '#fff', fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>{String(i + 1).padStart(2, '0')}</div>
                     <div style={{ width: 64, height: 64, borderRadius: 18, margin: '14px auto 16px', background: `${step.color}0d`, display: 'grid', placeItems: 'center', fontSize: 28, border: `1px solid ${step.color}12` }}>{step.icon}</div>
                     <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>{step.label}</h3>
@@ -916,6 +913,7 @@ function CTASection() {
           <LogoPreviewModal open={logoOpen} onClose={() => setLogoOpen(false)} />
         </div>
         <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', margin: 0 }}>&copy; {new Date().getFullYear()} XingHe ZhiAn &mdash; AI Adversarial Attack Visualization Platform</p>
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.14)', margin: '6px 0 0' }}>浙ICP备2026027797号</p>
       </div>
     </section>
   );
