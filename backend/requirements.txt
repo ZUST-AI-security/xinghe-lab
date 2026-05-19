@@ -1,5 +1,10 @@
 # 星河智安 (XingHe ZhiAn) - AI安全攻击可视化平台
-# Backend Dependencies - 与 .venv 实际版本一致
+# Backend Dependencies
+#
+# PyTorch 安装说明：
+#   有 GPU（推荐）: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+#   无 GPU（CPU）:   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#   Docker 部署时由 Dockerfile 自动处理，无需手动选择。
 
 # FastAPI and ASGI server
 fastapi==0.136.1
@@ -20,9 +25,9 @@ bcrypt==4.3.0
 redis==7.4.0
 celery==5.6.3
 
-# AI/ML - PyTorch ecosystem
-torch==2.11.0
-torchvision==0.26.0
+# AI/ML - PyTorch（版本由 Dockerfile 控制，此处仅声明依赖）
+torch>=2.10.0
+torchvision>=0.25.0
 numpy==2.4.4
 pillow==12.2.0
 opencv-python-headless==4.13.0.92
