@@ -32,7 +32,7 @@
 
 ---
 
-## 生产环境部署指南（Ubuntu 24）
+## 方式一：Docker 部署（推荐）
 
 ### 前置条件
 
@@ -246,6 +246,222 @@ docker compose restart nginx
 
 ```bash
 docker compose up -d --build backend
+```
+
+---
+
+## 方式二：直接部署（不用 Docker）
+
+适用于无法使用 Docker 的服务器，或需要更精细控制的场景。
+
+### 前置条件
+
+- Ubuntu 24.04 LTS 服务器
+- root 或 sudo 权限
+
+### 1. 安装系统依赖
+
+```bash
+sudo apt update
+sudo apt install -y python3.13 python3.13-venv python3-pip \
+    libgl1 libglib2.0-0 libgomp1 \
+    postgresql postgresql-contrib \
+    redis-server \
+    nginx
+
+# 安装 Node.js（构建前端）
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+npm config set registry https://registry.npmmirror.com
+```
+
+### 2. 配置 PostgreSQL
+
+```bash
+sudo systemctl start postgresql
+sudo -u postgres psql -c "CREATE USER xinghe WITH PASSWORD '你的数据库密码';"
+sudo -u postgres psql -c "CREATE DATABASE xinghe_zhi_an OWNER xinghe;"
+```
+
+### 3. 配置 Redis
+
+```bash
+sudo nano /etc/redis/redis.conf
+# 找到 requirepass，取消注释并设置密码：
+# requirepass 你的Redis密码
+sudo systemctl restart redis
+```
+
+### 4. 部署后端
+
+```bash
+cd /opt
+git clone -b yunzen https://github.com/ZUST-AI-security/xinghe-lab.git
+cd xinghe-lab/backend
+
+# 创建虚拟环境
+python3.13 -m venv venv
+source venv/bin/activate
+
+# 配置国内 pip 镜像
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 安装 PyTorch（根据是否有 GPU 选择）
+# 有 GPU：
+pip install torch torchvision --index-url https://mirror.sjtu.edu.cn/pytorch-wheels/cu124
+# 无 GPU：
+pip install torch torchvision --index-url https://mirror.sjtu.edu.cn/pytorch-wheels/cpu
+
+# 安装其他依赖
+pip install --no-deps -r requirements.txt
+
+# 创建环境配置（替换密码和 IP）
+cat > .env << EOF
+DEBUG=False
+SECRET_KEY=$(openssl rand -hex 32)
+JWT_SECRET_KEY=$(openssl rand -hex 32)
+DATABASE_URL=postgresql+psycopg://xinghe:你的数据库密码@localhost:5432/xinghe_zhi_an
+REDIS_URL=redis://:你的Redis密码@localhost:6379/0
+CELERY_BROKER_URL=redis://:你的Redis密码@localhost:6379/0
+CELERY_RESULT_BACKEND=redis://:你的Redis密码@localhost:6379/0
+CORS_ORIGINS=["http://你的服务器IP"]
+DEVICE=gpu
+EOF
+
+# 运行数据库迁移
+alembic upgrade head
+
+# 创建必要目录
+mkdir -p outputs logs models
+```
+
+### 5. 配置 Systemd 服务
+
+```bash
+# 后端 API
+sudo tee /etc/systemd/system/xinghe-backend.service << 'EOF'
+[Unit]
+Description=XingHe ZhiAn Backend API
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/xinghe-lab/backend
+EnvironmentFile=/opt/xinghe-lab/backend/.env
+ExecStart=/opt/xinghe-lab/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Celery Worker
+sudo tee /etc/systemd/system/xinghe-celery.service << 'EOF'
+[Unit]
+Description=XingHe ZhiAn Celery Worker
+After=network.target redis.service postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/xinghe-lab/backend
+EnvironmentFile=/opt/xinghe-lab/backend/.env
+ExecStart=/opt/xinghe-lab/backend/venv/bin/celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 启动服务
+sudo systemctl daemon-reload
+sudo systemctl enable xinghe-backend xinghe-celery
+sudo systemctl start xinghe-backend xinghe-celery
+```
+
+### 6. 构建前端
+
+```bash
+cd /opt/xinghe-lab/web
+npm install --legacy-peer-deps
+npm run build
+```
+
+### 7. 配置 Nginx
+
+```bash
+sudo tee /etc/nginx/sites-available/xinghe << 'EOF'
+server {
+    listen 80;
+    server_name _;
+
+    client_max_body_size 20m;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    root /opt/xinghe-lab/web/dist;
+    index index.html;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+    }
+
+    location /outputs/ {
+        proxy_pass http://127.0.0.1:8000/outputs/;
+        proxy_set_header Host $host;
+    }
+
+    location /health {
+        proxy_pass http://127.0.0.1:8000/health;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+EOF
+
+sudo ln -sf /etc/nginx/sites-available/xinghe /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl restart nginx
+```
+
+### 8. 验证
+
+```bash
+# 检查服务状态
+sudo systemctl status xinghe-backend xinghe-celery postgresql redis nginx
+
+# 健康检查
+curl http://localhost/health
+```
+
+浏览器访问 `http://你的服务器IP`。
+
+### 直接部署 - 更新命令
+
+```bash
+cd /opt/xinghe-lab
+git pull origin yunzen
+
+# 更新后端
+cd backend && source venv/bin/activate
+pip install --no-deps -r requirements.txt
+alembic upgrade head
+sudo systemctl restart xinghe-backend xinghe-celery
+
+# 更新前端
+cd ../web && npm install --legacy-peer-deps && npm run build
+sudo systemctl reload nginx
 ```
 
 ---
