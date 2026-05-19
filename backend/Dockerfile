@@ -1,7 +1,7 @@
 # 星河智安 (XingHe ZhiAn) - 后端 Dockerfile
 # FastAPI + Uvicorn + Celery
 
-FROM python:3.12-slim AS base
+FROM python:3.13-slim AS base
 
 WORKDIR /app
 
