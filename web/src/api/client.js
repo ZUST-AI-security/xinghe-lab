@@ -18,9 +18,9 @@ const getMessage = () => {
 };
 
 // API基础配置
-// 生产环境使用空字符串（相对路径），由 Nginx 代理到后端
-// 开发环境默认指向本地后端
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+// 生产环境：空字符串（相对路径），由 Nginx 代理到后端
+// 开发环境：在 web/.env 中设置 VITE_API_BASE_URL=http://localhost:8000
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG === 'true';
 
