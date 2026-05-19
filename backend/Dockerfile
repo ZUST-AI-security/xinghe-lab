@@ -1,9 +1,17 @@
 # 星河智安 (XingHe ZhiAn) - 后端 Dockerfile
 # FastAPI + Uvicorn + Celery
+#
+# 构建方式：
+#   有 GPU: docker compose build backend
+#   无 GPU: DEVICE=cpu docker compose build backend
+#
+# GPU 需要: NVIDIA GPU + nvidia-container-toolkit
 
 FROM python:3.13-slim AS base
 
 WORKDIR /app
+
+ARG DEVICE=gpu
 
 # 系统依赖（opencv 需要 libgl/libglib）
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -12,9 +20,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 Python 依赖
+# 安装 PyTorch（根据 DEVICE 参数选择 GPU 或 CPU 版本）
+# GPU 版本约 2.5GB，CPU 版本约 200MB
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN if [ "$DEVICE" = "cpu" ]; then \
+        echo ">>> 安装 CPU 版 PyTorch <<<" && \
+        pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu; \
+    else \
+        echo ">>> 安装 CUDA 版 PyTorch <<<" && \
+        pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu124; \
+    fi
+
+# 安装其余 Python 依赖
+RUN pip install --no-cache-dir --no-deps -r requirements.txt
 
 # 复制源代码
 COPY . .

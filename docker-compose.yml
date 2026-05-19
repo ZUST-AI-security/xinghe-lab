@@ -53,6 +53,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        DEVICE: ${DEVICE:-gpu}
     restart: unless-stopped
     env_file: .env
     environment:
@@ -85,6 +87,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        DEVICE: ${DEVICE:-gpu}
     restart: unless-stopped
     entrypoint: ["/app/entrypoint.sh"]
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 --max-tasks-per-child=50
@@ -113,6 +117,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        DEVICE: ${DEVICE:-gpu}
     restart: unless-stopped
     entrypoint: ["/app/entrypoint.sh"]
     command: celery -A app.core.celery_app beat --loglevel=info

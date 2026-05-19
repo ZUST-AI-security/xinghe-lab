@@ -24,7 +24,7 @@
 
 | 层级 | 技术 |
 |------|------|
-| **后端** | Python 3.13 · FastAPI 0.136 · Uvicorn · PyTorch 2.11 |
+| **后端** | Python 3.13 · FastAPI 0.136 · Uvicorn · PyTorch 2.x |
 | **数据库** | PostgreSQL 16 · SQLAlchemy 2.0 · Alembic |
 | **异步任务** | Celery 5.6 · Redis 7.4 |
 | **前端** | React 18 · Vite · Ant Design 5 · Aceternity UI · MagicUI |
@@ -102,7 +102,28 @@ npm run build
 cd ..
 ```
 
-### 第五步：启动服务
+### 第五步：配置 GPU / CPU
+
+PyTorch 镜像分为 **GPU 版**（CUDA）和 **CPU 版**，构建前需根据服务器配置选择：
+
+| 服务器情况 | `.env` 中设置 | 说明 |
+|------------|---------------|------|
+| 有 NVIDIA GPU | `DEVICE=gpu` | 使用 CUDA 加速，攻击任务更快（默认值） |
+| 无 GPU | `DEVICE=cpu` | 仅用 CPU，镜像更小（约 200MB vs 2.5GB） |
+
+编辑 `.env`，确认 `DEVICE` 变量：
+
+```bash
+# 有 GPU 的服务器（默认）
+DEVICE=gpu
+
+# 没有 GPU 的服务器
+DEVICE=cpu
+```
+
+> **注意**：GPU 版需要服务器已安装 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)，否则 Docker 无法使用 GPU。
+
+### 第六步：启动服务
 
 ```bash
 # 构建镜像并启动所有服务
@@ -111,11 +132,11 @@ docker compose up -d --build
 
 首次启动会：
 1. 拉取 PostgreSQL、Redis、Nginx 镜像
-2. 构建后端 Python 镜像（安装 PyTorch 等，约 5-10 分钟）
+2. 构建后端 Python 镜像（安装 PyTorch 等，约 5-15 分钟）
 3. 启动数据库并运行迁移
 4. 启动后端 API、Celery Worker、Nginx
 
-### 第六步：验证部署
+### 第七步：验证部署
 
 ```bash
 # 查看服务状态（应全部为 running）
@@ -130,13 +151,13 @@ docker compose logs -f backend
 
 浏览器访问 `http://你的服务器IP`，应看到平台首页。
 
-### 第七步：注册管理员
+### 第八步：注册管理员
 
 首次部署后，访问 `http://你的IP/register` 注册第一个账号。
 
 如果设置了 `ADMIN_SETUP_TOKEN`，注册时需要输入该令牌。第一个注册的用户自动成为管理员。
 
-### 第八步：配置 HTTPS（可选）
+### 第九步：配置 HTTPS（可选）
 
 ```bash
 # 安装 certbot
