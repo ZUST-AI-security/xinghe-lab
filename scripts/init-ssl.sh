@@ -79,12 +79,17 @@ mkdir -p "${CERT_DIR}/live"
 ln -sf "${DOMAIN}/fullchain.pem" "${CERT_DIR}/live/fullchain.pem"
 ln -sf "${DOMAIN}/privkey.pem" "${CERT_DIR}/live/privkey.pem"
 
-echo "[4/4] 启动完整服务..."
+echo "[4/4] 切换 Nginx 为 SSL 配置并启动服务..."
+# 备份 HTTP 配置，切换为 SSL 配置
+cp ./nginx/nginx.conf ./nginx/nginx-http.conf.bak
+cp ./nginx/nginx-ssl.conf ./nginx/nginx.conf
+
 docker compose up -d
 
 echo ""
 echo "=== SSL 证书初始化完成 ==="
 echo "访问 https://${DOMAIN} 验证部署"
 echo ""
-echo "证书自动续期已通过 certbot 容器处理。"
-echo "如需手动续期: docker compose exec certbot certbot renew"
+echo "如需回退到 HTTP 模式:"
+echo "  cp ./nginx/nginx-http.conf.bak ./nginx/nginx.conf"
+echo "  docker compose restart nginx"

@@ -159,28 +159,24 @@ docker compose logs -f backend
 
 ### 第九步：配置 HTTPS（可选）
 
+确保域名已解析到服务器 IP，然后运行一键脚本：
+
 ```bash
-# 安装 certbot
-sudo apt install -y certbot
-
-# 申请证书（确保域名已解析到服务器 IP）
-sudo certbot certonly --standalone -d yourdomain.com
-
-# 将证书复制到 nginx 目录
-mkdir -p nginx/certbot/conf/live
-sudo cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem nginx/certbot/conf/live/
-sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem nginx/certbot/conf/live/
-
-# 重启 nginx
-docker compose restart nginx
+./scripts/init-ssl.sh yourdomain.com
 ```
+
+脚本会自动：
+1. 申请 Let's Encrypt 免费证书
+2. 配置证书路径
+3. 切换 Nginx 为 HTTPS 模式
+4. 重启服务
 
 证书续期（添加定时任务）：
 
 ```bash
 sudo crontab -e
 # 添加：
-0 3 * * 1 certbot renew --quiet && cp /etc/letsencrypt/live/yourdomain.com/*.pem /opt/xinghe-lab/nginx/certbot/conf/live/ && docker compose -f /opt/xinghe-lab/docker-compose.yml restart nginx
+0 3 * * 1 certbot renew --quiet && docker compose -f /opt/xinghe-lab/docker-compose.yml restart nginx
 ```
 
 ---
