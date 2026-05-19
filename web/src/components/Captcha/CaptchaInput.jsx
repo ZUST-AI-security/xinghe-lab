@@ -59,7 +59,7 @@ const CaptchaInput = ({ value, onChange, onCaptchaIdChange, placeholder = '验�
         value={value}
         onChange={handleChange}
         maxLength={5}
-        style={{ flex: 1 }}
+        style={{ flex: 1, minWidth: 0 }}
       />
       <div
         onClick={fetchCaptcha}
@@ -81,10 +81,11 @@ const CaptchaInput = ({ value, onChange, onCaptchaIdChange, placeholder = '验�
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '0 8px',
+          padding: '4px',
           position: 'relative',
-          width: '120px',
-          height: '32px',
+          flexShrink: 0,
+          width: 'clamp(100px, 28vw, 140px)',
+          height: 'clamp(36px, 8vw, 46px)',
         }}
         title="点击刷新验证码"
       >
@@ -96,6 +97,7 @@ const CaptchaInput = ({ value, onChange, onCaptchaIdChange, placeholder = '验�
               width: '100%',
               height: '100%',
               objectFit: 'contain',
+              display: 'block',
             }}
           />
         ) : (
