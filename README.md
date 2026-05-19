@@ -95,6 +95,9 @@ nano .env
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt install -y nodejs
 
+# 配置 npm 国内镜像（加速下载）
+npm config set registry https://registry.npmmirror.com
+
 # 构建前端
 cd web
 npm install --legacy-peer-deps
