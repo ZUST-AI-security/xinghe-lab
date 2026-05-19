@@ -22,77 +22,60 @@
 
 ## 技术栈
 
-### 后端
-- Python 3.12、FastAPI、Uvicorn
-- PyTorch 2.6（CPU/GPU）
-- SQLAlchemy 2.0 + Alembic（SQLite / PostgreSQL）
-- Celery 5 + Redis（异步任务）
-- Pydantic v2、python-jose (JWT)、passlib (bcrypt)
-
-### 前端
-- React 18、Vite 5
-- Ant Design 5、Aceternity UI、MagicUI
-- Zustand（状态管理）
-- react-router-dom v6、Axios
+| 层级 | 技术 |
+|------|------|
+| **后端** | Python 3.13 · FastAPI 0.136 · Uvicorn · PyTorch 2.11 |
+| **数据库** | PostgreSQL 16 · SQLAlchemy 2.0 · Alembic |
+| **异步任务** | Celery 5.6 · Redis 7.4 |
+| **前端** | React 18 · Vite · Ant Design 5 · Aceternity UI · MagicUI |
+| **部署** | Docker Compose · Nginx · Let's Encrypt SSL |
 
 ---
 
-## 快速启动（开发环境）
+## 生产环境部署指南（Ubuntu 24）
 
-### 系统要求
-- Python 3.10+（推荐 3.12）
-- Node.js 18+
-- Redis（异步任务需要）
+### 前置条件
 
-### 后端
+- Ubuntu 24.04 LTS 服务器
+- root 或 sudo 权限
+- 域名（可选，用于 HTTPS）
 
-```bash
-cd backend
-
-# 创建虚拟环境
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 复制并编辑环境配置
-cp .env.example .env
-# 编辑 .env，设置 SECRET_KEY、JWT_SECRET_KEY 等
-
-# 数据库迁移
-alembic upgrade head
-
-# 启动
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### 前端
+### 第一步：安装 Docker
 
 ```bash
-cd web
-npm install --legacy-peer-deps
-npm run dev
+# 安装 Docker
+curl -fsSL https://get.docker.com | sh
+
+# 将当前用户加入 docker 组（免 sudo）
+sudo usermod -aG docker $USER
+newgrp docker
+
+# 验证
+docker --version
+docker compose version
 ```
 
-前端默认运行在 `http://localhost:5173`，后端 API 在 `http://localhost:8000`。
+### 第二步：克隆项目
 
----
+```bash
+cd /opt
+git clone -b yunzen https://github.com/ZUST-AI-security/xinghe-lab.git
+cd xinghe-lab
+```
 
-## Docker 生产部署
-
-### 系统要求
-- Docker 24+
-- Docker Compose V2
-- 域名（可选，用于 SSL）
-
-### 1. 配置环境变量
+### 第三步：配置环境变量
 
 ```bash
 cp .env.production .env
 ```
 
-编辑 `.env`，**必须替换**以下占位符：
+编辑 `.env`，**替换所有 `CHANGE_ME`**：
+
+```bash
+nano .env
+```
+
+必须替换的变量：
 
 | 变量 | 说明 | 生成命令 |
 |------|------|----------|
@@ -100,32 +83,149 @@ cp .env.production .env
 | `JWT_SECRET_KEY` | JWT 签名密钥 | `openssl rand -hex 32` |
 | `POSTGRES_PASSWORD` | 数据库密码 | `openssl rand -hex 16` |
 | `REDIS_PASSWORD` | Redis 密码 | `openssl rand -hex 16` |
-| `CORS_ORIGINS` | 允许的前端域名 | `["https://yourdomain.com"]` |
+| `CORS_ORIGINS` | 允许的前端域名 | `["https://yourdomain.com"]` 或 `["http://你的IP"]` |
+| `ADMIN_SETUP_TOKEN` | 首次注册管理员的令牌（可选） | `openssl rand -hex 16` |
 
-### 2. 一键部署
+邮件服务（腾讯云 SES）已预配置，如需修改请更新 `TENCENT_SECRET_ID` / `TENCENT_SECRET_KEY`。
+
+### 第四步：构建前端
 
 ```bash
+# 安装 Node.js（如未安装）
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
 # 构建前端
-cd web && npm install && npm run build && cd ..
-
-# Docker 部署
-./scripts/deploy.sh
+cd web
+npm install --legacy-peer-deps
+npm run build
+cd ..
 ```
 
-### 3. SSL 证书（可选）
+### 第五步：启动服务
 
 ```bash
-./scripts/init-ssl.sh yourdomain.com
+# 构建镜像并启动所有服务
+docker compose up -d --build
 ```
 
-### 4. 常用命令
+首次启动会：
+1. 拉取 PostgreSQL、Redis、Nginx 镜像
+2. 构建后端 Python 镜像（安装 PyTorch 等，约 5-10 分钟）
+3. 启动数据库并运行迁移
+4. 启动后端 API、Celery Worker、Nginx
+
+### 第六步：验证部署
 
 ```bash
-docker compose up -d          # 启动所有服务
-docker compose down            # 停止所有服务
-docker compose logs -f         # 查看日志
-docker compose logs -f backend # 查看后端日志
-docker compose ps              # 查看服务状态
+# 查看服务状态（应全部为 running）
+docker compose ps
+
+# 健康检查
+curl http://localhost/health
+
+# 查看日志
+docker compose logs -f backend
+```
+
+浏览器访问 `http://你的服务器IP`，应看到平台首页。
+
+### 第七步：注册管理员
+
+首次部署后，访问 `http://你的IP/register` 注册第一个账号。
+
+如果设置了 `ADMIN_SETUP_TOKEN`，注册时需要输入该令牌。第一个注册的用户自动成为管理员。
+
+### 第八步：配置 HTTPS（可选）
+
+```bash
+# 安装 certbot
+sudo apt install -y certbot
+
+# 申请证书（确保域名已解析到服务器 IP）
+sudo certbot certonly --standalone -d yourdomain.com
+
+# 将证书复制到 nginx 目录
+mkdir -p nginx/certbot/conf/live
+sudo cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem nginx/certbot/conf/live/
+sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem nginx/certbot/conf/live/
+
+# 重启 nginx
+docker compose restart nginx
+```
+
+证书续期（添加定时任务）：
+
+```bash
+sudo crontab -e
+# 添加：
+0 3 * * 1 certbot renew --quiet && cp /etc/letsencrypt/live/yourdomain.com/*.pem /opt/xinghe-lab/nginx/certbot/conf/live/ && docker compose -f /opt/xinghe-lab/docker-compose.yml restart nginx
+```
+
+---
+
+## 常用运维命令
+
+```bash
+# 查看所有服务状态
+docker compose ps
+
+# 查看实时日志
+docker compose logs -f
+docker compose logs -f backend    # 仅后端
+docker compose logs -f celery-worker  # 仅 Celery
+
+# 重启服务
+docker compose restart backend    # 重启后端
+docker compose restart nginx      # 重启 Nginx
+docker compose down && docker compose up -d  # 全部重启
+
+# 进入后端容器
+docker compose exec backend bash
+
+# 查看数据库
+docker compose exec postgres psql -U xinghe -d xinghe_zhi_an
+
+# 停止所有服务
+docker compose down
+
+# 停止并清除数据（危险！会删除数据库）
+docker compose down -v
+```
+
+---
+
+## 更新部署
+
+当代码有更新时，在服务器执行：
+
+```bash
+cd /opt/xinghe-lab
+
+# 拉取最新代码
+git pull origin yunzen
+
+# 重建前端
+cd web && npm install --legacy-peer-deps && npm run build && cd ..
+
+# 重建后端并重启
+docker compose up -d --build backend celery-worker
+
+# 如有数据库迁移
+docker compose exec backend alembic upgrade head
+```
+
+只更新前端时：
+
+```bash
+cd web && npm run build && cd ..
+docker compose restart nginx
+```
+
+只更新后端时：
+
+```bash
+docker compose up -d --build backend
 ```
 
 ---
@@ -159,6 +259,7 @@ xinghe-lab/
 ├── nginx/                   # Nginx 配置
 ├── scripts/                 # 部署脚本
 ├── docker-compose.yml
+├── .env.production          # 环境变量模板
 └── README.md
 ```
 
