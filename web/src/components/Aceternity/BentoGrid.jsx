@@ -28,6 +28,7 @@ export function BentoGridItem({
   style,
   colSpan = 1,
   rowSpan = 1,
+  onClick,
 }) {
   return (
     <motion.div
@@ -35,8 +36,10 @@ export function BentoGridItem({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
       whileHover={{ y: -4, scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className={className}
+      onClick={onClick}
       style={{
         position: 'relative',
         overflow: 'hidden',
