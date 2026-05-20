@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Button,
   Col,
@@ -19,6 +19,7 @@ import {
   SpotlightCard, TextGenerateEffect, FocusCards, GlowingEffect,
 } from '../../components/Aceternity';
 import { BlurFade, HyperText, GlareHover } from '../../components/MagicUI';
+import { useAttackStore } from '../../store/attackStore';
 
 import { submitCWAttack, getAttackTaskStatus as getCWTaskStatus } from '../../api/attacks/cw';
 import { submitFGSMAttack, getAttackTaskStatus as getFGSMTaskStatus } from '../../api/attacks/fgsm';
@@ -161,9 +162,23 @@ const ResultPreview = ({ title, panel, image }) => {
 
 const CompareMode = () => {
   const { message } = App.useApp();
-  const [imageUrl, setImageUrl] = useState('');
-  const [panels, setPanels] = useState([initialPanelState('fgsm'), initialPanelState('cw')]);
+  const updateSlice = useAttackStore((s) => s.updateSlice);
+
+  // 从 store 读取持久化状态
+  const storedImageUrl = useAttackStore((s) => s.compare?.imageUrl ?? '');
+  const storedPanels = useAttackStore((s) => s.compare?.panels ?? []);
+
+  // 本地状态：优先使用 store 中的值
+  const [imageUrl, setImageUrl] = useState(storedImageUrl);
+  const [panels, setPanels] = useState(
+    storedPanels.length > 0 ? storedPanels : [initialPanelState('fgsm'), initialPanelState('cw')]
+  );
   const intervalsRef = useRef([]);
+
+  // 同步状态到 store
+  const syncToStore = useCallback((newImageUrl, newPanels) => {
+    updateSlice('compare', { imageUrl: newImageUrl, panels: newPanels });
+  }, [updateSlice]);
 
   const clearPolling = () => {
     intervalsRef.current.forEach((timer) => clearInterval(timer));
@@ -184,9 +199,40 @@ const CompareMode = () => {
     setPanels((prev) => {
       const newPanels = [...prev];
       newPanels[index] = updater(newPanels[index]);
+      syncToStore(imageUrl, newPanels);
       return newPanels;
     });
   };
+
+  // 组件挂载时，恢复正在运行的任务的轮询
+  useEffect(() => {
+    const RUNNING_STATUSES = new Set(['pending', 'running', 'processing']);
+    panels.forEach((panel, index) => {
+      if (panel.taskId && RUNNING_STATUSES.has(panel.status)) {
+        const { poll } = algorithmConfig[panel.algorithm];
+        const timer = setInterval(async () => {
+          try {
+            const task = await poll(panel.taskId);
+            const normalizedResult = task.status === 'completed' && task.result
+              ? { ...task.result, metadata: task.result.metadata && typeof task.result.metadata === 'object' ? task.result.metadata : {} }
+              : null;
+            updatePanel(index, (prev) => ({
+              ...prev,
+              status: task.status,
+              progress: task.progress || (task.status === 'completed' ? 100 : prev.progress),
+              message: task.message || task.error || '',
+              result: task.status === 'completed' ? normalizedResult : prev.result,
+            }));
+            if (task.status === 'completed' || task.status === 'failed') clearInterval(timer);
+          } catch (error) {
+            clearInterval(timer);
+            updatePanel(index, (prev) => ({ ...prev, status: 'failed', message: error.message || '轮询失败' }));
+          }
+        }, 2000);
+        intervalsRef.current.push(timer);
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submitOne = async (index, panel) => {
     const { submit, poll } = algorithmConfig[panel.algorithm];
@@ -229,7 +275,11 @@ const CompareMode = () => {
 
   const handleUpload = (file) => {
     const reader = new FileReader();
-    reader.onload = (event) => setImageUrl(event.target.result);
+    reader.onload = (event) => {
+      const newImageUrl = event.target.result;
+      setImageUrl(newImageUrl);
+      syncToStore(newImageUrl, panels);
+    };
     reader.readAsDataURL(file);
     return false;
   };
@@ -247,20 +297,30 @@ const CompareMode = () => {
   const resetAll = () => {
     clearPolling();
     setImageUrl('');
-    setPanels([initialPanelState('fgsm'), initialPanelState('cw')]);
+    const defaultPanels = [initialPanelState('fgsm'), initialPanelState('cw')];
+    setPanels(defaultPanels);
+    syncToStore('', defaultPanels);
   };
 
   const addPanel = () => {
     const availableAlgorithms = Object.keys(algorithmConfig);
     const usedAlgorithms = panels.map((p) => p.algorithm);
     const nextAlgorithm = availableAlgorithms.find((algo) => !usedAlgorithms.includes(algo)) || availableAlgorithms[0];
-    setPanels((prev) => [...prev, initialPanelState(nextAlgorithm)]);
+    setPanels((prev) => {
+      const newPanels = [...prev, initialPanelState(nextAlgorithm)];
+      syncToStore(imageUrl, newPanels);
+      return newPanels;
+    });
   };
 
   const removePanel = (index) => {
     if (panels.length <= 1) { message.warning('至少保留一个对比任务'); return; }
     clearPolling();
-    setPanels((prev) => prev.filter((_, i) => i !== index));
+    setPanels((prev) => {
+      const newPanels = prev.filter((_, i) => i !== index);
+      syncToStore(imageUrl, newPanels);
+      return newPanels;
+    });
   };
 
   return (

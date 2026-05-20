@@ -45,6 +45,10 @@ const ALGORITHM_DEFAULTS = {
     params: { max_iter: 50, overshoot: 0.02, num_classes: 10 },
     useAsync: true,
   },
+  compare: {
+    params: {},
+    useAsync: true,
+  },
 };
 
 const createEmptySlice = (algorithm) => ({
@@ -57,6 +61,8 @@ const createEmptySlice = (algorithm) => ({
   _loading: false,
   _taskId: null,
   _statusMessage: '',
+  // CompareMode 专用字段
+  ...(algorithm === 'compare' ? { imageUrl: '', panels: [] } : {}),
 });
 
 const useAttackStore = create(
@@ -68,6 +74,7 @@ const useAttackStore = create(
       pgd: createEmptySlice('pgd'),
       cw: createEmptySlice('cw'),
       deepfool: createEmptySlice('deepfool'),
+      compare: createEmptySlice('compare'),
 
       // Generic getter
       getSlice: (algorithm) => get()[algorithm] ?? createEmptySlice(algorithm),
