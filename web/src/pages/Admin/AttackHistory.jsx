@@ -111,7 +111,7 @@ const AttackHistory = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <BlurFade>
         <SpotlightCard spotlightColor="rgba(22,119,255,0.04)" style={{ borderRadius: 24 }}>
-          <div style={{ ...whiteCard, position: 'relative', overflow: 'hidden', padding: '40px 36px 36px', textAlign: 'center' }}>
+          <div style={{ ...whiteCard, position: 'relative', overflow: 'hidden', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 36px)', textAlign: 'center' }}>
             <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: '50%', height: 180, background: 'radial-gradient(ellipse at center top, rgba(22,119,255,0.06), transparent 70%)', pointerEvents: 'none' }} />
 
             <HyperText text="ATTACK HISTORY" duration={800}
