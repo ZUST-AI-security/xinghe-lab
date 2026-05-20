@@ -45,6 +45,10 @@ const ALGORITHM_DEFAULTS = {
     params: { max_iter: 50, overshoot: 0.02, num_classes: 10 },
     useAsync: true,
   },
+  compare: {
+    params: {},
+    useAsync: true,
+  },
 };
 
 const createEmptySlice = (algorithm) => ({
@@ -57,33 +61,10 @@ const createEmptySlice = (algorithm) => ({
   _loading: false,
   _taskId: null,
   _statusMessage: '',
+  // CompareMode 专用字段
+  ...(algorithm === 'compare' ? { imageUrl: '', panels: [] } : {}),
 });
 
-// ── Compare Mode defaults ──────────────────────────────────────────────────
-const COMPARE_ALGORITHM_DEFAULTS = {
-  fgsm: { epsilon: 0.03, targeted: false },
-  ifgsm: { epsilon: 0.03, alpha: 0.007, num_iter: 10, targeted: false },
-  pgd: { epsilon: 0.03, alpha: 0.01, num_iter: 40, targeted: false, random_start: true, loss_type: 'ce', norm: 'linf' },
-  cw: { c: 0.1, kappa: 0, lr: 0.01, max_iter: 500, binary_search_steps: 5, init_const: 0.01, targeted: false, abort_early: true, early_stop_iters: 50 },
-  deepfool: { overshoot: 0.02, max_iter: 50, num_classes: 10 },
-};
-
-const createComparePanelState = (algorithm) => ({
-  algorithm,
-  paramsText: JSON.stringify(COMPARE_ALGORITHM_DEFAULTS[algorithm] ?? {}, null, 2),
-  taskId: null,
-  status: 'idle',
-  progress: 0,
-  message: '',
-  result: null,
-});
-
-const DEFAULT_COMPARE_STATE = {
-  imageUrl: '',
-  panels: [createComparePanelState('fgsm'), createComparePanelState('cw')],
-};
-
-// ── Store ──────────────────────────────────────────────────────────────────
 const useAttackStore = create(
   persist(
     (set, get) => ({
@@ -93,9 +74,7 @@ const useAttackStore = create(
       pgd: createEmptySlice('pgd'),
       cw: createEmptySlice('cw'),
       deepfool: createEmptySlice('deepfool'),
-
-      // Compare mode slice
-      compareMode: { ...DEFAULT_COMPARE_STATE },
+      compare: createEmptySlice('compare'),
 
       // Generic getter
       getSlice: (algorithm) => get()[algorithm] ?? createEmptySlice(algorithm),
@@ -111,29 +90,6 @@ const useAttackStore = create(
         set((state) => ({
           [algorithm]: createEmptySlice(algorithm),
         })),
-
-      // Compare mode helpers
-      updateCompareMode: (partial) =>
-        set((state) => ({
-          compareMode: { ...state.compareMode, ...partial },
-        })),
-
-      updateComparePanel: (index, updater) =>
-        set((state) => {
-          const newPanels = [...state.compareMode.panels];
-          newPanels[index] = typeof updater === 'function'
-            ? updater(newPanels[index])
-            : { ...newPanels[index], ...updater };
-          return { compareMode: { ...state.compareMode, panels: newPanels } };
-        }),
-
-      resetCompareMode: () =>
-        set(() => ({
-          compareMode: {
-            imageUrl: '',
-            panels: [createComparePanelState('fgsm'), createComparePanelState('cw')],
-          },
-        })),
     }),
     {
       name: 'attack-storage',
@@ -142,5 +98,4 @@ const useAttackStore = create(
   )
 );
 
-export { useAttackStore, ALGORITHM_DEFAULTS, createComparePanelState };
-
+export { useAttackStore, ALGORITHM_DEFAULTS };
