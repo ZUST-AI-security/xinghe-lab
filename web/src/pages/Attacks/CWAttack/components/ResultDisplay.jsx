@@ -196,7 +196,7 @@ const ResultDisplay = ({ result, originalImageUrl, onSaveResult, onExportData, l
                         <Lens zoomFactor={2} lensSize={140}>
                           <Image src={originalImage} style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }} preview={false} />
                         </Lens>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginTop: 12 }}>
                           <StatCard label="预测类别" value={formatPredictionLabel(originalPrediction, originalTopClass)} />
                           <StatCard label="置信度" value={originalTopClass !== null ? `${((result.original_probs?.[originalTopClass] || 0) * 100).toFixed(2)}%` : '-'} color="#1677ff" />
                         </div>
@@ -215,7 +215,7 @@ const ResultDisplay = ({ result, originalImageUrl, onSaveResult, onExportData, l
                             <Lens zoomFactor={2} lensSize={140}>
                               <Image src={result.adversarial_image} style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }} preview={false} />
                             </Lens>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginTop: 12 }}>
                               <StatCard label="预测类别" value={formatPredictionLabel(adversarialPrediction, adversarialTopClass)} />
                               <StatCard label="置信度" value={adversarialTopClass !== null ? `${((result.adversarial_probs?.[adversarialTopClass] || 0) * 100).toFixed(2)}%` : '-'} color={result.success ? '#16a34a' : '#dc2626'} />
                             </div>
@@ -302,7 +302,7 @@ const ResultDisplay = ({ result, originalImageUrl, onSaveResult, onExportData, l
                     <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--xh-border)' }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--xh-text)' }}>扰动统计</span>
                     </div>
-                    <div style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
                       <StatCard label="攻击状态" value={result.success ? '成功' : '失败'} color={result.success ? '#16a34a' : '#dc2626'} />
                       <StatCard label="扰动范数" value={metadata.l2_norm?.toFixed?.(6) ?? '-'} />
                       <StatCard label="攻击耗时" value={result.time_elapsed?.toFixed(2) ? `${result.time_elapsed.toFixed(2)}s` : '-'} />
@@ -316,7 +316,7 @@ const ResultDisplay = ({ result, originalImageUrl, onSaveResult, onExportData, l
             {/* Tab 4: Detail Info */}
             {activeTab === '4' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
                   {detailItems.map((item) => (
                     <StatCard key={item.label} label={item.label} value={item.value} color={item.color} />
                   ))}

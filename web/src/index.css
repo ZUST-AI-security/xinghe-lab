@@ -306,7 +306,7 @@ a {
 
 @media (max-width: 900px) {
   .xh-content {
-    padding: 16px;
+    padding: 12px;
   }
 
   .xh-toolbar-filters {
@@ -314,7 +314,58 @@ a {
   }
 
   .xh-page-banner .ant-card-body {
-    padding: 20px;
+    padding: 16px;
+  }
+}
+
+/* ── 移动端优化 ── */
+@media (max-width: 576px) {
+  /* 内容区域进一步缩小边距 */
+  .xh-content {
+    padding: 8px;
+  }
+
+  /* 表格横向滚动 */
+  .ant-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 卡片圆角缩小 */
+  .xh-page-banner.ant-card,
+  .xh-admin-card.ant-card,
+  .xh-admin-table-card.ant-card {
+    border-radius: 14px !important;
+  }
+
+  /* 弹窗适配 */
+  .ant-modal {
+    max-width: calc(100vw - 32px) !important;
+    margin: 16px !important;
+  }
+
+  /* Tabs 可滚动 */
+  .ant-tabs-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ant-tabs-nav::before {
+    display: none;
+  }
+
+  /* Tag 不换行 */
+  .ant-tag {
+    white-space: nowrap;
+  }
+
+  /* 按钮组堆叠 */
+  .xh-action-group {
+    flex-direction: column;
+  }
+
+  .xh-action-group .ant-btn {
+    width: 100%;
   }
 }
 

@@ -81,7 +81,7 @@ const Dashboard = () => {
       {/* ═══════ HERO ═══════ */}
       <BlurFade>
         <SpotlightCard spotlightColor="rgba(22,119,255,0.04)" style={{ borderRadius: 24 }}>
-          <div style={{ ...whiteCard, position: 'relative', overflow: 'hidden', padding: '44px 36px 40px', textAlign: 'center' }}>
+          <div style={{ ...whiteCard, position: 'relative', overflow: 'hidden', padding: 'clamp(24px, 4vw, 44px) clamp(16px, 4vw, 36px)', textAlign: 'center' }}>
             {/* Decorative glow */}
             <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: '50%', height: 180, background: 'radial-gradient(ellipse at center top, rgba(22,119,255,0.06), transparent 70%)', pointerEvents: 'none' }} />
 
@@ -302,7 +302,7 @@ const Dashboard = () => {
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#7c3aed', boxShadow: '0 0 8px rgba(124,58,237,0.4)' }} />
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--xh-text)' }}>快速入口</span>
           </div>
-          <BentoGrid style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+          <BentoGrid style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
             {[
               { title: 'FGSM 攻击', desc: '快速梯度符号法，单步攻击算法', icon: <ThunderboltOutlined style={{ fontSize: 22, color: '#3b82f6' }} />, path: '/attacks/fgsm', color: '#3b82f6' },
               { title: 'C&W 攻击', desc: '基于优化的对抗样本生成', icon: <ExperimentOutlined style={{ fontSize: 22, color: '#f59e0b' }} />, path: '/attacks/cw', color: '#f59e0b' },
