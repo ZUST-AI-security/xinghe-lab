@@ -1,0 +1,39 @@
+# 星河智安 (XingHe ZhiAn) - AI安全攻击可视化平台
+# Backend Dependencies
+#
+# PyTorch 安装说明：
+#   有 GPU（推荐）: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+#   无 GPU（CPU）:   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#   Docker 部署时由 Dockerfile 自动处理，无需手动选择。
+
+# FastAPI and ASGI server
+fastapi==0.136.1
+uvicorn[standard]==0.46.0
+python-multipart==0.0.28
+
+# Database
+sqlalchemy==2.0.49
+alembic==1.18.4
+psycopg[binary]==3.2.6
+
+# Authentication
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.3.0
+
+# Redis and Celery
+redis==7.4.0
+celery==5.6.3
+
+# AI/ML - PyTorch（版本由 Dockerfile 控制，此处仅声明依赖）
+torch>=2.10.0
+torchvision>=0.25.0
+numpy==2.4.4
+pillow==12.2.0
+opencv-python-headless==4.13.0.92
+
+# Utilities
+pydantic==2.13.4
+pydantic-settings==2.14.1
+python-dotenv==1.2.2
+captcha==0.7.1

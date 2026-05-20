@@ -1,0 +1,937 @@
+import React, { useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { Modal } from 'antd';
+import {
+  AuroraBackground, Sparkles, BackgroundGrid, BackgroundBeams,
+  TextGenerateEffect, FlipWords, InfiniteMovingCards,
+  MagneticButton, TracingBeam, BentoGrid, BentoGridItem,
+  EvervingCard, GlowingCard, SpotlightCard, LampContainer,
+  CardContainer, CardBody, CardItem, GlowingEffect, WobbleCard,
+} from '../../components/Aceternity';
+import {
+  Marquee, BorderBeam, ShimmerButton, HyperText, BlurFade,
+  RetroGrid, NumberTicker, AnimatedGradientText, Meteors,
+  FlickeringGrid, NeonGradientCard, Lens,
+  OrbitingCircles, FloatingNav,
+} from '../../components/MagicUI';
+
+/* ═══════════════ tokens ═══════════════ */
+const S = {
+  nav: (scrolled) => ({
+    position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '0 clamp(20px, 4vw, 56px)', height: 64,
+    background: scrolled ? 'rgba(10,10,26,0.92)' : 'rgba(10,10,26,0.35)',
+    backdropFilter: 'blur(24px) saturate(200%)',
+    WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+    borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent',
+    transition: 'all 0.35s ease',
+  }),
+  section: { position: 'relative', padding: 'clamp(80px, 10vw, 140px) 24px', overflow: 'hidden' },
+  inner: { maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 2 },
+  tag: (color) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 8,
+    padding: '5px 14px', borderRadius: 999,
+    background: `${color}12`, border: `1px solid ${color}25`,
+    fontSize: 11, fontWeight: 700, color, letterSpacing: 1.5, textTransform: 'uppercase',
+    marginBottom: 20,
+  }),
+  h2: { fontSize: 'clamp(30px, 4.5vw, 48px)', fontWeight: 800, color: '#0f172a', margin: '0 0 16px', lineHeight: 1.2, letterSpacing: '-0.02em' },
+  desc: { fontSize: 17, color: '#64748b', maxWidth: 540, margin: '0 auto', lineHeight: 1.7 },
+};
+
+/* ═══════════════ data ═══════════════ */
+const algorithms = [
+  { name: 'FGSM', full: 'Fast Gradient Sign Method', desc: '单步梯度符号攻击，计算高效，是验证模型鲁棒性的首选基线方法。', color: '#3b82f6', icon: '⚡', speed: '10ms', precision: '★★★' },
+  { name: 'I-FGSM', full: 'Iterative FGSM', desc: '多步迭代版本，通过逐步优化提升攻击成功率和扰动精度。', color: '#8b5cf6', icon: '🔄', speed: '50ms', precision: '★★★★' },
+  { name: 'PGD', full: 'Projected Gradient Descent', desc: '最强一阶攻击方法，通用性极强，被视为模型鲁棒性评估的金标准。', color: '#06b6d4', icon: '🎯', speed: '100ms', precision: '★★★★★' },
+  { name: 'C&W', full: 'Carlini & Wagner', desc: '基于优化的高精度攻击，产生的扰动几乎不可感知，适合深度安全审计。', color: '#f59e0b', icon: '🔬', speed: '2s', precision: '★★★★★' },
+  { name: 'DeepFool', full: 'DeepFool', desc: '计算最近决策边界的理论距离，提供严格的鲁棒性下界估计。', color: '#10b981', icon: '📐', speed: '200ms', precision: '★★★★' },
+];
+
+const capabilities = [
+  { title: '实时可视化引擎', desc: '对抗样本生成全过程实时呈现，原始图像与扰动层分离展示，像素级差异热力图一目了然。', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+  { title: '智能对比模式', desc: '左右滑块对比、多算法同图叠加、量化差异图表，三种维度深度比较攻击效果。', gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
+  { title: '交互式参数调优', desc: '可视化滑块实时调节 epsilon / steps / learning rate，预设模板与自定义并行。', gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
+  { title: '置信度分析图表', desc: '分类置信度变化柱状图，Top-K 概率分布对比，攻击前后模型决策全景展示。', gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' },
+  { title: '扰动热力图', desc: '像素级扰动幅度可视化，颜色编码直观呈现攻击影响区域，支持缩放与导出。', gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' },
+  { title: '多模型架构支持', desc: 'ResNet / VGG / Inception / MobileNet 等主流架构开箱即用，灵活扩展。', gradient: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)' },
+];
+
+const movingItems = [
+  { quote: '覆盖 FGSM、PGD、C&W 等 5 大主流对抗攻击算法', name: '全面覆盖', title: '算法层', icon: '🛡️' },
+  { quote: '像素级扰动可视化 + 置信度变化实时图表', name: '深度可视化', title: '分析层', icon: '📊' },
+  { quote: '参数滑块即时调优，攻击效果秒级呈现', name: '极致交互', title: '体验层', icon: '⚡' },
+  { quote: '支持 ResNet / VGG / Inception 等主流架构', name: '广泛兼容', title: '模型层', icon: '🔧' },
+  { quote: '一键导出攻击结果、热力图、对比报告', name: '一键导出', title: '输出层', icon: '📤' },
+  { quote: '攻击历史全记录，支持搜索与重运行', name: '完整追溯', title: '管理层', icon: '📋' },
+];
+
+const stats = [
+  { value: 5, suffix: '+', label: '攻击算法', color: '#1677ff' },
+  { value: 6, suffix: '+', label: '可视化维度', color: '#7c3aed' },
+  { value: 100, suffix: '%', label: 'Web 端操作', color: '#06b6d4' },
+  { value: 4, suffix: '+', label: '模型架构', color: '#10b981' },
+];
+
+const techStack = ['PyTorch', 'TensorFlow', 'ResNet', 'VGG', 'Inception', 'MobileNet', 'FGSM', 'PGD', 'C&W', 'DeepFool', 'Grad-CAM', 'NumPy'];
+
+/* ═══════════════ LogoPreview Modal ═══════════════ */
+function LogoPreviewModal({ open, onClose }) {
+  return (
+    <Modal open={open} onCancel={onClose} footer={null} centered width={360}
+      styles={{ body: { padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' } }}>
+      <img src="/logo.png" alt="星河智安" style={{ width: '100%', borderRadius: 16 }} />
+    </Modal>
+  );
+}
+
+/* ═══════════════ NavBar ═══════════════ */
+function NavBar() {
+  const nav = useNavigate();
+  const [logoOpen, setLogoOpen] = useState(false);
+
+  const navItems = [
+    { label: '功能', href: '#功能', icon: '✦' },
+    { label: '算法', href: '#算法', icon: '◈' },
+    { label: '架构', href: '#架构', icon: '◇' },
+  ];
+
+  const logo = (
+    <motion.div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <motion.img
+        src="/logo.png"
+        alt="星河智安"
+        onClick={(e) => { e.stopPropagation(); setLogoOpen(true); }}
+        style={{ width: 32, height: 32, borderRadius: 10, boxShadow: '0 0 16px rgba(22,119,255,0.3)', cursor: 'pointer' }}
+        whileHover={{ rotate: 12, boxShadow: '0 0 24px rgba(22,119,255,0.5)' }}
+        transition={{ type: 'spring', stiffness: 400 }}
+      />
+      <span onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em', cursor: 'pointer' }}>星河智安</span>
+      <LogoPreviewModal open={logoOpen} onClose={() => setLogoOpen(false)} />
+    </motion.div>
+  );
+
+  const rightContent = (
+    <>
+      <motion.button onClick={() => nav('/login')} style={{ padding: '7px 18px', borderRadius: 9999, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }} whileHover={{ scale: 1.05, color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }} whileTap={{ scale: 0.95 }}>登录</motion.button>
+      <MagneticButton>
+        <motion.button onClick={() => nav('/register')} style={{ padding: '7px 18px', borderRadius: 9999, border: 'none', background: 'linear-gradient(135deg, #1677ff, #7c3aed)', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 12px rgba(22,119,255,0.3)' }} whileHover={{ scale: 1.05, boxShadow: '0 4px 20px rgba(22,119,255,0.45)' }} whileTap={{ scale: 0.95 }}>免费注册</motion.button>
+      </MagneticButton>
+    </>
+  );
+
+  return (
+    <FloatingNav
+      navItems={navItems}
+      logo={logo}
+      rightContent={rightContent}
+      activeColor="#60a5fa"
+    />
+  );
+}
+
+/* ═══════════════ HERO ═══════════════ */
+function HeroSection() {
+  const nav = useNavigate();
+  const heroRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+
+  return (
+    <div ref={heroRef} style={{ position: 'relative', background: '#050510', overflow: 'hidden' }}>
+      <motion.div style={{ y: heroY, opacity: heroOpacity }}>
+        {/* Background layers */}
+        <FlickeringGrid color="rgb(96, 165, 250)" squareSize={3} gridGap={8} flickerChance={0.08} maxOpacity={0.25} />
+        <Meteors number={12} />
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0.2 }}><BackgroundGrid /></div>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}><Sparkles background={false} minSize={0.2} maxSize={0.8} particleDensity={30} /></div>
+
+        {/* Glow orbs */}
+        <div style={{ position: 'absolute', top: '15%', left: '10%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(22,119,255,0.08) 0%, transparent 70%)', filter: 'blur(100px)', pointerEvents: 'none', zIndex: 1 }} />
+        <div style={{ position: 'absolute', bottom: '10%', right: '10%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.06) 0%, transparent 70%)', filter: 'blur(100px)', pointerEvents: 'none', zIndex: 1 }} />
+
+        {/* Content */}
+        <div style={{ position: 'relative', zIndex: 10, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '120px 24px 80px' }}>
+          {/* Badge */}
+          <BlurFade delay={0.3} duration={0.8}>
+            <div style={{ marginBottom: 32 }}>
+              <HyperText text="AI ADVERSARIAL ATTACK PLATFORM" duration={1200} style={{
+                fontSize: 11, fontWeight: 700, color: '#60a5fa', letterSpacing: 3,
+                padding: '6px 16px', borderRadius: 999,
+                background: 'rgba(96,165,250,0.06)', border: '1px solid rgba(96,165,250,0.12)',
+              }} />
+            </div>
+          </BlurFade>
+
+          {/* Title */}
+          <div style={{ marginBottom: 20, textAlign: 'center' }}>
+            <AnimatedGradientText
+              colors={['#ffffff', '#60a5fa', '#a78bfa', '#c084fc', '#ffffff']}
+              speed={5}
+              style={{ fontSize: 'clamp(56px, 10vw, 100px)', fontWeight: 900, lineHeight: 1.05, letterSpacing: '-0.04em', display: 'block' }}
+            >
+              星河智安
+            </AnimatedGradientText>
+          </div>
+
+          {/* Subtitle */}
+          <BlurFade delay={1.2} duration={0.8}>
+            <div style={{ fontSize: 'clamp(18px, 3vw, 26px)', fontWeight: 600, color: '#e2e8f0', marginBottom: 14, textAlign: 'center' }}>
+              <span>AI 对抗攻击</span>
+              <FlipWords words={['可视化', '智能化', '一体化', '专业化']} style={{ color: '#60a5fa', fontWeight: 700 }} />
+              <span>平台</span>
+            </div>
+          </BlurFade>
+
+          <BlurFade delay={1.6} duration={0.8}>
+            <p style={{ fontSize: 'clamp(15px, 2vw, 17px)', lineHeight: 1.8, color: '#94a3b8', maxWidth: 560, margin: '0 auto 56px', textAlign: 'center' }}>
+              集成 FGSM、PGD、C&W 等主流对抗攻击算法，提供实时可视化、参数调优、结果对比的一站式 AI 安全研究平台。
+            </p>
+          </BlurFade>
+
+          {/* CTA */}
+          <BlurFade delay={2} duration={0.7}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <MagneticButton>
+                <ShimmerButton onClick={() => nav('/register')} shimmerColor="rgba(255,255,255,0.2)" style={{ padding: '16px 44px', fontSize: 17, boxShadow: '0 8px 40px rgba(22,119,255,0.4)' }}>
+                  立即体验
+                </ShimmerButton>
+              </MagneticButton>
+              <motion.button onClick={() => nav('/login')} style={{ padding: '16px 44px', borderRadius: 12, border: '1.5px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(8px)', fontSize: 17, fontWeight: 600, color: '#e2e8f0', cursor: 'pointer' }} whileHover={{ scale: 1.06, borderColor: 'rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.06)' }} whileTap={{ scale: 0.97 }}>已有账号登录</motion.button>
+            </div>
+          </BlurFade>
+        </div>
+
+        {/* Tech marquee at bottom */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 20, padding: '24px 0', background: 'linear-gradient(to top, rgba(5,5,16,0.95), transparent)' }}>
+          <Marquee pauseOnHover style={{ opacity: 0.4 }}>
+            {techStack.map((t) => (
+              <div key={t} style={{ padding: '5px 18px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>{t}</div>
+            ))}
+          </Marquee>
+        </div>
+      </motion.div>
+
+      {/* Scroll hint */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 3.5, duration: 1 }} style={{ position: 'absolute', bottom: 60, left: '50%', transform: 'translateX(-50%)', zIndex: 20 }}>
+        <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }} style={{ width: 24, height: 38, borderRadius: 12, border: '2px solid rgba(255,255,255,0.15)', display: 'flex', justifyContent: 'center', paddingTop: 7 }}>
+          <motion.div animate={{ opacity: [0.2, 0.8, 0.2], y: [0, 10, 0] }} transition={{ duration: 2, repeat: Infinity }} style={{ width: 3, height: 6, borderRadius: 2, background: 'rgba(255,255,255,0.35)' }} />
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ═══════════════ STATS ═══════════════ */
+function StatsBar() {
+  return (
+    <section style={{ position: 'relative', padding: '64px 24px', background: 'linear-gradient(180deg, #f8fafc 0%, #fff 100%)' }}>
+      <div style={{ ...S.inner, display: 'flex', justifyContent: 'center', gap: 'clamp(16px, 3vw, 32px)', flexWrap: 'wrap' }}>
+        {stats.map((s, i) => (
+          <BlurFade key={s.label} delay={i * 0.1} duration={0.6}>
+            <WobbleCard style={{ width: 'clamp(140px, 20vw, 220px)', background: '#fff', border: '1px solid #e2e8f0' }}>
+              <div style={{ padding: '28px 20px', textAlign: 'center' }}>
+                <div style={{ fontSize: 'clamp(36px, 5vw, 52px)', fontWeight: 900, lineHeight: 1, background: `linear-gradient(135deg, ${s.color}, #7c3aed)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  <NumberTicker value={s.value} duration={2} suffix={s.suffix} />
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', marginTop: 8 }}>{s.label}</div>
+              </div>
+            </WobbleCard>
+          </BlurFade>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════ PRODUCT DEMO ═══════════════ */
+function ProductDemoSection() {
+  return (
+    <section style={{ ...S.section, background: '#0f172a' }}>
+      <FlickeringGrid color="rgb(96, 165, 250)" squareSize={2} gridGap={10} flickerChance={0.04} maxOpacity={0.12} />
+      <div style={S.inner}>
+        <BlurFade style={{ textAlign: 'center', marginBottom: 64 }}>
+          <div style={S.tag('#60a5fa')}>Product Demo</div>
+          <h2 style={{ ...S.h2, color: '#fff' }}>平台功能一览</h2>
+          <p style={{ ...S.desc, color: '#94a3b8' }}>从攻击配置到结果分析，每个环节都精心设计。</p>
+        </BlurFade>
+
+        {/* Browser mockup with Lens */}
+        <BlurFade delay={0.2}>
+          <div style={{ position: 'relative', maxWidth: 960, margin: '0 auto' }}>
+            <BorderBeam duration={6} colorFrom="#1677ff" colorTo="#7c3aed" />
+            <Lens zoomFactor={1.8} lensSize={180}>
+              <div style={{
+                background: '#1e293b', borderRadius: 16, overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
+              }}>
+                {/* Title bar */}
+                <div style={{ padding: '10px 16px', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444' }} />
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b' }} />
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#22c55e' }} />
+                  <div style={{ marginLeft: 12, padding: '3px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', fontSize: 11, color: '#94a3b8', flex: 1 }}>星河智安 — 攻击可视化平台</div>
+                </div>
+
+                {/* Mock UI */}
+                <div style={{ display: 'flex', minHeight: 380 }}>
+                  {/* Sidebar */}
+                  <div style={{ width: 180, background: 'rgba(0,0,0,0.2)', borderRight: '1px solid rgba(255,255,255,0.05)', padding: '16px 12px' }}>
+                    <div style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(22,119,255,0.15)', color: '#60a5fa', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>攻击面板</div>
+                    {['FGSM', 'I-FGSM', 'PGD', 'C&W', 'DeepFool'].map((a, i) => (
+                      <div key={a} style={{ padding: '6px 10px', borderRadius: 8, color: i === 2 ? '#fff' : '#64748b', background: i === 2 ? 'rgba(22,119,255,0.2)' : 'transparent', fontSize: 12, marginBottom: 4, fontWeight: i === 2 ? 600 : 400 }}>{a}</div>
+                    ))}
+                    <div style={{ marginTop: 16, padding: '6px 10px', borderRadius: 8, color: '#64748b', fontSize: 12 }}>历史记录</div>
+                    <div style={{ padding: '6px 10px', borderRadius: 8, color: '#64748b', fontSize: 12 }}>系统设置</div>
+                  </div>
+
+                  {/* Main content */}
+                  <div style={{ flex: 1, padding: 20 }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                      <div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 4 }}>PGD 攻击</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>Projected Gradient Descent</div>
+                      </div>
+                      <div style={{ padding: '6px 20px', borderRadius: 8, background: 'linear-gradient(135deg, #1677ff, #7c3aed)', color: '#fff', fontSize: 12, fontWeight: 600 }}>运行攻击</div>
+                    </div>
+
+                    {/* Params */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+                      {[
+                        { label: 'Epsilon', value: '0.03', bar: '30%' },
+                        { label: 'Steps', value: '40', bar: '40%' },
+                        { label: 'Alpha', value: '0.007', bar: '20%' },
+                      ].map((p) => (
+                        <div key={p.label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '12px 14px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ fontSize: 10, color: '#64748b', marginBottom: 6 }}>{p.label}</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 8 }}>{p.value}</div>
+                          <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.06)' }}>
+                            <div style={{ width: p.bar, height: '100%', borderRadius: 2, background: 'linear-gradient(90deg, #1677ff, #7c3aed)' }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Results */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                      {[
+                        { label: '原始图像', bg: 'linear-gradient(135deg, #1e3a5f, #0f172a)', icon: '🖼️' },
+                        { label: '对抗样本', bg: 'linear-gradient(135deg, #5b21b6, #1e1b4b)', icon: '⚡' },
+                        { label: '扰动热力图', bg: 'linear-gradient(135deg, #065f46, #0f172a)', icon: '🔥' },
+                      ].map((r) => (
+                        <div key={r.label} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ height: 100, background: r.bg, display: 'grid', placeItems: 'center', fontSize: 32 }}>{r.icon}</div>
+                          <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.2)' }}>
+                            <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.label}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Lens>
+          </div>
+        </BlurFade>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════ FEATURE MOCKUPS ═══════════════ */
+function FeatureMockup({ index, color }) {
+  const base = {
+    width: 180, height: 150, borderRadius: 12,
+    background: 'rgba(0,0,0,0.3)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    overflow: 'hidden', position: 'relative',
+  };
+
+  // 0: 实时可视化引擎 — heatmap grid
+  if (index === 0) {
+    return (
+      <div style={base}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(6, 1fr)', gap: 2, padding: 10, height: '100%' }}>
+          {Array.from({ length: 48 }).map((_, j) => {
+            const colors = ['#1e3a5f', '#1e40af', '#3b82f6', '#60a5fa', '#93c5fd', '#ef4444', '#f97316'];
+            return <div key={j} style={{ borderRadius: 2, background: colors[j % colors.length], opacity: 0.5 + (j % 5) * 0.1 }} />;
+          })}
+        </div>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>实时渲染 · 60fps</div>
+      </div>
+    );
+  }
+
+  // 1: 智能对比模式 — side-by-side with slider
+  if (index === 1) {
+    return (
+      <div style={base}>
+        <div style={{ display: 'flex', height: '100%', padding: 10, gap: 4 }}>
+          {/* Left image */}
+          <div style={{ flex: 1, borderRadius: 8, background: 'linear-gradient(135deg, #1e3a5f, #0f172a)', display: 'grid', placeItems: 'center', position: 'relative' }}>
+            <div style={{ fontSize: 20, opacity: 0.5 }}>🖼️</div>
+            <div style={{ position: 'absolute', top: 6, left: 6, fontSize: 8, color: '#60a5fa', fontWeight: 700 }}>原始</div>
+          </div>
+          {/* Slider divider */}
+          <div style={{ width: 2, background: '#60a5fa', borderRadius: 1, position: 'relative', flexShrink: 0 }}>
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 14, height: 14, borderRadius: '50%', background: '#60a5fa', border: '2px solid #fff', boxShadow: '0 0 8px rgba(96,165,250,0.5)' }} />
+          </div>
+          {/* Right image */}
+          <div style={{ flex: 1, borderRadius: 8, background: 'linear-gradient(135deg, #5b21b6, #1e1b4b)', display: 'grid', placeItems: 'center', position: 'relative' }}>
+            <div style={{ fontSize: 20, opacity: 0.5 }}>⚡</div>
+            <div style={{ position: 'absolute', top: 6, right: 6, fontSize: 8, color: '#a78bfa', fontWeight: 700 }}>对抗</div>
+          </div>
+        </div>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>滑块对比 · 实时</div>
+      </div>
+    );
+  }
+
+  // 2: 交互式参数调优 — sliders
+  if (index === 2) {
+    const sliders = [
+      { label: 'ε', value: 0.03, pct: 30 },
+      { label: 'Steps', value: 40, pct: 50 },
+      { label: 'α', value: 0.007, pct: 15 },
+    ];
+    return (
+      <div style={base}>
+        <div style={{ padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {sliders.map((s) => (
+            <div key={s.label}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8' }}>{s.label}</span>
+                <span style={{ fontSize: 9, color, fontWeight: 600 }}>{s.value}</span>
+              </div>
+              <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)', position: 'relative' }}>
+                <div style={{ width: `${s.pct}%`, height: '100%', borderRadius: 2, background: `linear-gradient(90deg, ${color}, ${color}80)` }} />
+                <div style={{ position: 'absolute', left: `${s.pct}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 10, height: 10, borderRadius: '50%', background: '#fff', border: `2px solid ${color}`, boxShadow: `0 0 6px ${color}60` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>实时调参 · 即时反馈</div>
+      </div>
+    );
+  }
+
+  // 3: 置信度分析图表 — bar chart
+  if (index === 3) {
+    const bars = [
+      { label: 'Cat', before: 92, after: 15 },
+      { label: 'Dog', before: 5, after: 78 },
+      { label: 'Bird', before: 2, after: 4 },
+    ];
+    return (
+      <div style={base}>
+        <div style={{ padding: '12px 12px 0', display: 'flex', alignItems: 'flex-end', gap: 8, height: '100%' }}>
+          {bars.map((b) => (
+            <div key={b.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              {/* Before/After pair */}
+              <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 90 }}>
+                <div style={{ width: 14, borderRadius: '3px 3px 0 0', background: `linear-gradient(to top, ${color}, ${color}60)`, height: `${b.before}%` }} />
+                <div style={{ width: 14, borderRadius: '3px 3px 0 0', background: 'linear-gradient(to top, #ef4444, #ef444460)', height: `${b.after}%` }} />
+              </div>
+              <span style={{ fontSize: 7, color: '#64748b', fontWeight: 600 }}>{b.label}</span>
+            </div>
+          ))}
+        </div>
+        {/* Legend */}
+        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><div style={{ width: 5, height: 5, borderRadius: 1, background: color }} /><span style={{ fontSize: 7, color: '#64748b' }}>前</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><div style={{ width: 5, height: 5, borderRadius: 1, background: '#ef4444' }} /><span style={{ fontSize: 7, color: '#64748b' }}>后</span></div>
+        </div>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>置信度变化 · Top-K</div>
+      </div>
+    );
+  }
+
+  // 4: 扰动热力图 — pixel-level with color scale
+  if (index === 4) {
+    return (
+      <div style={base}>
+        <div style={{ padding: 10, height: '100%', display: 'flex', gap: 8 }}>
+          {/* Pixel grid */}
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gridTemplateRows: 'repeat(10, 1fr)', gap: 1 }}>
+            {Array.from({ length: 100 }).map((_, j) => {
+              const intensity = Math.sin(j * 0.3) * 0.5 + 0.5;
+              const r = Math.floor(intensity * 255);
+              const b = Math.floor((1 - intensity) * 100);
+              return <div key={j} style={{ borderRadius: 1, background: `rgb(${r}, ${Math.floor(intensity * 80)}, ${b})` }} />;
+            })}
+          </div>
+          {/* Color scale */}
+          <div style={{ width: 12, borderRadius: 4, background: 'linear-gradient(to bottom, #ef4444, #f97316, #eab308, #22c55e, #3b82f6)', position: 'relative' }}>
+            <span style={{ position: 'absolute', top: -2, right: -2, fontSize: 6, color: '#ef4444' }}>高</span>
+            <span style={{ position: 'absolute', bottom: -2, right: -2, fontSize: 6, color: '#3b82f6' }}>低</span>
+          </div>
+        </div>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>像素级扰动 · 可导出</div>
+      </div>
+    );
+  }
+
+  // 5: 多模型架构支持 — connected nodes
+  if (index === 5) {
+    const nodes = [
+      { x: 20, y: 30, label: 'R', c: '#3b82f6' },
+      { x: 70, y: 20, label: 'V', c: '#8b5cf6' },
+      { x: 45, y: 70, label: 'I', c: '#06b6d4' },
+      { x: 80, y: 65, label: 'M', c: '#10b981' },
+    ];
+    return (
+      <div style={base}>
+        <svg style={{ width: '100%', height: '100%', padding: 10 }} viewBox="0 0 100 90">
+          {/* Connection lines */}
+          {nodes.map((a, ai) => nodes.slice(ai + 1).map((b, bi) => (
+            <line key={`${ai}-${bi}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
+          )))}
+          {/* Nodes */}
+          {nodes.map((n) => (
+            <g key={n.label}>
+              <circle cx={n.x} cy={n.y} r="12" fill={`${n.c}20`} stroke={`${n.c}40`} strokeWidth="0.8" />
+              <circle cx={n.x} cy={n.y} r="5" fill={n.c} opacity="0.8" />
+              <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="5" fontWeight="700">{n.label}</text>
+            </g>
+          ))}
+        </svg>
+        <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.6)', fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>ResNet · VGG · Inception · MobileNet</div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+/* ═══════════════ FEATURES ═══════════════ */
+function FeaturesSection() {
+  const features = [
+    {
+      title: '实时可视化引擎',
+      desc: '对抗样本生成全过程实时呈现，原始图像与扰动层分离展示，像素级差异热力图一目了然。',
+      icon: '🔬',
+      color: '#667eea',
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    },
+    {
+      title: '智能对比模式',
+      desc: '左右滑块对比、多算法同图叠加、量化差异图表，三种维度深度比较攻击效果。',
+      icon: '⚖️',
+      color: '#f093fb',
+      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    },
+    {
+      title: '交互式参数调优',
+      desc: '可视化滑块实时调节 epsilon / steps / learning rate，预设模板与自定义并行。',
+      icon: '🎛️',
+      color: '#4facfe',
+      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    },
+    {
+      title: '置信度分析图表',
+      desc: '分类置信度变化柱状图，Top-K 概率分布对比，攻击前后模型决策全景展示。',
+      icon: '📊',
+      color: '#43e97b',
+      gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    },
+    {
+      title: '扰动热力图',
+      desc: '像素级扰动幅度可视化，颜色编码直观呈现攻击影响区域，支持缩放与导出。',
+      icon: '🔥',
+      color: '#fa709a',
+      gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    },
+    {
+      title: '多模型架构支持',
+      desc: 'ResNet / VGG / Inception / MobileNet 等主流架构开箱即用，灵活扩展。',
+      icon: '🧬',
+      color: '#a18cd1',
+      gradient: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+    },
+  ];
+
+  return (
+    <section id="功能" style={{ ...S.section, background: '#050510', padding: 'clamp(100px, 12vw, 160px) 24px' }}>
+      <FlickeringGrid color="rgb(124, 58, 237)" squareSize={2} gridGap={10} flickerChance={0.04} maxOpacity={0.1} />
+      <Meteors number={6} />
+      <div style={{ position: 'absolute', top: '15%', right: '10%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.06) 0%, transparent 70%)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: '15%', left: '10%', width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle, rgba(22,119,255,0.05) 0%, transparent 70%)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+
+      <div style={S.inner}>
+        <BlurFade style={{ textAlign: 'center', marginBottom: 72 }}>
+          <div style={S.tag('#a78bfa')}>Platform Features</div>
+          <h2 style={{ ...S.h2, color: '#fff' }}>平台核心能力</h2>
+          <p style={{ ...S.desc, color: '#94a3b8' }}>从攻击生成到结果分析，全流程可视化操作，让 AI 安全研究更高效。</p>
+        </BlurFade>
+
+        {/* Bento grid — all cards use Card3D + SpotlightCard */}
+        <div className="features-bento-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, maxWidth: 960, margin: '0 auto' }}>
+          {features.map((feat, i) => (
+            <BlurFade key={feat.title} delay={i * 0.08}>
+              <CardContainer containerClassName="feature-3d-container" style={{ width: '100%' }}>
+                <CardBody style={{
+                  background: 'rgba(15,23,42,0.8)',
+                  borderRadius: 20,
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  padding: 0,
+                  overflow: 'hidden',
+                }}>
+                  <div style={{ position: 'relative', height: '100%' }}>
+                    <GlowingEffect spread={40} proximity={160} style={{ '--xh-primary': `${feat.color}50` }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 28, padding: '28px 32px', position: 'relative', zIndex: 2 }}>
+                      {/* Left: icon + content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <CardItem translateZ={30}>
+                          <div style={{
+                            width: 56, height: 56, borderRadius: 16, marginBottom: 16,
+                            background: feat.gradient,
+                            display: 'grid', placeItems: 'center', fontSize: 26,
+                            boxShadow: `0 8px 32px ${feat.color}30`,
+                          }}>
+                            {feat.icon}
+                          </div>
+                        </CardItem>
+                        <CardItem translateZ={20}>
+                          <h3 style={{ fontSize: 19, fontWeight: 700, color: '#fff', margin: '0 0 8px' }}>{feat.title}</h3>
+                        </CardItem>
+                        <CardItem translateZ={10}>
+                          <p style={{ fontSize: 13, lineHeight: 1.7, color: '#94a3b8', margin: 0 }}>{feat.desc}</p>
+                        </CardItem>
+                      </div>
+
+                      {/* Right: unique mini mockup per feature */}
+                      <CardItem translateZ={50} style={{ flex: '0 0 auto' }}>
+                        <FeatureMockup index={i} color={feat.color} />
+                      </CardItem>
+                    </div>
+
+                    {/* Bottom gradient bar */}
+                    <div style={{ height: 3, background: feat.gradient }} />
+                  </div>
+                </CardBody>
+              </CardContainer>
+            </BlurFade>
+          ))}
+        </div>
+      </div>
+
+      {/* Responsive */}
+      <style>{`
+        .feature-3d-container { width: 100%; }
+        @media (max-width: 768px) {
+          .features-bento-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+/* ═══════════════ ALGORITHMS ═══════════════ */
+function AlgorithmsSection() {
+  const [hoveredAlgo, setHoveredAlgo] = useState(null);
+
+  const precisionToWidth = (p) => {
+    const map = { '★★★': '45%', '★★★★': '65%', '★★★★★': '90%' };
+    return map[p] || '50%';
+  };
+  const speedToWidth = (s) => {
+    const ms = parseFloat(s);
+    if (ms <= 20) return '90%';
+    if (ms <= 60) return '70%';
+    if (ms <= 150) return '50%';
+    return '30%';
+  };
+
+  return (
+    <section id="算法" style={{ ...S.section, background: '#050510', padding: 'clamp(100px, 12vw, 160px) 24px' }}>
+      <FlickeringGrid color="rgb(96, 165, 250)" squareSize={2} gridGap={10} flickerChance={0.05} maxOpacity={0.12} />
+      <Meteors number={6} />
+      {/* Glow orbs */}
+      <div style={{ position: 'absolute', top: '10%', left: '5%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(22,119,255,0.06) 0%, transparent 70%)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: '10%', right: '5%', width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.05) 0%, transparent 70%)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+
+      <div style={S.inner}>
+        <BlurFade style={{ textAlign: 'center', marginBottom: 72 }}>
+          <div style={S.tag('#60a5fa')}>Supported Algorithms</div>
+          <h2 style={{ ...S.h2, color: '#fff' }}>五大主流对抗攻击算法</h2>
+          <p style={{ ...S.desc, color: '#94a3b8' }}>覆盖从快速验证到高精度评估的完整攻击谱系，悬停卡片聚焦查看详情。</p>
+        </BlurFade>
+
+        {/* FocusCards grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, maxWidth: 1000, margin: '0 auto' }}>
+          {algorithms.map((algo, i) => (
+            <BlurFade key={algo.name} delay={i * 0.08}>
+              <motion.div
+                onMouseEnter={() => setHoveredAlgo(i)}
+                onMouseLeave={() => setHoveredAlgo(null)}
+                style={{
+                  position: 'relative', borderRadius: 20, overflow: 'hidden',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  filter: hoveredAlgo !== null && hoveredAlgo !== i ? 'blur(6px) brightness(0.5)' : 'none',
+                  transform: hoveredAlgo === i ? 'scale(1.03)' : hoveredAlgo !== null ? 'scale(0.97)' : 'scale(1)',
+                }}
+              >
+                {/* NeonGradientCard border */}
+                <div style={{
+                  borderRadius: 20, padding: 1.5,
+                  background: `radial-gradient(300px circle at ${hoveredAlgo === i ? '50%' : '0%'} ${hoveredAlgo === i ? '50%' : '0%'}, ${algo.color}, #7c3aed, transparent)`,
+                  transition: 'background 0.4s ease',
+                }}>
+                  <div style={{
+                    borderRadius: 18,
+                    background: 'rgba(15,23,42,0.95)',
+                    backdropFilter: 'blur(20px)',
+                    padding: 28,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    '--xh-primary': `${algo.color}40`,
+                  }}>
+                    {/* Cursor-tracking glow border */}
+                    <GlowingEffect spread={40} proximity={140} />
+
+                    {/* Top accent line */}
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${algo.color}, transparent)` }} />
+
+                    {/* Content */}
+                    <div style={{ position: 'relative', zIndex: 2 }}>
+                      {/* Header */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+                        <motion.div
+                          animate={hoveredAlgo === i ? { scale: [1, 1.15, 1], rotate: [0, 5, 0] } : {}}
+                          transition={{ duration: 0.5 }}
+                          style={{
+                            width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                            background: `linear-gradient(135deg, ${algo.color}20, ${algo.color}08)`,
+                            display: 'grid', placeItems: 'center', fontSize: 24,
+                            border: `1px solid ${algo.color}25`,
+                            boxShadow: hoveredAlgo === i ? `0 0 24px ${algo.color}30` : 'none',
+                            transition: 'box-shadow 0.4s ease',
+                          }}
+                        >
+                          {algo.icon}
+                        </motion.div>
+                        <div>
+                          <HyperText
+                            text={algo.name}
+                            duration={600}
+                            style={{
+                              fontSize: 14, fontWeight: 800, color: algo.color,
+                              letterSpacing: 2, textTransform: 'uppercase',
+                              display: 'block', marginBottom: 2,
+                            }}
+                          />
+                          <TextGenerateEffect
+                            words={algo.full}
+                            duration={0.4}
+                            style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <TextGenerateEffect
+                        words={algo.desc}
+                        duration={0.5}
+                        style={{ fontSize: 13, lineHeight: 1.7, color: '#cbd5e1', margin: '0 0 20px' }}
+                      />
+
+                      {/* Bars */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: 1 }}>速度</span>
+                            <span style={{ fontSize: 10, color: algo.color, fontWeight: 600 }}>{algo.speed}</span>
+                          </div>
+                          <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)' }}>
+                            <motion.div
+                              initial={{ width: 0 }}
+                              whileInView={{ width: speedToWidth(algo.speed) }}
+                              viewport={{ once: true }}
+                              transition={{ delay: 0.3 + i * 0.1, duration: 0.8, ease: 'easeOut' }}
+                              style={{ height: '100%', borderRadius: 2, background: `linear-gradient(90deg, ${algo.color}, ${algo.color}80)` }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: 1 }}>精度</span>
+                            <span style={{ fontSize: 10, color: algo.color, fontWeight: 600 }}>{algo.precision}</span>
+                          </div>
+                          <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)' }}>
+                            <motion.div
+                              initial={{ width: 0 }}
+                              whileInView={{ width: precisionToWidth(algo.precision) }}
+                              viewport={{ once: true }}
+                              transition={{ delay: 0.5 + i * 0.1, duration: 0.8, ease: 'easeOut' }}
+                              style={{ height: '100%', borderRadius: 2, background: `linear-gradient(90deg, #7c3aed, ${algo.color})` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Corner glow */}
+                    <div style={{
+                      position: 'absolute', bottom: -40, right: -40, width: 120, height: 120, borderRadius: '50%',
+                      background: `radial-gradient(circle, ${algo.color}10, transparent 70%)`,
+                      opacity: hoveredAlgo === i ? 1 : 0, transition: 'opacity 0.4s ease',
+                    }} />
+                  </div>
+                </div>
+              </motion.div>
+            </BlurFade>
+          ))}
+        </div>
+
+        {/* Bottom connector line */}
+        <BlurFade delay={0.5} style={{ marginTop: 48, textAlign: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            {algorithms.map((algo, i) => (
+              <React.Fragment key={algo.name}>
+                <motion.div
+                  whileHover={{ scale: 1.3 }}
+                  style={{ width: 10, height: 10, borderRadius: '50%', background: algo.color, cursor: 'pointer', boxShadow: `0 0 12px ${algo.color}40` }}
+                  onMouseEnter={() => setHoveredAlgo(i)}
+                  onMouseLeave={() => setHoveredAlgo(null)}
+                />
+                {i < algorithms.length - 1 && (
+                  <motion.div
+                    initial={{ scaleX: 0 }}
+                    whileInView={{ scaleX: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3 + i * 0.15, duration: 0.6 }}
+                    style={{ width: 40, height: 2, background: `linear-gradient(90deg, ${algo.color}, ${algorithms[i + 1].color})`, borderRadius: 1, transformOrigin: 'left' }}
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 16, letterSpacing: 1 }}>从快速验证到高精度评估，覆盖完整攻击谱系</div>
+        </BlurFade>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════ ARCHITECTURE ═══════════════ */
+function ArchitectureSection() {
+  const steps = [
+    { label: '上传模型', desc: '导入预训练模型，支持 PyTorch / TensorFlow 等主流框架', icon: '📤', color: '#3b82f6' },
+    { label: '选择算法', desc: '从 5 种攻击算法中选择，配置 epsilon、步长等参数', icon: '⚙️', color: '#8b5cf6' },
+    { label: '生成攻击', desc: '一键生成对抗样本，实时进度跟踪，中途可调参', icon: '🚀', color: '#06b6d4' },
+    { label: '可视化分析', desc: '扰动热力图、置信度图表、对比滑块，多维分析', icon: '📊', color: '#10b981' },
+  ];
+
+  return (
+    <section id="架构" style={{ ...S.section, background: '#fff' }}>
+      <div style={S.inner}>
+        <BlurFade style={{ textAlign: 'center', marginBottom: 64 }}>
+          <div style={S.tag('#f59e0b')}>How It Works</div>
+          <h2 style={S.h2}>四步完成对抗攻击分析</h2>
+          <p style={S.desc}>简洁直观的工作流程，从上传到分析，全程可视化引导。</p>
+        </BlurFade>
+
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {steps.map((step, i) => (
+            <BlurFade key={step.label} delay={i * 0.12} style={{ flex: '1 1 220px', maxWidth: 260 }}>
+              <EvervingCard delay={i * 0.3}>
+                <NeonGradientCard neonColors={{ firstColor: step.color, secondColor: '#7c3aed' }} size={180}>
+                  <div style={{ padding: '32px 20px', textAlign: 'center', position: 'relative', '--xh-primary': `${step.color}35` }}>
+                    <GlowingEffect spread={35} proximity={120} />
+                    <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', padding: '2px 12px', borderRadius: 999, background: step.color, color: '#fff', fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>{String(i + 1).padStart(2, '0')}</div>
+                    <div style={{ width: 64, height: 64, borderRadius: 18, margin: '14px auto 16px', background: `${step.color}0d`, display: 'grid', placeItems: 'center', fontSize: 28, border: `1px solid ${step.color}12` }}>{step.icon}</div>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>{step.label}</h3>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0, lineHeight: 1.6 }}>{step.desc}</p>
+                  </div>
+                </NeonGradientCard>
+              </EvervingCard>
+            </BlurFade>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════ SHOWCASE ═══════════════ */
+function ShowcaseSection() {
+  return (
+    <section style={{ ...S.section, background: '#f8fafc' }}>
+      <div style={S.inner}>
+        <BlurFade style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={S.tag('#06b6d4')}>Why XingHe</div>
+          <h2 style={S.h2}>为什么选择星河智安</h2>
+        </BlurFade>
+        <InfiniteMovingCards items={movingItems} direction="left" speed="normal" pauseOnHover />
+        <div style={{ marginTop: 16 }}>
+          <InfiniteMovingCards items={[...movingItems].reverse()} direction="right" speed="normal" pauseOnHover />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════ CTA ═══════════════ */
+function CTASection() {
+  const nav = useNavigate();
+  const [logoOpen, setLogoOpen] = useState(false);
+  return (
+    <section style={{ position: 'relative', padding: 'clamp(100px, 12vw, 160px) 24px', textAlign: 'center', background: '#050510', overflow: 'hidden' }}>
+      <FlickeringGrid color="rgb(96, 165, 250)" squareSize={2} gridGap={12} flickerChance={0.05} maxOpacity={0.15} />
+      <Meteors number={8} />
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.35 }}><BackgroundBeams /></div>
+      <div style={{ position: 'absolute', top: '10%', left: '20%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(22,119,255,0.1) 0%, transparent 70%)', filter: 'blur(100px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: '10%', right: '15%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)', filter: 'blur(100px)', pointerEvents: 'none' }} />
+
+      <BlurFade style={{ position: 'relative', zIndex: 2 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 999, background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.15)', fontSize: 11, fontWeight: 700, color: '#60a5fa', letterSpacing: 1.5, marginBottom: 28 }}>GET STARTED</div>
+
+        <h2 style={{ fontSize: 'clamp(34px, 6vw, 56px)', fontWeight: 900, color: '#fff', margin: '0 0 16px', lineHeight: 1.15, letterSpacing: '-0.03em' }}>
+          <AnimatedGradientText colors={['#ffffff', '#60a5fa', '#a78bfa', '#ffffff']} speed={4}>
+            开启 AI 安全研究之旅
+          </AnimatedGradientText>
+        </h2>
+        <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.45)', maxWidth: 480, margin: '0 auto 56px', lineHeight: 1.7 }}>免费注册，即刻体验前沿对抗攻击可视化平台。</p>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <MagneticButton>
+            <ShimmerButton onClick={() => nav('/register')} style={{ padding: '18px 52px', fontSize: 18, borderRadius: 14, boxShadow: '0 8px 40px rgba(22,119,255,0.4)' }} shimmerColor="rgba(255,255,255,0.2)">免费注册</ShimmerButton>
+          </MagneticButton>
+          <motion.button onClick={() => nav('/login')} style={{ padding: '18px 52px', borderRadius: 14, border: '1.5px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(8px)', fontSize: 18, fontWeight: 600, color: '#e2e8f0', cursor: 'pointer' }} whileHover={{ scale: 1.06, borderColor: 'rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.06)' }} whileTap={{ scale: 0.97 }}>登录</motion.button>
+        </div>
+      </BlurFade>
+
+      <div style={{ marginTop: 80, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)', position: 'relative', zIndex: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
+          <img src="/logo.png" alt="星河智安" onClick={() => setLogoOpen(true)} style={{ width: 26, height: 26, borderRadius: 7, cursor: 'pointer' }} />
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.45)' }}>星河智安</span>
+          <LogoPreviewModal open={logoOpen} onClose={() => setLogoOpen(false)} />
+        </div>
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', margin: 0 }}>&copy; {new Date().getFullYear()} XingHe ZhiAn &mdash; AI Adversarial Attack Visualization Platform</p>
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.14)', margin: '6px 0 0' }}>浙ICP备2026027797号</p>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════ MAIN ═══════════════ */
+export default function Landing() {
+  return (
+    <div style={{ minHeight: '100vh', background: '#fff', overflowX: 'hidden' }}>
+      <NavBar />
+      <HeroSection />
+      <StatsBar />
+      <ProductDemoSection />
+      <FeaturesSection />
+      <AlgorithmsSection />
+      <ArchitectureSection />
+      <ShowcaseSection />
+      <CTASection />
+    </div>
+  );
+}

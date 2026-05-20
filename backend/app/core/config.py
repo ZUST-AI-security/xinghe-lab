@@ -1,0 +1,143 @@
+"""
+星河智安 (XingHe ZhiAn) - 应用配置管理
+使用Pydantic Settings进行配置管理，支持环境变量覆盖
+"""
+
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode
+from typing import Annotated, List, Optional
+import os
+from pathlib import Path
+
+class Settings(BaseSettings):
+    """
+    应用配置类
+    所有配置项都可以通过环境变量覆盖
+    """
+    
+    model_config = {
+        "protected_namespaces": (),
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
+    
+    # 应用基础配置
+    app_name: str = "星河智安 AI安全攻击可视化平台"
+    app_version: str = "1.0.0"
+    debug: bool = False  # 生产环境必须关闭debug
+    secret_key: str = ""  # 必须通过环境变量设置
+    
+    # 数据库配置
+    database_url: str = "sqlite:///./xinghe_zhi_an.db"
+    
+    # JWT配置
+    jwt_secret_key: str = ""  # 必须通过环境变量设置
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 15  # 缩短访问token有效期
+    jwt_refresh_token_expire_days: int = 3  # 缩短刷新token有效期
+    
+    # Redis配置
+    redis_url: str = "redis://localhost:6379/0"
+
+    # 腾讯云SES邮件配置
+    tencent_secret_id: str = ""
+    tencent_secret_key: str = ""
+    tencent_ses_region: str = "ap-hongkong"
+    tencent_ses_from: str = "星河智安 <zhian@mail.xinghezhian.com>"
+    tencent_ses_template_id: int = 178841
+
+    # Celery配置
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/0"
+    
+    # 模型配置
+    model_cache_dir: str = "./models"
+    imagenet_classes_path: str = "./models/imagenet_classes.txt"
+    
+    # YOLOv8配置
+    yolo_model_size: str = "n"  # n, s, m, l, x
+    yolo_conf_threshold: float = 0.25
+    yolo_iou_threshold: float = 0.7
+    
+    # 文件上传配置
+    max_file_size_mb: int = 10
+    allowed_image_types: Annotated[List[str], NoDecode] = ["jpg", "jpeg", "png", "bmp", "tiff"]
+    
+    # 日志配置
+    log_level: str = "INFO"
+    log_file: str = "./logs/app.log"
+    
+    # CORS配置（生产环境需要限制为实际域名）
+    cors_origins: List[str] = []  # 生产环境必须通过环境变量设置
+    
+    # 安全配置
+    password_min_length: int = 8
+    max_login_attempts: int = 5
+    lockout_duration_minutes: int = 15
+    admin_setup_token: Optional[str] = None  # 首次部署时设置，防止攻击者抢先注册管理员
+
+    # 图片上传限制（base64 编码后最大字节数）
+    max_image_base64_bytes: int = 15_000_000  # ~15MB base64 ≈ 11MB 原图
+
+    # API限流配置
+    rate_limit_per_minute: int = 60
+
+    @field_validator("allowed_image_types", mode="before")
+    @classmethod
+    def parse_allowed_image_types(cls, value):
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @model_validator(mode="after")
+    def validate_security_config(self):
+        """验证安全配置"""
+        if not self.debug:
+            # 生产环境必须设置的安全配置
+            if not self.secret_key:
+                raise ValueError("生产环境必须设置SECRET_KEY环境变量")
+            if not self.jwt_secret_key:
+                raise ValueError("生产环境必须设置JWT_SECRET_KEY环境变量")
+            if not self.cors_origins:
+                raise ValueError("生产环境必须设置CORS_ORIGINS环境变量")
+        return self
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._ensure_directories()
+    
+    def _ensure_directories(self):
+        """确保必要的目录存在"""
+        model_cache_path = Path(self.model_cache_dir).resolve()
+        directories = [
+            model_cache_path,
+            Path(self.log_file).parent,
+        ]
+        
+        for directory in directories:
+            Path(directory).mkdir(parents=True, exist_ok=True)
+
+        # Keep torchvision / torch hub downloads inside backend\models instead of the user cache.
+        os.environ.setdefault("TORCH_HOME", str(model_cache_path))
+    
+    @property
+    def is_development(self) -> bool:
+        """判断是否为开发环境"""
+        return self.debug
+    
+    @property
+    def is_production(self) -> bool:
+        """判断是否为生产环境"""
+        return not self.debug
+    
+    def get_yolo_model_name(self) -> str:
+        """获取YOLO模型文件名"""
+        return f"yolov8{self.yolo_model_size}.pt"
+    
+    def get_model_path(self, model_name: str) -> str:
+        """获取模型完整路径"""
+        return os.path.join(self.model_cache_dir, model_name)
+
+# 创建全局配置实例
+settings = Settings()

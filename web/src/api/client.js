@@ -1,0 +1,261 @@
+/**
+ * 星河智安 (XingHe ZhiAn) - API客户端
+ * Axios实例配置和请求/响应拦截器
+ */
+
+import axios from 'axios';
+import { App } from 'antd';
+
+// 全局 message 实例
+let globalMessage = null;
+
+export const setGlobalMessage = (messageInstance) => {
+  globalMessage = messageInstance;
+};
+
+const getMessage = () => {
+  return globalMessage || { error: console.error, success: console.log, warning: console.warn };
+};
+
+// API基础配置
+// 生产环境：空字符串（相对路径），由 Nginx 代理到后端
+// 开发环境：在 web/.env 中设置 VITE_API_BASE_URL=http://localhost:8000
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
+const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG === 'true';
+
+// 创建Axios实例
+const apiClient = axios.create({
+  baseURL: `${API_BASE_URL}/api/${API_VERSION}`,
+  timeout: 30000, // 30秒超时
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// 获取当前活跃的 token（优先 localStorage，其次 sessionStorage）
+const getStoredToken = (key) => {
+  return localStorage.getItem(key) || sessionStorage.getItem(key);
+};
+
+// 将 token 写回原存储位置
+const setStoredToken = (key, value) => {
+  if (localStorage.getItem(key)) {
+    localStorage.setItem(key, value);
+  } else if (sessionStorage.getItem(key)) {
+    sessionStorage.setItem(key, value);
+  } else {
+    // 默认写入 localStorage（记住我场景）
+    localStorage.setItem(key, value);
+  }
+};
+
+// 清除两个存储中的 token
+const clearStoredTokens = () => {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  sessionStorage.removeItem('access_token');
+  sessionStorage.removeItem('refresh_token');
+};
+
+// 请求拦截器
+apiClient.interceptors.request.use(
+  (config) => {
+    // 添加认证token
+    const token = getStoredToken('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // 添加验证码 (如果存在)
+    const captchaId = sessionStorage.getItem('captcha_id');
+    const captchaCode = sessionStorage.getItem('captcha_code');
+    if (captchaId && captchaCode) {
+      config.headers['X-Captcha-ID'] = captchaId;
+      config.headers['X-Captcha-Code'] = captchaCode;
+    }
+
+    // 添加请求时间戳
+    config.metadata = { startTime: new Date() };
+
+    // 开发环境下打印请求信息
+    if (ENABLE_DEBUG) {
+      console.log('🚀 API Request:', {
+        method: config.method?.toUpperCase(),
+        url: config.url,
+        data: config.data,
+        params: config.params,
+      });
+    }
+
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// 响应拦截器
+apiClient.interceptors.response.use(
+  (response) => {
+    // 计算请求耗时
+    const endTime = new Date();
+    const duration = endTime - response.config.metadata.startTime;
+
+    // 清除可能存在的验证码
+    sessionStorage.removeItem('captcha_id');
+    sessionStorage.removeItem('captcha_code');
+
+    // 开发环境下打印响应信息
+    if (ENABLE_DEBUG) {
+      console.log('✅ API Response:', {
+        url: response.config.url,
+        status: response.status,
+        duration: `${duration}ms`,
+        data: response.data,
+      });
+    }
+
+    return response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+
+    // 开发环境下打印错误信息
+    if (ENABLE_DEBUG) {
+      console.error('❌ API Error:', {
+        url: originalRequest?.url,
+        status: error.response?.status,
+        message: error.message,
+        data: error.response?.data,
+      });
+    }
+
+    // 处理401未授权错误
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // 尝试使用refresh token刷新access token
+        const refreshToken = getStoredToken('refresh_token');
+        if (refreshToken) {
+          const response = await axios.post(
+            `${API_BASE_URL}/api/${API_VERSION}/auth/refresh`,
+            { refresh_token: refreshToken }
+          );
+
+          const { access_token, refresh_token: new_refresh_token } = response.data;
+          setStoredToken('access_token', access_token);
+          if (new_refresh_token) {
+            setStoredToken('refresh_token', new_refresh_token);
+          }
+
+          // 重新发送原始请求
+          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+          return apiClient(originalRequest);
+        }
+      } catch (refreshError) {
+        // 刷新失败，清除token并跳转到登录页
+        clearStoredTokens();
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    // 处理其他HTTP错误
+    if (error.response) {
+      const { status, data } = error.response;
+      const msg = getMessage();
+      
+      switch (status) {
+        case 400:
+          msg.error(data.detail || '输入有误，请检查后重试');
+          break;
+        case 401:
+          msg.error('登录已过期，请重新登录');
+          break;
+        case 403:
+          msg.error('没有操作权限，请联系管理员');
+          break;
+        case 404:
+          msg.error('找不到请求的内容，可能已被删除');
+          break;
+        case 429:
+          if (data.require_captcha) {
+            window.dispatchEvent(new CustomEvent('showCaptcha', { detail: { originalRequest }}));
+          } else {
+            msg.error('操作太频繁，请稍后再试');
+          }
+          break;
+        case 500:
+          msg.error('服务器出错了，请稍后重试');
+          break;
+        default:
+          msg.error(data.detail || `请求失败 (${status})`);
+      }
+    } else if (error.request) {
+      // 网络错误
+      getMessage().error('网络连接失败，请检查网络设置');
+    } else {
+      // 其他错误
+      getMessage().error('请求配置错误');
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// 设置Axios拦截器（用于外部调用）
+export const setupAxiosInterceptors = () => {
+  // 这个函数在App.jsx中调用，确保拦截器被设置
+};
+
+// 便捷的HTTP方法
+export const api = {
+  get: (url, config = {}) => apiClient.get(url, config),
+  post: (url, data = {}, config = {}) => apiClient.post(url, data, config),
+  put: (url, data = {}, config = {}) => apiClient.put(url, data, config),
+  patch: (url, data = {}, config = {}) => apiClient.patch(url, data, config),
+  delete: (url, config = {}) => apiClient.delete(url, config),
+};
+
+// 文件上传专用方法
+export const uploadFile = (url, file, onUploadProgress = null) => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return apiClient.post(url, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    onUploadProgress,
+  });
+};
+
+// 下载文件专用方法
+export const downloadFile = async (url, filename = null) => {
+  try {
+    const response = await apiClient.get(url, {
+      responseType: 'blob',
+    });
+
+    // 创建下载链接
+    const blob = new Blob([response.data]);
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename || 'download';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+
+    return response;
+  } catch (error) {
+    console.error('文件下载失败:', error);
+    throw error;
+  }
+};
+
+export default apiClient;

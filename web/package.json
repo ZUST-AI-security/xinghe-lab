@@ -1,0 +1,66 @@
+{
+  "name": "xinghe-zhi-an-frontend",
+  "version": "1.0.0",
+  "description": "星河智安 AI安全攻击可视化平台 - 前端",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ant-design/icons": "^5.2.6",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^14.5.1",
+    "ajv": "^8.18.0",
+    "antd": "^5.12.8",
+    "autoprefixer": "^10.5.0",
+    "axios": "^1.6.2",
+    "clsx": "^2.1.1",
+    "fabric": "^7.2.0",
+    "framer-motion": "^12.38.0",
+    "i18next": "^25.8.18",
+    "postcss": "^8.5.14",
+    "react": "^18.2.0",
+    "react-compare-image": "^3.1.0",
+    "react-dom": "^18.2.0",
+    "react-dropzone": "^14.2.3",
+    "react-i18next": "^16.5.8",
+    "react-router-dom": "^6.20.1",
+    "recharts": "^2.15.4",
+    "tailwindcss": "^3.4.19",
+    "web-vitals": "^2.1.4",
+    "zustand": "^4.4.7"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "start": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write src/**/*.{js,jsx,css,md}"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^8.57.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.13",
+    "globals": "^15.12.0",
+    "less": "^4.2.0",
+    "prettier": "^3.1.1",
+    "vite": "^5.4.10"
+  }
+}

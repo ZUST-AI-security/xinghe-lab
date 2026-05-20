@@ -1,0 +1,37 @@
+# Data and Models
+data/
+uploads/
+outputs/
+logs/
+models/checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Database
+*.db
+*.sqlite3
+*.sqlite
+sql_app.db
+xinghe_zhi_an.db
+*.pth
+
+# IDEs
+.idea/
+.vscode/
+
+# Environment
+.env
+
+# Celery beat schedule
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal
+
+# Screenshots / docs images
+*.png

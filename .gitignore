@@ -1,0 +1,74 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+dist/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+.venv
+env/
+instance/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime artifacts
+logs/
+outputs/
+celerybeat-schedule*
+
+# SSL certificates
+nginx/certbot/
+
+# Local model cache / checkpoints
+models/
+backend/models/checkpoints/
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+xinghe_zhi_an.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 前端构建产物
+web/dist/
+
+# 旧版 api 目录（开发残留）
+/api/
+
+# 非核心文档
+skills-lock.json
+DESIGN.md
+PRODUCT.md
+backend/SECURITY_DEPLOYMENT.md
+
+# SQLite 运行时
+*.db-shm
+*.db-wal
+
+# 真实环境变量备份（含密钥，禁止提交）
+.env.real.bak
+*.bak
+web/src/store/attackStore.js.bak
