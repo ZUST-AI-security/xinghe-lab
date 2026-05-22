@@ -18,6 +18,7 @@ class User(Base):
     avatar_url = Column(String(255), nullable=True)
     
     tasks = relationship("TaskRecord", back_populates="user", cascade="all, delete-orphan")
+    sensitivity_records = relationship("SensitivityRecord", back_populates="user", cascade="all, delete-orphan")
     bio = Column(Text, nullable=True)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

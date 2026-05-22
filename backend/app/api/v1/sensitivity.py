@@ -2,8 +2,10 @@
 攻击参数敏感性分析 API (Sensitivity Analysis API)
 
 Endpoints:
-  POST /api/v1/sensitivity/scan           — Submit a sensitivity scan (auth required)
-  GET  /api/v1/sensitivity/result/{scan_id} — Aggregate scan results (auth required)
+  POST /api/v1/sensitivity/scan                    — Submit a sensitivity scan (auth required)
+  GET  /api/v1/sensitivity/result/{scan_id}        — Aggregate scan results (auth required)
+  GET  /api/v1/sensitivity/history                 — List completed scans (auth required)
+  GET  /api/v1/sensitivity/history/{scan_id}       — Get single scan detail (auth required)
 
 关联需求：Requirement 9
 """
@@ -11,7 +13,7 @@ Endpoints:
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
@@ -98,6 +100,34 @@ class SensitivityResultResponse(BaseModel):
     failed: int
 
 
+class SensitivityHistoryItem(BaseModel):
+    id: int
+    scan_id: str
+    algorithm: str
+    model_name: str
+    scan_param: str
+    param_min: float
+    param_max: float
+    steps: int
+    status: str
+    created_at: Optional[str] = None
+    completed_at: Optional[str] = None
+
+
+class SensitivityHistoryResponse(BaseModel):
+    items: List[SensitivityHistoryItem]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+
+class SensitivityHistoryDetailResponse(SensitivityHistoryItem):
+    data_points: List[DataPoint] = []
+    completed: int = 0
+    failed: int = 0
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -174,6 +204,7 @@ async def submit_sensitivity_scan(
 async def get_sensitivity_result(
     scan_id: str,
     current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
     """
     Aggregate and return the results of all AttackTasks in a sensitivity scan.
@@ -186,9 +217,10 @@ async def get_sensitivity_result(
 
     Failed steps are included in data_points with status="failed" and an
     error message; they should be skipped when rendering the chart.
+    When the scan has expired from Redis, completed results are served from DB.
     """
     try:
-        result = _service.get_scan_result(scan_id)
+        result = _service.get_scan_result(scan_id, db=db)
         return SensitivityResultResponse(**result)
 
     except ValidationError as exc:
@@ -198,3 +230,55 @@ async def get_sensitivity_result(
             "Failed to get sensitivity result for scan %s: %s", scan_id, exc, exc_info=True
         )
         raise HTTPException(status_code=500, detail=f"获取扫描结果失败: {exc}")
+
+
+@router.get("/history", response_model=SensitivityHistoryResponse)
+async def get_sensitivity_history(
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return a paginated list of the current user's completed sensitivity scans.
+
+    Only scans with status "completed" or "partial" are included.
+    """
+    try:
+        result = _service.get_scan_history(
+            user_id=current_user.id,
+            page=page,
+            size=size,
+            db=db,
+        )
+        return SensitivityHistoryResponse(**result)
+    except Exception as exc:
+        logger.error("Failed to get sensitivity history for user %d: %s", current_user.id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取历史记录失败: {exc}")
+
+
+@router.get("/history/{scan_id}", response_model=SensitivityHistoryDetailResponse)
+async def get_sensitivity_history_detail(
+    scan_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return the full detail (including data_points) of a single completed scan.
+    Only the owning user may access their own scan history.
+    """
+    try:
+        result = _service.get_scan_by_id(scan_id=scan_id, user_id=current_user.id, db=db)
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"扫描记录 '{scan_id}' 不存在或无权访问",
+            )
+        return SensitivityHistoryDetailResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(
+            "Failed to get sensitivity history detail for scan %s: %s", scan_id, exc, exc_info=True
+        )
+        raise HTTPException(status_code=500, detail=f"获取扫描详情失败: {exc}")

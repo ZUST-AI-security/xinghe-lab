@@ -14,6 +14,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+@router.get("", include_in_schema=False)
 @router.get("/")
 async def list_models():
     """List all registered models with their metadata (no weight loading)."""

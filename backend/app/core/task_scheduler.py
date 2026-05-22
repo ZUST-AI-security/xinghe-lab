@@ -11,6 +11,7 @@ TaskScheduler — 自适应资源分配模块
 """
 
 import logging
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -119,6 +120,47 @@ def check_concurrent_limit(user_id: int, db) -> int:
         当前活跃任务数量（status IN ('running', 'pending')）
     """
     from app.models.task_record import TaskRecord
+    from app.core.config import settings
+
+    # Reclaim slots left behind by killed workers or older deployments.  These
+    # records block submission but cannot be matched to a live Celery task.
+    now = datetime.now(timezone.utc)
+    stale_after = max(
+        int(getattr(settings, "active_task_stale_seconds", 0) or 0),
+        int(getattr(settings, "celery_task_time_limit", 1900) or 1900) + 300,
+    )
+    cutoff = now - timedelta(seconds=stale_after)
+    active_records = (
+        db.query(TaskRecord)
+        .filter(
+            TaskRecord.user_id == user_id,
+            TaskRecord.status.in_(["running", "pending"]),
+        )
+        .all()
+    )
+    reclaimed = 0
+    for record in active_records:
+        result = dict(record.result) if isinstance(record.result, dict) else {}
+        created_at = record.created_at
+        if created_at and created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        is_stale = bool(created_at and created_at < cutoff)
+        is_untracked = not result.get("task_id")
+        if not (is_stale or is_untracked):
+            continue
+        record.status = "failed"
+        record.completed_at = now
+        result["error"] = (
+            "任务超时或 worker 异常退出，已自动释放并发名额"
+            if is_stale
+            else "历史孤儿任务记录缺少 task_id，已自动释放并发名额"
+        )
+        record.result = result
+        reclaimed += 1
+
+    if reclaimed:
+        db.commit()
+        logger.warning("Reclaimed %d stale task slots for user_id=%s", reclaimed, user_id)
 
     active_count = (
         db.query(TaskRecord)

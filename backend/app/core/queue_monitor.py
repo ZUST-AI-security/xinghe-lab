@@ -31,32 +31,63 @@ QUEUE_ALGORITHMS: dict[str, list[str]] = {
 }
 
 
+def _get_active_count_by_queue() -> dict[str, int]:
+    """
+    使用 Celery Inspect 查询各队列的 active（正在执行）任务数。
+
+    Returns:
+        {queue_name: active_count}，Inspect 不可用时返回空字典。
+    """
+    try:
+        from app.workers.celery_app import celery_app
+
+        inspector = celery_app.control.inspect(timeout=1.0)
+        active_map = inspector.active() or {}
+        counts: dict[str, int] = {}
+        for worker_tasks in active_map.values():
+            for task in worker_tasks:
+                # delivery_info 包含 routing_key，与队列名一致
+                q = (task.get("delivery_info") or {}).get("routing_key", "default")
+                counts[q] = counts.get(q, 0) + 1
+        return counts
+    except Exception as exc:
+        logger.debug("_get_active_count_by_queue: inspect failed: %s", exc)
+        return {}
+
+
 def get_queue_depth(queue_name: str) -> int:
     """
-    通过 Redis LLEN 命令查询指定队列的待处理任务数量。
+    查询指定队列的任务数量（等待中 + 正在执行）。
 
-    Celery 使用 kombu 将队列存储为 Redis list，key 即队列名称。
+    - 等待中（pending）：通过 Redis LLEN 查询 kombu 队列 list。
+    - 正在执行（active）：通过 Celery Inspect 查询 worker active 任务。
+
+    两者之和才是用户感知到的"队列繁忙程度"；若只看 LLEN，
+    worker 一旦取走任务就变 0，导致显示"空闲"但实际仍在处理。
 
     Args:
         queue_name: 队列名称（"high" | "default" | "low"）
 
     Returns:
-        队列中待处理任务数量；Redis 不可用时返回 0。
+        pending + active 数量之和；任一数据源不可用时用 0 代替。
     """
+    pending = 0
     try:
         import redis
         from app.core.config import settings
 
         client = redis.from_url(settings.redis_url, socket_connect_timeout=2)
-        depth = client.llen(queue_name)
-        return int(depth)
+        pending = int(client.llen(queue_name))
     except Exception as exc:
         logger.warning(
             "get_queue_depth: Redis query failed for queue '%s', defaulting to 0. Error: %s",
             queue_name,
             exc,
         )
-        return 0
+
+    active_counts = _get_active_count_by_queue()
+    active = active_counts.get(queue_name, 0)
+    return pending + active
 
 
 def get_avg_execution_time(queue_name: str, db: Session) -> float:

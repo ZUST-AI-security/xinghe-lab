@@ -17,17 +17,22 @@ import {
   Button,
   Card,
   Col,
+  Empty,
   InputNumber,
   Progress,
   Radio,
   Row,
   Select,
   Space,
+  Table,
+  Tag,
   Tooltip,
   Typography,
+  message,
 } from 'antd';
 import {
   DotChartOutlined,
+  HistoryOutlined,
   InfoCircleOutlined,
   LineChartOutlined,
   ReloadOutlined,
@@ -45,7 +50,7 @@ import {
 } from 'recharts';
 
 import ImageUploader from '../../components/business/ImageUploader';
-import { getSensitivityResult, submitSensitivityScan } from '../../api/sensitivity';
+import { getSensitivityHistory, getSensitivityHistoryScan, getSensitivityResult, submitSensitivityScan } from '../../api/sensitivity';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -264,6 +269,151 @@ const SensitivityChart = ({ dataPoints, scanParam, algorithm }) => {
   );
 };
 
+// ─── SensitivityHistorySection 子组件 ─────────────────────────────────────────
+
+/**
+ * 历史扫描折叠区域：显示当前用户已完成的敏感性扫描列表，
+ * 展开单条记录时复用 SensitivityChart 渲染历史数据。
+ */
+const SensitivityHistorySection = ({ refreshToken }) => {
+  const [loading, setLoading] = React.useState(false);
+  const [items, setItems] = React.useState([]);
+  const [pagination, setPagination] = React.useState({ current: 1, pageSize: 5, total: 0 });
+  const [expandedDetail, setExpandedDetail] = React.useState({}); // scan_id → detail data
+  const [loadingDetail, setLoadingDetail] = React.useState({}); // scan_id → bool
+
+  const fetchHistory = React.useCallback(async (page = 1, size = 5) => {
+    setLoading(true);
+    try {
+      const data = await getSensitivityHistory({ page, size });
+      setItems(data.items || []);
+      setPagination({ current: data.page, pageSize: data.size, total: data.total });
+    } catch {
+      message.error('获取历史扫描列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => { fetchHistory(1, 5); }, [fetchHistory, refreshToken]);
+
+  const handleExpand = React.useCallback(async (scanId) => {
+    if (expandedDetail[scanId]) {
+      // Toggle off
+      setExpandedDetail((prev) => { const next = { ...prev }; delete next[scanId]; return next; });
+      return;
+    }
+    setLoadingDetail((prev) => ({ ...prev, [scanId]: true }));
+    try {
+      const detail = await getSensitivityHistoryScan(scanId);
+      setExpandedDetail((prev) => ({ ...prev, [scanId]: detail }));
+    } catch {
+      message.error('获取扫描详情失败');
+    } finally {
+      setLoadingDetail((prev) => ({ ...prev, [scanId]: false }));
+    }
+  }, [expandedDetail]);
+
+  const statusColorMap = { completed: 'green', partial: 'orange', running: 'processing' };
+
+  const columns = [
+    {
+      title: '算法',
+      dataIndex: 'algorithm',
+      key: 'algorithm',
+      render: (v) => <Tag color="blue">{(v || '-').toUpperCase()}</Tag>,
+    },
+    {
+      title: '扫描参数',
+      dataIndex: 'scan_param',
+      key: 'scan_param',
+      render: (v, row) => (
+        <Text style={{ fontSize: 12 }}>
+          {v}（{row.param_min} – {row.param_max}，{row.steps} 步）
+        </Text>
+      ),
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (v) => <Tag color={statusColorMap[v] || 'default'}>{v === 'completed' ? '已完成' : v === 'partial' ? '部分完成' : v}</Tag>,
+    },
+    {
+      title: '时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (v) => (v ? new Date(v).toLocaleString() : '-'),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_, record) => (
+        <Button
+          size="small"
+          type={expandedDetail[record.scan_id] ? 'primary' : 'default'}
+          loading={loadingDetail[record.scan_id]}
+          onClick={() => handleExpand(record.scan_id)}
+          icon={<LineChartOutlined />}
+        >
+          {expandedDetail[record.scan_id] ? '收起' : '查看图表'}
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <Card
+      title={
+        <Space>
+          <HistoryOutlined />
+          <span>历史扫描记录</span>
+        </Space>
+      }
+      extra={
+        <Button icon={<ReloadOutlined />} size="small" onClick={() => fetchHistory(1, 5)}>
+          刷新
+        </Button>
+      }
+      variant="borderless"
+      style={{ marginTop: 32 }}
+    >
+      <Table
+        rowKey="scan_id"
+        columns={columns}
+        dataSource={items}
+        loading={loading}
+        size="small"
+        scroll={{ x: 600 }}
+        locale={{ emptyText: <Empty description="暂无历史扫描记录" /> }}
+        expandable={{
+          expandedRowKeys: Object.keys(expandedDetail),
+          showExpandColumn: false,
+          expandedRowRender: (record) => {
+            const detail = expandedDetail[record.scan_id];
+            if (!detail) return null;
+            return (
+              <div style={{ padding: '8px 0' }}>
+                <SensitivityChart
+                  dataPoints={detail.data_points || []}
+                  scanParam={detail.scan_param || record.scan_param}
+                  algorithm={detail.algorithm || record.algorithm}
+                />
+              </div>
+            );
+          },
+        }}
+        pagination={{
+          ...pagination,
+          showSizeChanger: false,
+          showTotal: (total) => `共 ${total} 条`,
+          onChange: (page, size) => fetchHistory(page, size),
+        }}
+      />
+    </Card>
+  );
+};
+
 // ─── 主页面组件 ───────────────────────────────────────────────────────────────
 
 const SensitivityPage = () => {
@@ -281,6 +431,7 @@ const SensitivityPage = () => {
   const [totalSteps, setTotalSteps] = useState(0);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
 
   const pollTimerRef = useRef(null);
 
@@ -320,6 +471,7 @@ const SensitivityPage = () => {
 
           if (data.status === 'completed') {
             stopPolling();
+            setHistoryRefreshToken((t) => t + 1);
           }
         } catch (err) {
           console.error('轮询敏感性分析结果失败:', err);
@@ -647,6 +799,9 @@ const SensitivityPage = () => {
           )}
         </Col>
       </Row>
+
+      {/* 历史扫描记录 */}
+      <SensitivityHistorySection refreshToken={historyRefreshToken} />
     </div>
   );
 };

@@ -18,7 +18,18 @@ import {
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 
 import { getMyTaskHistory } from '../../api/tasks';
+import { API_BASE_URL } from '../../api/client';
 import PerturbationViewer from '../../components/Visualization/PerturbationViewer';
+
+/**
+ * 将相对路径（如 "outputs/tasks/abc/img.png"）转换为可访问的 HTTP URL。
+ * 后端通过 StaticFiles 在 /outputs 路径下提供文件服务。
+ */
+const toStaticUrl = (relativePath) => {
+  if (!relativePath) return null;
+  const path = relativePath.replace(/\\/g, '/').replace(/^\//, '');
+  return `${API_BASE_URL}/${path}`;
+};
 
 const { Title, Text } = Typography;
 
@@ -33,16 +44,38 @@ const statusColorMap = {
 const isCompleted = (status) => status === 'completed' || status === 'success';
 
 /**
- * 从任务结果中提取图像和指标数据
+ * 从任务结果中提取图像和指标数据。
+ * 优先使用 base64 data URL（实时结果），否则从存储的文件路径构造静态文件 URL（历史记录）。
  */
 const extractResultData = (record) => {
   const result = record.result || {};
+  const outputDir = result.output_dir || null;
+
+  const originalImage =
+    result.original_image || result.original_img ||
+    toStaticUrl(result.original_image_path) ||
+    (outputDir ? toStaticUrl(`${outputDir}/original_image.png`) : null);
+
+  const adversarialImage =
+    result.adversarial_image || result.adv_image || result.adversarial_img ||
+    toStaticUrl(result.adversarial_image_path) ||
+    (outputDir ? toStaticUrl(`${outputDir}/adversarial_image.png`) : null);
+
+  const heatmap =
+    result.heatmap ||
+    toStaticUrl(result.heatmap_path) ||
+    (outputDir ? toStaticUrl(`${outputDir}/heatmap.png`) : null);
+
+  // amplified_diff / fft_diff 未保存到磁盘，仅在实时结果中有 base64
+  const amplifiedDiff = result.amplified_diff || null;
+  const fftDiff = result.fft_diff || null;
+
   return {
-    originalImage: result.original_image || result.original_img || null,
-    adversarialImage: result.adversarial_image || result.adv_image || result.adversarial_img || null,
-    heatmap: result.heatmap || null,
-    amplifiedDiff: result.amplified_diff || null,
-    fftDiff: result.fft_diff || null,
+    originalImage,
+    adversarialImage,
+    heatmap,
+    amplifiedDiff,
+    fftDiff,
     metadata: result.metadata || {},
     error: result.error || record.error || null,
     timeElapsed: result.time_elapsed || null,

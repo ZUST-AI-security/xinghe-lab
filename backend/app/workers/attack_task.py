@@ -160,7 +160,7 @@ def run_attack(
         user_id=user_id,
         algorithm_name=algorithm,
         status="running",
-        result={}
+        result={"task_id": self.request.id},
     )
     db.add(task_record)
     db.commit()

@@ -84,7 +84,8 @@ class Settings(BaseSettings):
 
     # 任务调度配置
     task_queue_threshold: int = 5
-    max_concurrent_tasks_per_user: int = 2
+    max_concurrent_tasks_per_user: int = 10
+    active_task_stale_seconds: int = 2200
 
     @field_validator("allowed_image_types", mode="before")
     @classmethod

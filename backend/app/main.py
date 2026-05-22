@@ -28,6 +28,64 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
+def _cleanup_stale_task_records() -> None:
+    """
+    启动时清理上次异常退出遗留的孤儿任务记录。
+
+    将所有 status IN ('pending', 'running') 且创建时间超过配置阈值的
+    TaskRecord 标记为 'failed'，防止其永久占用并发名额导致新任务被误拒。
+    同时通过 Celery purge 清空 Redis 队列里残留的未消费消息。
+    """
+    from datetime import datetime, timezone, timedelta
+    from app.core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        from app.models.task_record import TaskRecord
+
+        stale_after = int(getattr(settings, "active_task_stale_seconds", 2200) or 2200)
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=stale_after)
+        stale = (
+            db.query(TaskRecord)
+            .filter(
+                TaskRecord.status.in_(["pending", "running"]),
+                TaskRecord.created_at < cutoff,
+            )
+            .all()
+        )
+        if stale:
+            for record in stale:
+                record.status = "failed"
+                record.completed_at = datetime.now(timezone.utc)
+                record.result = {"error": "服务重启，任务被自动标记为失败"}
+            db.commit()
+            logger.warning(
+                " 启动清理：将 %d 条孤儿任务标记为 failed（超过 %d 秒未完成）",
+                len(stale),
+                stale_after,
+            )
+        else:
+            logger.info(" 启动清理：无孤儿任务记录")
+    except Exception as exc:
+        logger.warning(" 启动清理任务记录失败（非致命）: %s", exc)
+        db.rollback()
+    finally:
+        db.close()
+
+    # 清空 Redis 队列里未消费的残留消息
+    try:
+        from app.core.config import settings
+        import redis as redis_lib
+
+        client = redis_lib.from_url(settings.redis_url, socket_connect_timeout=2)
+        for q in ("high", "default", "low"):
+            removed = client.delete(q)
+            if removed:
+                logger.warning(" 启动清理：已清空 Redis 队列 '%s' 的残留消息", q)
+    except Exception as exc:
+        logger.warning(" 启动清理 Redis 队列失败（非致命）: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("=" * 50)
@@ -42,6 +100,10 @@ async def lifespan(app: FastAPI):
         initialize_database()
         ensure_required_tables("users")
         logger.info(" 数据库 schema 已就绪")
+
+        # 清理上次异常退出留下的孤儿任务记录（status=pending/running）
+        # worker 重启前来不及标记完成，这些记录会永久阻塞并发限制检查
+        _cleanup_stale_task_records()
 
         # Trigger registration side-effects.
         import app.algorithms  # noqa: F401

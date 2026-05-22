@@ -64,3 +64,25 @@ export const getSensitivityResult = async (scanId) => {
   const response = await api.get(`/sensitivity/result/${scanId}`);
   return response.data;
 };
+
+/**
+ * 获取当前用户的历史扫描列表（分页，仅含已完成记录）
+ * @param {Object} [params]
+ * @param {number} [params.page=1]
+ * @param {number} [params.size=10]
+ * @returns {Promise<{ items: Array, total: number, page: number, size: number, pages: number }>}
+ */
+export const getSensitivityHistory = async ({ page = 1, size = 10 } = {}) => {
+  const response = await api.get('/sensitivity/history', { params: { page, size } });
+  return response.data;
+};
+
+/**
+ * 获取单条历史扫描的完整详情（含 data_points）
+ * @param {string} scanId
+ * @returns {Promise<Object>}
+ */
+export const getSensitivityHistoryScan = async (scanId) => {
+  const response = await api.get(`/sensitivity/history/${scanId}`);
+  return response.data;
+};

@@ -147,8 +147,24 @@ class SensitivityService:
             "steps": steps,
             "task_ids": task_ids,
             "param_values": param_values,
+            "user_id": user_id,
         }
         self._save_scan_to_redis(scan_id, scan_record)
+
+        # ------------------------------------------------------------------
+        # Persist scan record in DB (status='running')
+        # ------------------------------------------------------------------
+        self._create_db_record(
+            scan_id=scan_id,
+            user_id=user_id,
+            algorithm=algorithm,
+            model_id=model_id,
+            scan_param=scan_param,
+            param_min=param_min,
+            param_max=param_max,
+            steps=steps,
+            db=db,
+        )
 
         logger.info(
             "Sensitivity scan submitted (scan_id=%s, algorithm=%s, steps=%d, user=%d)",
@@ -168,12 +184,14 @@ class SensitivityService:
     # Result aggregation
     # ------------------------------------------------------------------
 
-    def get_scan_result(self, scan_id: str) -> Dict[str, Any]:
+    def get_scan_result(self, scan_id: str, db: Optional[Session] = None) -> Dict[str, Any]:
         """
         Aggregate the results of all AttackTasks belonging to a scan.
 
         Args:
             scan_id: Unique scan identifier returned by submit_scan().
+            db:      Optional database session. When provided, completed results
+                     are persisted to the DB; expired Redis records fall back to DB.
 
         Returns:
             dict with keys:
@@ -183,10 +201,15 @@ class SensitivityService:
               - "algorithm":   algorithm name
 
         Raises:
-            ValidationError: If the scan_id is not found in Redis.
+            ValidationError: If the scan_id is not found in Redis or DB.
         """
         scan_record = self._load_scan_from_redis(scan_id)
         if scan_record is None:
+            # Redis TTL expired — try to serve from DB (completed records only)
+            if db is not None:
+                db_result = self._load_completed_from_db(scan_id, db)
+                if db_result is not None:
+                    return db_result
             raise ValidationError(
                 f"扫描记录 '{scan_id}' 不存在或已过期",
                 details={"scan_id": scan_id},
@@ -256,6 +279,10 @@ class SensitivityService:
         else:
             overall_status = "completed"
 
+        # When all tasks have finished, persist results to DB
+        if db is not None and finished == total:
+            self._update_db_record_on_complete(scan_id, overall_status, data_points, db)
+
         return {
             "status": overall_status,
             "data_points": data_points,
@@ -264,6 +291,91 @@ class SensitivityService:
             "steps": total,
             "completed": completed_count,
             "failed": failed_count,
+        }
+
+    # ------------------------------------------------------------------
+    # History query helpers
+    # ------------------------------------------------------------------
+
+    def get_scan_history(
+        self,
+        user_id: int,
+        page: int,
+        size: int,
+        db: Session,
+    ) -> Dict[str, Any]:
+        """Return a paginated list of completed sensitivity scans for a user."""
+        from app.models.sensitivity_record import SensitivityRecord
+
+        query = (
+            db.query(SensitivityRecord)
+            .filter(
+                SensitivityRecord.user_id == user_id,
+                SensitivityRecord.status.in_(["completed", "partial"]),
+            )
+            .order_by(SensitivityRecord.created_at.desc())
+        )
+        total = query.count()
+        pages = (total + size - 1) // size if total else 0
+        records = query.offset((page - 1) * size).limit(size).all()
+
+        items = [
+            {
+                "id": r.id,
+                "scan_id": r.scan_id,
+                "algorithm": r.algorithm,
+                "model_name": r.model_name,
+                "scan_param": r.scan_param,
+                "param_min": r.param_min,
+                "param_max": r.param_max,
+                "steps": r.steps,
+                "status": r.status,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "completed_at": r.completed_at.isoformat() if r.completed_at else None,
+            }
+            for r in records
+        ]
+        return {"items": items, "total": total, "page": page, "size": size, "pages": pages}
+
+    def get_scan_by_id(
+        self,
+        scan_id: str,
+        user_id: int,
+        db: Session,
+    ) -> Optional[Dict[str, Any]]:
+        """Return the full details (including data_points) of a single scan.
+
+        Returns None if the scan does not belong to the user or does not exist.
+        """
+        from app.models.sensitivity_record import SensitivityRecord
+
+        record = (
+            db.query(SensitivityRecord)
+            .filter(
+                SensitivityRecord.scan_id == scan_id,
+                SensitivityRecord.user_id == user_id,
+            )
+            .first()
+        )
+        if record is None:
+            return None
+
+        data_points = record.data_points or []
+        return {
+            "id": record.id,
+            "scan_id": record.scan_id,
+            "algorithm": record.algorithm,
+            "model_name": record.model_name,
+            "scan_param": record.scan_param,
+            "param_min": record.param_min,
+            "param_max": record.param_max,
+            "steps": record.steps,
+            "status": record.status,
+            "data_points": data_points,
+            "completed": sum(1 for p in data_points if p.get("status") == "ok"),
+            "failed": sum(1 for p in data_points if p.get("status") == "failed"),
+            "created_at": record.created_at.isoformat() if record.created_at else None,
+            "completed_at": record.completed_at.isoformat() if record.completed_at else None,
         }
 
     # ------------------------------------------------------------------
@@ -336,3 +448,97 @@ class SensitivityService:
         except Exception as exc:
             logger.error("Failed to load scan record from Redis: %s", exc, exc_info=True)
             return None
+
+    @staticmethod
+    def _create_db_record(
+        *,
+        scan_id: str,
+        user_id: int,
+        algorithm: str,
+        model_id: str,
+        scan_param: str,
+        param_min: float,
+        param_max: float,
+        steps: int,
+        db: Session,
+    ) -> None:
+        """Create a SensitivityRecord in DB with status='running'."""
+        from app.models.sensitivity_record import SensitivityRecord
+
+        record = SensitivityRecord(
+            user_id=user_id,
+            scan_id=scan_id,
+            algorithm=algorithm,
+            model_name=model_id,
+            scan_param=scan_param,
+            param_min=param_min,
+            param_max=param_max,
+            steps=steps,
+            status="running",
+        )
+        try:
+            db.add(record)
+            db.commit()
+        except Exception as exc:
+            logger.warning("Failed to create SensitivityRecord in DB (scan_id=%s): %s", scan_id, exc)
+            db.rollback()
+
+    @staticmethod
+    def _update_db_record_on_complete(
+        scan_id: str,
+        status: str,
+        data_points: List[Dict[str, Any]],
+        db: Session,
+    ) -> None:
+        """Update a SensitivityRecord in DB once all tasks finish."""
+        from app.models.sensitivity_record import SensitivityRecord
+        from datetime import datetime, timezone
+
+        record = (
+            db.query(SensitivityRecord)
+            .filter(SensitivityRecord.scan_id == scan_id)
+            .first()
+        )
+        if record is None or record.status not in ("running", "partial"):
+            return  # already updated or not found
+
+        record.status = status
+        record.data_points = data_points
+        record.completed_at = datetime.now(timezone.utc)
+        try:
+            db.commit()
+        except Exception as exc:
+            logger.warning(
+                "Failed to update SensitivityRecord in DB (scan_id=%s): %s", scan_id, exc
+            )
+            db.rollback()
+
+    @staticmethod
+    def _load_completed_from_db(
+        scan_id: str,
+        db: Session,
+    ) -> Optional[Dict[str, Any]]:
+        """Return a completed scan from DB when Redis has expired. Returns None if not found."""
+        from app.models.sensitivity_record import SensitivityRecord
+
+        record = (
+            db.query(SensitivityRecord)
+            .filter(
+                SensitivityRecord.scan_id == scan_id,
+                SensitivityRecord.status.in_(["completed", "partial"]),
+            )
+            .first()
+        )
+        if record is None or not record.data_points:
+            return None
+
+        data_points = record.data_points
+        return {
+            "status": record.status,
+            "data_points": data_points,
+            "scan_param": record.scan_param,
+            "algorithm": record.algorithm,
+            "steps": record.steps,
+            "completed": sum(1 for p in data_points if p.get("status") == "ok"),
+            "failed": sum(1 for p in data_points if p.get("status") == "failed"),
+        }
